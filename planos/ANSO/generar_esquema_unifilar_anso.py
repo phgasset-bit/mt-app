@@ -6,14 +6,16 @@ distribución de tres trafos de 1.000 kVA, Tauste, marzo 2024).
 Las coordenadas se toman en píxeles de la foto del plano original y se
 convierten a mm sobre un formato A3 apaisado (420 x 297).
 
-Uso:  python generar_esquema_unifilar_anso.py
+Uso:  python generar_esquema_unifilar_anso.py [salida.dxf]
 """
+import sys
 from pathlib import Path
 
 import ezdxf
 from ezdxf.enums import TextEntityAlignment
 
-SALIDA = Path(__file__).with_name("Esquema_Unifilar_General_MT_Autoconsumo_ANSO.dxf")
+SALIDA = (Path(sys.argv[1]) if len(sys.argv) > 1
+          else Path(__file__).with_name("Esquema_Unifilar_General_MT_Autoconsumo_ANSO.dxf"))
 
 ESC = 0.205  # mm por píxel de la foto
 

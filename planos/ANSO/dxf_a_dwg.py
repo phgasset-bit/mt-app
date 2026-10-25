@@ -4,8 +4,9 @@ DWG es un formato binario cerrado de Autodesk. LibreDWG (GNU) lo implementa por
 ingeniería inversa; su conversor dxf2dwg deja referencias duplicadas en las
 tablas, así que el DWG se pasa por JSON, se limpia y se reescribe con dwgwrite.
 
-Requiere los binarios de LibreDWG (dxf2dwg, dwgread, dwgwrite) en el PATH o en
-la carpeta indicada con LIBREDWG_BIN.
+Requiere los binarios de LibreDWG (dxf2dwg, dwgread, dwgwrite): se buscan en la
+carpeta indicada con LIBREDWG_BIN, en una carpeta "libredwg" junto a este script
+o en el PATH.
 
 Uso:  python dxf_a_dwg.py entrada.dxf [salida.dwg]
 """
@@ -22,6 +23,8 @@ import ezdxf
 
 def herramienta(nombre):
     carpeta = os.environ.get("LIBREDWG_BIN")
+    if not carpeta and (Path(__file__).parent / "libredwg").is_dir():
+        carpeta = Path(__file__).parent / "libredwg"
     return str(Path(carpeta) / nombre) if carpeta else nombre
 
 
@@ -102,11 +105,11 @@ def convertir(dxf, dwg):
         ejecutar(herramienta("dxf2dwg"), "-y", "-o", str(tmp / "bruto.dwg"), str(tmp / "r2000.dxf"))
         ejecutar(herramienta("dwgread"), "-O", "JSON", "-o", str(tmp / "bruto.json"),
                  str(tmp / "bruto.dwg"))
-        datos = json.loads((tmp / "bruto.json").read_text())
+        datos = json.loads((tmp / "bruto.json").read_text(encoding="utf-8"))
         limpiar(datos)
         restaurar_textos(datos, datos_textos(doc))
         restaurar_grosores(datos, doc)
-        (tmp / "limpio.json").write_text(json.dumps(datos))
+        (tmp / "limpio.json").write_text(json.dumps(datos), encoding="utf-8")
         ejecutar(herramienta("dwgwrite"), "-y", "--as", "r2000", "-o", str(dwg),
                  str(tmp / "limpio.json"))
     print(f"Guardado: {dwg}")

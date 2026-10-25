@@ -1,0 +1,40 @@
+MNM SOLAR - HERRAMIENTAS DE PLANOS DXF / DWG
+=============================================
+
+Contenido
+---------
+  INSTALAR.bat               Instala las librerías de Python necesarias (solo la primera vez).
+  CONVERTIR_DXF_A_DWG.bat    Arrastra encima uno o varios .dxf y genera el .dwg al lado.
+  GENERAR_PLANO_ANSO.bat     Vuelve a crear el esquema unifilar MT de ANSO (DXF + DWG).
+  planos\ANSO\               Esquema unifilar general MT autoconsumo ANSO (DWG, DXF y PDF).
+  herramientas\              Scripts de Python y LibreDWG para Windows (64 bits).
+
+Requisitos
+----------
+  - Windows 10/11 de 64 bits.
+  - Python 3.10 o superior (https://www.python.org/downloads/).
+    En el instalador marcar "Add python.exe to PATH".
+
+Instalación
+-----------
+  1. Descomprimir el ZIP en una carpeta, por ejemplo C:\MNM\Herramientas_DWG
+     (no ejecutar desde dentro del ZIP).
+  2. Doble clic en INSTALAR.bat.
+  3. Listo.
+
+Uso
+---
+  - Convertir: arrastrar los .dxf sobre CONVERTIR_DXF_A_DWG.bat.
+  - El DWG sale en formato AutoCAD 2000, que abre cualquier AutoCAD actual.
+    Para pasarlo a tu versión: abrir en AutoCAD y "Guardar como".
+  - Si AutoCAD avisa de algún problema al abrir, usar el comando RECUPERAR.
+
+Notas
+-----
+  - La conversión usa LibreDWG 0.13.3 (proyecto GNU, licencia GPL v3; ver
+    herramientas\libredwg\COPYING). El DWG es un formato cerrado de Autodesk y
+    LibreDWG lo implementa por ingeniería inversa; dxf_a_dwg.py corrige los
+    fallos conocidos de su conversor (tablas duplicadas, textos girados,
+    grosores de capa).
+  - El esquema de ANSO es un redibujado del plano visado VIZA242020: copia de
+    trabajo sin validez de visado ni firma.

@@ -3,6 +3,10 @@ const fs = require('fs');
 const man = 'android/app/src/main/AndroidManifest.xml';
 let m = fs.readFileSync(man, 'utf8');
 if (!m.includes('screenOrientation')) m = m.replace('<activity', '<activity android:screenOrientation="sensorLandscape"');
+// identificador de la app de AdMob (variable ADMOB_APP_ID; por defecto el de prueba oficial de Google)
+const admobApp = process.env.ADMOB_APP_ID || 'ca-app-pub-3940256099942544~3347511713';
+if (!m.includes('com.google.android.gms.ads.APPLICATION_ID')) m = m.replace(/<application([^>]*)>/, `<application$1>
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobApp}"/>`);
 fs.writeFileSync(man, m);
 const sty = 'android/app/src/main/res/values/styles.xml';
 let s = fs.readFileSync(sty, 'utf8');
@@ -50,4 +54,18 @@ if (!b.includes('tools/debug.keystore')) {
     }`);
   fs.writeFileSync(gr, b);
 }
+// número de versión: Google Play exige que suba en cada envío (VERSION_CODE = número de compilación)
+const vc = parseInt(process.env.VERSION_CODE || '1', 10);
+b = fs.readFileSync(gr, 'utf8').replace(/versionCode \d+/, 'versionCode ' + vc).replace(/versionName "[^"]*"/, 'versionName "1.0.' + vc + '"');
+// firma de publicación (clave de subida de Google Play) solo si la compilación la recibe por variables secretas
+if (process.env.FIRMA_ALMACEN && !b.includes('signingConfigs.release')) {
+  b = b.replace(/signingConfigs \{/, `signingConfigs {
+        release {
+            storeFile file(System.getenv('FIRMA_ALMACEN'))
+            storePassword System.getenv('FIRMA_CLAVE')
+            keyAlias System.getenv('FIRMA_ALIAS')
+            keyPassword System.getenv('FIRMA_CLAVE')
+        }`).replace(/release \{\s*minifyEnabled/, 'release {\n            signingConfig signingConfigs.release\n            minifyEnabled');
+}
+fs.writeFileSync(gr, b);
 console.log('Proyecto Android ajustado');

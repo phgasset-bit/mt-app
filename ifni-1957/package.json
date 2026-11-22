@@ -9,8 +9,10 @@
     "android": "npx cap add android && node tools/android_ajustes.js && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor-community/admob": "6.2.0",
     "@capacitor/android": "6.1.2",
-    "@capacitor/core": "6.1.2"
+    "@capacitor/core": "6.1.2",
+    "cordova-plugin-purchase": "13.20.0"
   },
   "devDependencies": {
     "@capacitor/cli": "6.1.2",

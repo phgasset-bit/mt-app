@@ -13,7 +13,7 @@ const UI = (() => {
     const P = Progreso.P, falta = oro ? oro - P.oro : pts - P.pts;
     if (falta <= 0) return true;
     const id = Progreso.bolsaPara(oro ? 0 : falta, oro ? falta : 0), pr = Progreso.PRODUCTOS[id];
-    const prueba = !(window.CdvPurchase && CdvPurchase.store) ? ' En el navegador la compra es simulada y no se cobra nada.' : '';
+    const prueba = !Nativo.pagos ? ' En el navegador la compra es simulada y no se cobra nada.' : '';
     const ok = await confirmar('Te faltan ' + (oro ? '◆ ' + falta : '₧ ' + fmt(falta)), 'Para llevarte «' + nombre + '» compra ' + pr.nom + ' por ' + pr.precio + '. Lo que sobre se queda en tu saldo.' + prueba, 'Pagar ' + pr.precio);
     if (!ok) return false;
     await Progreso.comprar(id, true);
@@ -196,9 +196,10 @@ const UI = (() => {
       const p = PR[id]; if (id === 'veterano' && P.veterano) continue; if (id === 'sin_anuncios' && P.sinAnuncios) continue;
       h += '<div class="carta' + (id === 'veterano' ? ' destacada' : '') + '"><b>' + p.nom + (p.etiqueta ? ' <span class="chip">' + p.etiqueta + '</span>' : '') + '</b><small>' + (p.desc || (p.pts ? 'Pesetas para armas, uniformes y tatuajes.' : 'Oro para objetos exclusivos y acceso anticipado a las armas.')) + '</small><div class="acc"><button type="button" class="mini" data-prod="' + id + '">' + p.precio + '</button></div></div>';
     }
-    h += '</div><p class="nota">Las pesetas y el oro son las monedas del juego: se ganan jugando y también se pueden comprar. Todo se paga en euros a través de Google Play, IVA incluido. Junto a cada precio de la armería verás su equivalente en euros.</p><p class="nota">Todo lo que se compra con oro también se puede conseguir jugando: con pesetas, subiendo de empleo y con las medallas.</p>';
+    h += '</div>' + (Nativo.pagos ? '<p><button type="button" class="mini" id="bRestaurar">Restaurar compras</button></p>' : '') + '<p class="nota">Las pesetas y el oro son las monedas del juego: se ganan jugando y también se pueden comprar. Todo se paga en euros a través de Google Play, IVA incluido. Junto a cada precio de la armería verás su equivalente en euros.</p><p class="nota">Todo lo que se compra con oro también se puede conseguir jugando: con pesetas, subiendo de empleo y con las medallas.</p>';
     const el = $('tab-tienda'); el.innerHTML = h;
     $('bVideo') && ($('bVideo').onclick = async () => { if (await Progreso.Anuncios.recompensado()) { P.oro += 5; Progreso.guardar(); toast('+5 de oro'); tienda(); cabecera(); } });
+    $('bRestaurar') && ($('bRestaurar').onclick = async () => { await Nativo.restaurar(); toast('Compras restauradas'); tienda(); cabecera(); });
     el.querySelectorAll('[data-prod]').forEach(b => b.onclick = async () => { if (await Progreso.comprar(b.dataset.prod)) { toast('Compra entregada'); tienda(); cabecera(); } });
   }
 

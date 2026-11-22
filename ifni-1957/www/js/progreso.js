@@ -154,26 +154,21 @@ const Progreso = (() => {
   // ---------- anuncios ----------
   function hoy() { return new Date().toISOString().slice(0, 10); }
   const Anuncios = {
-    nativos() { return !!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.AdMob); },
+    nativos() { return Nativo.anuncios; },
     quedanHoy() { if (P.anunciosHoy.dia !== hoy()) P.anunciosHoy = { dia: hoy(), n: 0 }; return 12 - P.anunciosHoy.n; },
     async recompensado() {
       if (Anuncios.quedanHoy() <= 0) return false;
-      let ok;
-      if (Anuncios.nativos()) {
-        try { const A = Capacitor.Plugins.AdMob; await A.prepareRewardVideoAd({ adId: AD_IDS.recompensado }); const r = await A.showRewardVideoAd(); ok = !!r; } catch (e) { ok = false; }
-      } else ok = await simulaAnuncio(true);
+      const r = await Nativo.recompensado();          // anuncio real de AdMob en Android
+      const ok = r === null ? await simulaAnuncio(true) : r;
       if (ok) { P.anunciosHoy.n++; guardar(); }
       return ok;
     },
     async intersticial() {
       if (P.sinAnuncios || P.misionesDesdeAnuncio < 2) return;
       P.misionesDesdeAnuncio = 0; guardar();
-      if (Anuncios.nativos()) { try { const A = Capacitor.Plugins.AdMob; await A.prepareInterstitial({ adId: AD_IDS.intersticial }); await A.showInterstitial(); } catch (e) {} }
-      else await simulaAnuncio(false);
+      if ((await Nativo.intersticial()) === null) await simulaAnuncio(false);
     }
   };
-  // identificadores de prueba oficiales de AdMob; se sustituyen por los reales al publicar
-  const AD_IDS = { recompensado: 'ca-app-pub-3940256099942544/5224354917', intersticial: 'ca-app-pub-3940256099942544/1033173712' };
   function simulaAnuncio(recompensa) {
     return new Promise(res => {
       const el = document.getElementById('anuncio'), t = document.getElementById('anT'), b = document.getElementById('anCerrar');
@@ -195,12 +190,14 @@ const Progreso = (() => {
     sin_anuncios: { nom: 'Sin anuncios', precio: '3,99 €', desc: 'Quita los anuncios entre misiones. Las recompensas por vídeo siguen disponibles si las quieres.' },
     veterano: { nom: 'Pack Veterano', precio: '2,99 €', desc: '500 de oro, subfusil Z-45, tatuaje «Novio de la Muerte» y barba de gastador. Solo una vez.', unico: true }
   };
-  function entregar(id) {
-    const p = PRODUCTOS[id];
+  function entregar(id, transaccion) {
+    const p = PRODUCTOS[id]; if (!p) return;
+    P.compras = P.compras || {};
+    if (transaccion) { if (P.compras[transaccion]) return; P.compras[transaccion] = id; } // cada compra se entrega una sola vez
     if (p.oro) P.oro += p.oro;
     if (p.pts) P.pts += p.pts;
     if (id === 'sin_anuncios') P.sinAnuncios = true;
-    if (id === 'veterano') { P.veterano = true; P.oro += 500; P.armas.z45 = 1; P.tatuajes.novio = 1; P.cosmeticos['barba:gastador'] = 1; }
+    if (id === 'veterano') { if (P.veterano) { guardar(); return; } P.veterano = true; P.oro += 500; P.armas.z45 = 1; P.tatuajes.novio = 1; P.cosmeticos['barba:gastador'] = 1; }
     guardar();
   }
   // equivalencia en euros (tarifa de la bolsa de 4,99 €) y bolsa más barata que cubre lo que falta
@@ -210,12 +207,8 @@ const Progreso = (() => {
     return lista.sort((a, b) => PRODUCTOS[a].eur - PRODUCTOS[b].eur)[0] || (oro > 0 ? 'oro_2500' : 'pts_35000');
   }
   async function comprar(id, yaConfirmado) {
-    const store = window.CdvPurchase && CdvPurchase.store;
-    if (store) {
-      // producción: Google Play Billing; la entrega se confirma en el callback 'approved' (ver docs/MONETIZACION.md)
-      try { const prod = store.get(id); const oferta = prod && prod.getOffer(); if (oferta) await oferta.order(); } catch (e) {}
-      return false;
-    }
+    const real = await Nativo.comprar(id);   // pago real con Google Play: se entrega al confirmarse la transacción
+    if (real !== null) return real;
     const ok = yaConfirmado || await UI.confirmar('Compra de prueba', PRODUCTOS[id].nom + ' por ' + PRODUCTOS[id].precio + '. En el navegador es una simulación: no se cobra nada.', 'Simular compra');
     if (ok) entregar(id);
     return ok;
@@ -223,5 +216,6 @@ const Progreso = (() => {
   function gastar(pts, oro) { if (P.pts < pts || P.oro < oro) return false; P.pts -= pts; P.oro -= oro; guardar(); return true; }
   function reiniciar() { P = JSON.parse(JSON.stringify(BASE)); guardar(); }
 
+  Nativo.iniciarPagos(PRODUCTOS, entregar);
   return { euros, bolsaPara, RANGOS, ARMAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
 })();

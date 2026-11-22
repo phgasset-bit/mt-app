@@ -8,6 +8,8 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: ifni-1957
@@ -29,3 +31,14 @@ jobs:
         with:
           name: ifni-1957-apk
           path: ifni-1957/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Copiar APK con nombre fijo
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ifni-1957.apk
+      - name: Publicar descarga directa (se sustituye en cada compilación)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ifni-1957
+          name: Ifni 1957 · versión de prueba
+          body: APK de prueba de Ifni 1957. Se actualiza solo con cada cambio del juego. Anuncios y compras en modo simulado.
+          prerelease: true
+          make_latest: false
+          files: ifni-1957/ifni-1957.apk

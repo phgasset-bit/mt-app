@@ -35,4 +35,19 @@ public class MainActivity extends BridgeActivity {
     }
 }
 `);
+// firma de pruebas fija: cada APK se instala encima del anterior
+const gr = 'android/app/build.gradle';
+let b = fs.readFileSync(gr, 'utf8');
+if (!b.includes('tools/debug.keystore')) {
+  b = b.replace(/android\s*\{/, `android {
+    signingConfigs {
+        debug {
+            storeFile file('../../tools/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }`);
+  fs.writeFileSync(gr, b);
+}
 console.log('Proyecto Android ajustado');

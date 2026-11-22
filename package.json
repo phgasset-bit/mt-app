@@ -5,7 +5,7 @@
   "description": "Juego de combate en primera persona ambientado en la guerra de Ifni (1957-1958)",
   "scripts": {
     "serve": "python3 -m http.server 8080 -d www",
-    "voces": "bash tools/gen_voices.sh",
+    "voces": "HF_HUB_DISABLE_XET=1 python3 tools/gen_voces.py",
     "android": "npx cap add android && node tools/android_ajustes.js && npx cap sync android"
   },
   "dependencies": {

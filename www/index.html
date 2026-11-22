@@ -157,6 +157,39 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 #toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--hueso);color:var(--tierra);font-weight:700;padding:8px 16px;z-index:5}
 #modal,#anuncio{z-index:4;background:rgba(20,14,8,.88)}
 #vineta{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(20,12,4,.45) 100%)}
+
+/* Portada */
+#portada{z-index:6;display:flex;align-items:center;justify-content:center;gap:2vw;background:radial-gradient(ellipse at 30% 40%,#3a2a18,#120c06 75%);overflow:hidden}
+#bandera{flex:1 1 55%;height:80%;min-width:0;max-height:80vh}
+.portada-txt{flex:0 1 auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding-inline:8px}
+.portada-txt h1{font-size:clamp(40px,7vw,80px)}
+#pEmblema svg{width:clamp(80px,14vw,150px);height:auto}
+#bEntrar{animation:latido 1.6s ease-in-out infinite}
+@keyframes latido{50%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){#bEntrar{animation:none}}
+@media (orientation:portrait){#portada{flex-direction:column}#bandera{flex:0 0 40%;width:100%;height:auto}}
+.marca{display:flex;align-items:center;gap:12px}
+/* Mi legionario */
+.avatar-grid{display:grid;grid-template-columns:minmax(220px,0.8fr) 1.2fr;gap:14px;align-items:start}
+@media (max-width:620px){.avatar-grid{grid-template-columns:1fr}}
+.visor{position:relative;background:radial-gradient(ellipse at 50% 35%,rgba(242,185,15,.12),rgba(20,14,8,.7) 70%);border:1px solid rgba(217,183,122,.25);aspect-ratio:3/4;max-height:72vh;width:100%;max-width:100%}
+.visor canvas{width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab}
+.visor-bt{position:absolute;left:8px;bottom:8px}
+.av-opc{display:flex;flex-direction:column;gap:8px;min-width:0}
+.av-fila,.av-cat{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--sombra);padding:8px 10px}
+.av-cat{flex-direction:column;align-items:stretch}
+.av-fila>span,.av-cat>span{font-weight:700;min-width:60px;color:var(--arena);text-transform:uppercase;font-size:13px;letter-spacing:.08em}
+.muestra{width:34px;height:34px;border-radius:50%;border:2px solid rgba(241,230,207,.35);padding:0}
+.muestra.on{border-color:var(--gualda);box-shadow:0 0 0 2px var(--gualda)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.opc{background:transparent;border:1.5px solid rgba(217,183,122,.45);color:var(--hueso);font-family:var(--texto);font-size:15px;padding:5px 10px}
+.opc.on{border-color:var(--gualda);background:rgba(242,185,15,.18)}
+.opc.oro{color:var(--gualda)}
+.opc[disabled]{opacity:.4}
+.heridas{margin:0;padding-left:18px;line-height:1.3}
+.ascenso.herida{border-left-color:var(--sangre)}
+.ascenso.herida b{color:#e0675f}
+#parche{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.25) 12%,rgba(0,0,0,0) 24%)}
 </style>
 </head>
 <body>
@@ -165,7 +198,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
   <canvas id="c"></canvas>
 
   <div id="hud" class="capa" hidden>
-    <div id="vineta"></div><div id="dano"></div><div id="dir"><i></i></div>
+    <div id="vineta"></div><div id="parche" hidden></div><div id="dano"></div><div id="dir"><i></i></div>
     <div id="mira"><i></i><i></i><i></i><i></i></div>
     <div id="estado"><b id="tVida">100</b> salud · curas <span id="tCuras">2</span><div id="vida"><i></i></div>Escuadra: <span id="tEsc">5</span> · Bajas enemigas: <span id="tBajas">0</span></div>
     <div id="objetivo"><span id="flecha">▲</span><span id="tObj"></span><small id="tObj2"></small></div>
@@ -191,12 +224,13 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
   <div id="menu" class="capa panel">
     <div class="hoja ancha">
       <div class="cabecera">
-        <div><p class="lema">VI Bandera de la Legión · África Occidental Española</p><h1>IFNI <span>1957</span></h1></div>
+        <div class="marca"><span id="mEmblema"></span><div><p class="lema">VI Bandera de la Legión · África Occidental Española</p><h1>IFNI <span>1957</span></h1></div></div>
         <div id="perfil" class="perfil"></div>
       </div>
       <p class="nota" id="gira">Juega con el móvil en horizontal.</p>
       <nav class="pestanas" aria-label="Secciones">
         <button type="button" data-tab="campana" class="on">Campaña</button>
+        <button type="button" data-tab="avatar">Mi legionario</button>
         <button type="button" data-tab="armeria">Armería</button>
         <button type="button" data-tab="hoja">Hoja de servicios</button>
         <button type="button" data-tab="ranking">Ranking</button>
@@ -204,10 +238,21 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
         <button type="button" id="bAjustes">Ajustes</button>
       </nav>
       <div id="tab-campana" class="tab lista"></div>
+      <div id="tab-avatar" class="tab" hidden></div>
       <div id="tab-armeria" class="tab" hidden></div>
       <div id="tab-hoja" class="tab" hidden></div>
       <div id="tab-ranking" class="tab" hidden></div>
       <div id="tab-tienda" class="tab" hidden></div>
+    </div>
+  </div>
+
+  <div id="portada" class="capa">
+    <canvas id="bandera" aria-label="Bandera de España ondeando"></canvas>
+    <div class="portada-txt">
+      <div id="pEmblema"></div>
+      <h1>IFNI <span>1957</span></h1>
+      <p class="lema">La Legión · VI Bandera</p>
+      <button class="boton" id="bEntrar" type="button">Tocar para empezar</button>
     </div>
   </div>
 
@@ -285,6 +330,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 <script src="js/world.js"></script>
 <script src="js/missions.js"></script>
 <script src="js/progreso.js"></script>
+<script src="js/avatar.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>
 </body>

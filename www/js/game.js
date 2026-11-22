@@ -182,7 +182,7 @@
   function gritoAliado(s) {
     const vivos = G.sold.filter(x => x.team === 'L' && !x.muerto); if (!vivos.length) return;
     s = s || vivos[Math.floor(Math.random() * vivos.length)];
-    const op = [['viva_legion', '¡VIVA LA LEGIÓN!'], ['a_mi', '¡A MÍ LA LEGIÓN!'], ['viva_espana', '¡VIVA ESPAÑA!'], ['fuego', null], ['cubridme', null], ['adelante', null]];
+    const op = [['viva_legion_b', '¡VIVA LA LEGIÓN!'], ['a_mi_b', '¡A MÍ LA LEGIÓN!'], ['viva_espana_b', '¡VIVA ESPAÑA!'], ['fuego', null], ['cubridme', null], ['coro_legion', '¡VIVA LA LEGIÓN!']];
     const o = op[Math.floor(Math.random() * op.length)];
     voz(o[0], o[1], 0.75, panDe(s.pos));
   }
@@ -451,7 +451,7 @@
         const x = ox + ax * d2 + px * lat, z = oz + az * d2 + pz * lat;
         s.cp = final ? { x, z } : puntoCobertura(x, z, ox, oz);
         s.salto = 'salta'; s.rodeo = Math.random() < 0.5 ? 1 : -1; s.t = 0;
-        if (Math.random() < 0.3 && gritoT <= 0) { voz(final ? 'a_mi' : Math.random() < 0.5 ? 'cubridme' : 'adelante', final ? '¡A MÍ LA LEGIÓN!' : null, 0.7, panDe(s.pos)); gritoT = 3; }
+        if (Math.random() < 0.3 && gritoT <= 0) { voz(final ? 'a_mi_b' : Math.random() < 0.5 ? 'cubridme' : 'fuego', final ? '¡A MÍ LA LEGIÓN!' : null, 0.75, panDe(s.pos)); gritoT = 3; }
       }
     } else {
       s.agach = false; s.t -= dt;
@@ -487,11 +487,13 @@
       if (k === 1) s.tipoArma = 'fao';
     }
     jugando = true; pausado = false;
-    ['menu', 'parte', 'fin', 'revivir'].forEach(id => $(id).hidden = true);
+    ['menu', 'parte', 'fin', 'revivir', 'portada'].forEach(id => $(id).hidden = true);
+    $('parche').hidden = !(Progreso.P.heridas.ojo && Progreso.P.mostrarHeridas);
     $('hud').hidden = $('mandos').hidden = false;
     siguienteFase();
     Snd.corneta(m.noche ? 'diana' : 'ataque');
-    setTimeout(() => G && G.m === m && voz('coro_luchar', '¡LEGIONARIOS, A LUCHAR!', 0.9), 2600);
+    setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
+    setTimeout(() => G && G.m === m && (Snd.voz('coro_viva', 0.9), cartel('¡VIVA!')), 6200);
   }
   function siguienteFase() {
     G.faseI++;
@@ -526,7 +528,7 @@
     if (f.tipo === 'take') {
       const n = enemigosVivos();
       if (!G.avisoEnemigo && n.some(e => e.alerta)) { G.avisoEnemigo = true; voz('enemigo', null, 0.9, 0); }
-      if (!G.asalto && dObj < 38 && n.length) { G.asalto = true; voz('asalto', '¡AL ASALTO!'); setTimeout(() => G && voz('a_mi', null, 0.8, -0.4), 1300); }
+      if (!G.asalto && dObj < 38 && n.length) { G.asalto = true; voz('asalto', '¡AL ASALTO!'); setTimeout(() => G && voz('a_mi_b', null, 0.8, -0.4), 1300); }
       const aliCerca = G.sold.some(s => s.team === 'L' && !s.muerto && Math.hypot(s.pos.x - f.x, s.pos.z - f.z) < 16);
       if (n.length && n.length <= 2 && (dObj < 20 || aliCerca)) { G.desborde += dt; if (G.desborde > 8) { for (const s of n) { s.estado = 'huye'; s.dest = { x: s.pos.x + rnd(-30, 30), z: s.pos.z - 150 }; s.fase = -1; } aviso('Los últimos defensores huyen', 2.5); } } else G.desborde = 0;
       G.obj2 = n.length ? 'Enemigos en la posición: ' + n.length : 'Ocupa la posición';
@@ -560,7 +562,7 @@
   }
   function resultado(ok) {
     const vivos = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
-    return Progreso.terminar({ ok, mision: G.m.id, dif: AJ.dif, bajas: G.bajas, bajasJ: G.bajasJ, cabezas: G.cabezas, tiros: G.tiros, aciertos: G.aciertos, vivos, aliadosIni: G.aliadosIni, minVida: G.minVida, vidaFinal: P.vida, tiempo: G.t });
+    return Progreso.terminar({ ok, revivido: G.revivido, mision: G.m.id, dif: AJ.dif, bajas: G.bajas, bajasJ: G.bajasJ, cabezas: G.cabezas, tiros: G.tiros, aciertos: G.aciertos, vivos, aliadosIni: G.aliadosIni, minVida: G.minVida, vidaFinal: P.vida, tiempo: G.t });
   }
   function victoria() {
     G.fin = true;
@@ -824,6 +826,7 @@
   window.__ifni = { get G() { return G; }, P, empezar, get ARMAS() { return ARMAS; }, trazar, cam, get jugando() { return jugando; } };
 
   UI.init(abrirParte);
+  UI.portada();
   app.classList.toggle('zurdo', AJ.zurdo);
   redim(); alMenu(); requestAnimationFrame(bucle);
 })();

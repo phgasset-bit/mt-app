@@ -20,14 +20,15 @@ const UI = (() => {
     const P = Progreso.P, r = Progreso.rango(), R = Progreso.RANGOS, sig = R[r + 1];
     const pct = sig ? (P.xp - R[r].xp) / (sig.xp - R[r].xp) * 100 : 100;
     $('perfil').innerHTML = Progreso.insignia(r, 34) +
-      '<div class="pf-txt"><b>' + R[r].nom + '</b><span>' + fmt(P.xp) + (sig ? ' / ' + fmt(sig.xp) + ' pts de servicio' : ' pts · rango máximo') + '</span><div class="barra"><i style="width:' + pct + '%"></i></div></div>' +
+      '<div class="pf-txt"><b>' + R[r].nom + (P.avatar.nombre ? ' ' + esc(P.avatar.nombre) : '') + '</b><span>' + fmt(P.xp) + (sig ? ' / ' + fmt(sig.xp) + ' pts de servicio' : ' pts · rango máximo') + '</span><div class="barra"><i style="width:' + pct + '%"></i></div></div>' +
       '<div class="monedas"><span title="Pesetas">₧ ' + fmt(P.pts) + '</span><span class="oro" title="Oro">◆ ' + fmt(P.oro) + '</span></div>';
   }
 
   function tab(nombre) {
     document.querySelectorAll('.pestanas button').forEach(b => b.classList.toggle('on', b.dataset.tab === nombre));
-    ['campana', 'armeria', 'hoja', 'ranking', 'tienda'].forEach(t => $('tab-' + t).hidden = t !== nombre);
-    ({ campana, armeria, hoja, ranking, tienda })[nombre]();
+    ['campana', 'avatar', 'armeria', 'hoja', 'ranking', 'tienda'].forEach(t => $('tab-' + t).hidden = t !== nombre);
+    Avatar.activo = nombre === 'avatar';
+    ({ campana, avatar, armeria, hoja, ranking, tienda })[nombre]();
     cabecera();
   }
 
@@ -39,6 +40,49 @@ const UI = (() => {
       b.innerHTML = '<span class="mis-n">' + (i < 5 ? 'Misión ' + (i + 1) : 'Epílogo') + (P.hechas[m.id] ? ' · cumplida' : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
       b.onclick = () => alJugar(i); l.appendChild(b);
     });
+  }
+
+  // ---------- Mi legionario ----------
+  function avatar() {
+    const P = Progreso.P, A = Avatar.COSMETICOS, r = Progreso.rango(), R = Progreso.RANGOS;
+    const nombres = { tocado: 'Tocado', camisa: 'Uniforme', barba: 'Barba', panuelo: 'Pañuelo' };
+    let h = '<div class="avatar-grid"><div class="visor"><canvas id="avCanvas"></canvas><div class="fila visor-bt"><button type="button" class="mini" data-enf="cuerpo">Cuerpo</button><button type="button" class="mini" data-enf="cara">Cara</button></div></div><div class="av-opc">';
+    h += '<label class="ajuste" for="avNombre">Apellido <input id="avNombre" maxlength="16" placeholder="Por ejemplo, Millán" value="' + esc(P.avatar.nombre) + '"></label>';
+    h += '<div class="av-fila"><span>Piel</span>' + Avatar.PIEL.map((c, i) => '<button type="button" class="muestra' + (P.avatar.piel === i ? ' on' : '') + '" data-piel="' + i + '" style="background:#' + c.toString(16).padStart(6, '0') + '" aria-label="Tono ' + (i + 1) + '"></button>').join('') + '</div>';
+    h += '<div class="av-fila"><span>Pelo</span>' + Avatar.PELO.map((c, i) => '<button type="button" class="muestra' + (P.avatar.pelo === i ? ' on' : '') + '" data-pelo="' + i + '" style="background:#' + c.toString(16).padStart(6, '0') + '" aria-label="Color ' + (i + 1) + '"></button>').join('') + '</div>';
+    for (const cat in A) {
+      h += '<div class="av-cat"><span>' + nombres[cat] + '</span><div class="chips">';
+      for (const id in A[cat]) {
+        const o = A[cat][id], tiene = P.cosmeticos[cat + ':' + id], puesto = P.avatar[cat] === id, bloq = o.rango && r < o.rango;
+        let etiqueta = o.nom;
+        if (!tiene) etiqueta += bloq ? ' · ' + R[o.rango].nom : o.oro ? ' · ◆ ' + o.oro : ' · ₧ ' + fmt(o.pts);
+        h += '<button type="button" class="opc' + (puesto ? ' on' : '') + (o.oro && !tiene ? ' oro' : '') + '" data-cat="' + cat + '" data-id="' + id + '"' + (bloq && !tiene ? ' disabled' : '') + '>' + etiqueta + '</button>';
+      }
+      h += '</div></div>';
+    }
+    const her = Object.keys(Avatar.HERIDAS).filter(k => P.heridas[k]);
+    h += '<div class="av-cat"><span>Heridas de guerra</span>' + (her.length ? '<ul class="heridas">' + her.map(k => '<li><b>' + Avatar.HERIDAS[k].nom + '</b> · ' + Avatar.HERIDAS[k].txt + '</li>').join('') + '</ul><label class="ajuste" for="avHer">Mostrar las heridas en mi legionario <input type="checkbox" id="avHer"' + (P.mostrarHeridas ? ' checked' : '') + '></label>' : '<p class="nota">Ninguna todavía. Quien sale de una misión con menos de 25 de salud, o vuelve al combate tras caer, puede quedar marcado: parche en el ojo, cicatriz o cabeza vendada.</p>') + '</div>';
+    h += '<p class="nota">Las medallas que ganes aparecen como pasadores en el pecho y el tatuaje en el antebrazo izquierdo.</p></div></div>';
+    const el = $('tab-avatar'); el.innerHTML = h;
+    Avatar.montar($('avCanvas'));
+    const refresca = () => { Progreso.guardar(); Avatar.actualizar(); };
+    $('avNombre').oninput = e => { P.avatar.nombre = e.target.value.trim(); Progreso.guardar(); cabecera(); };
+    $('avHer') && ($('avHer').onchange = e => { P.mostrarHeridas = e.target.checked; refresca(); });
+    el.onclick = async e => {
+      const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+      if (d.enf) { Avatar.enfoque = d.enf; return; }
+      if (d.piel) { P.avatar.piel = +d.piel; refresca(); avatar(); return; }
+      if (d.pelo) { P.avatar.pelo = +d.pelo; refresca(); avatar(); return; }
+      if (d.cat) {
+        const o = A[d.cat][d.id], k = d.cat + ':' + d.id;
+        if (!P.cosmeticos[k]) {
+          if (o.oro) { if (P.oro < o.oro) { tab('tienda'); toast('Te falta oro'); return; } if (!(await confirmar('Comprar con oro', o.nom + ' por ' + o.oro + ' de oro.', 'Comprar'))) return; }
+          if (!Progreso.gastar(o.pts || 0, o.oro || 0)) { toast('Te faltan pesetas'); return; }
+          P.cosmeticos[k] = 1; toast('Comprado: ' + o.nom);
+        }
+        P.avatar[d.cat] = d.id; refresca(); avatar(); cabecera();
+      }
+    };
   }
 
   function barras(a) {
@@ -134,6 +178,7 @@ const UI = (() => {
     h += '<tr class="total"><td>Total' + (res.mult !== 1 ? ' (× ' + res.mult + ' dificultad)' : '') + (ok ? '' : ' (× 0,3 misión fallida)') + '</td><td></td><td>' + fmt(res.puntos) + '</td></tr></table>';
     h += '<p class="botin">₧ +' + fmt(res.pts) + (res.oro ? ' &nbsp; ◆ +' + res.oro : '') + '</p>';
     if (res.medallas.length) h += '<div class="medallas">' + res.medallas.map(id => '<div class="med">' + Progreso.medallaSVG(id) + '<span><b>' + Progreso.MEDALLAS[id].nom + '</b><small>Concedida</small></span></div>').join('') + '</div>';
+    if (res.herida) h += '<div class="ascenso herida"><span><b>Herida de guerra: ' + Avatar.HERIDAS[res.herida].nom + '</b><small>' + Avatar.HERIDAS[res.herida].txt + ' Se verá en tu legionario (puedes ocultarla en «Mi legionario»).</small></span></div>';
     if (res.rangoNuevo > res.rangoAntes) h += '<div class="ascenso">' + Progreso.insignia(res.rangoNuevo, 40) + '<span><b>¡Ascenso a ' + R[res.rangoNuevo].nom + '!</b><small>' + R[res.rangoNuevo].ventaja + '</small></span></div>';
     $('fRes').innerHTML = h;
     const b = $('bDoblar'); b.hidden = !(res.pts > 0 && Progreso.Anuncios.quedanHoy() > 0); b.disabled = false;
@@ -141,9 +186,49 @@ const UI = (() => {
     b.onclick = async () => { b.disabled = true; if (await Progreso.Anuncios.recompensado()) { Progreso.P.pts += res.pts; Progreso.guardar(); b.textContent = 'Pesetas dobladas'; onDoblar && onDoblar(); } else b.disabled = false; };
   }
 
+  // ---------- portada: bandera de España ondeando y emblema de la Legión ----------
+  let nEmb = 0;
+  function emblema(tam) {
+    const id = 'emb' + (nEmb++);
+    return '<svg width="' + tam + '" height="' + Math.round(tam * 1.15) + '" viewBox="0 0 200 230" role="img" aria-label="Emblema de la Legión: alabarda, arcabuz y ballesta bajo corona"><defs>' +
+      '<g id="' + id + 'f"><path d="M62 54 L68 26 L84 42 L100 16 L116 42 L132 26 L138 54 Z"/><rect x="58" y="54" width="84" height="11" rx="2"/>' +
+      '<circle cx="68" cy="22" r="5"/><circle cx="100" cy="12" r="5"/><circle cx="132" cy="22" r="5"/>' +
+      '<path d="M150 86 Q176 86 180 112 L160 102 Z"/><path d="M161 79 L176 60 L169 84 Z"/><path d="M151 199 L172 221 L160 229 L139 208 Z"/><rect x="94" y="208" width="12" height="16" rx="2"/></g>' +
+      '<g id="' + id + 't" fill="none" stroke-linecap="round"><line x1="40" y1="216" x2="162" y2="80"/><line x1="146" y1="200" x2="36" y2="80"/><line x1="100" y1="98" x2="100" y2="214"/><path d="M44 124 Q100 84 156 124"/><path d="M44 124 L100 146 L156 124" stroke-width="0.4em"/></g></defs>' +
+      '<use href="#' + id + 'f" fill="#241307" stroke="#241307" stroke-width="10"/><use href="#' + id + 't" stroke="#241307" stroke-width="15"/>' +
+      '<use href="#' + id + 'f" fill="#e8b923"/><use href="#' + id + 't" stroke="#e8b923" stroke-width="7"/></svg>';
+  }
+  function portada(alEntrar) {
+    $('pEmblema').innerHTML = emblema(150);
+    $('mEmblema').innerHTML = emblema(46);
+    const cv = $('bandera'), g = cv.getContext('2d'); let t = 0;
+    const tono = (rgb, k) => 'rgb(' + rgb.map(v => Math.max(0, Math.min(255, Math.round(v * k)))).join(',') + ')';
+    (function dib() {
+      if ($('portada').hidden) return;
+      requestAnimationFrame(dib); t += 0.016;
+      const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+      if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+      const fw = Math.min(w * 0.82, h * 1.1), fh = fw * 2 / 3, x0 = (w - fw) / 2 + 6, y0 = (h - fh) / 2;
+      g.fillStyle = '#4a3b2a'; g.fillRect(x0 - 7, y0 - 14, 6, fh + h * 0.3); g.fillStyle = '#c9a227'; g.beginPath(); g.arc(x0 - 4, y0 - 16, 6, 0, 6.3); g.fill();
+      for (let i = 0; i < fw; i += 2) {
+        const k = i / fw, fase = k * 7.5 - t * 3.2, off = Math.sin(fase) * fh * 0.06 * k, luz = 1 + Math.cos(fase) * 0.2 * k;
+        g.fillStyle = tono([198, 11, 30], luz); g.fillRect(x0 + i, y0 + off, 2.6, fh / 4);
+        g.fillStyle = tono([255, 196, 0], luz); g.fillRect(x0 + i, y0 + off + fh / 4, 2.6, fh / 2);
+        g.fillStyle = tono([198, 11, 30], luz); g.fillRect(x0 + i, y0 + off + fh * 3 / 4, 2.6, fh / 4);
+      }
+    })();
+    $('portada').onclick = () => {
+      Snd.init(); Snd.corneta('diana');
+      setTimeout(() => Snd.voz('viva_legion', 1), 1900);
+      setTimeout(() => Snd.voz('coro_viva', 1), 3100);
+      $('portada').hidden = true; alEntrar && alEntrar();
+    };
+  }
+
   function init(fJugar) {
     alJugar = fJugar;
     document.querySelectorAll('.pestanas button[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
   }
-  return { init, tab, cabecera, confirmar, toast, fin, fmt };
+  return { init, tab, cabecera, confirmar, toast, fin, fmt, portada, emblema };
 })();

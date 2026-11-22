@@ -23,6 +23,10 @@ Lugares, fechas y unidades son históricos; el detalle táctico de cada combate 
 - **Ingresos**: vídeo recompensado (doblar pesetas, revivir, oro), intersticial cada 2 misiones y compras (oro, sin anuncios, Pack Veterano). En el navegador funcionan en modo prueba.
 - La estrategia completa está en [docs/MONETIZACION.md](docs/MONETIZACION.md).
 
+## Mi legionario
+
+Avatar 3D personalizable: apellido, piel, pelo, barba (bigote o de gastador), tocado (gorrillo, casco, gorrillo de gala), uniforme y pañuelo. Muestra las medallas como pasadores en el pecho, el tatuaje en el antebrazo y las heridas de guerra ganadas en combate (parche en el ojo, cicatriz, cabeza vendada).
+
 ## La escuadra
 
 Los legionarios no se limitan a seguirte: en los asaltos avanzan por saltos de cobertura hacia la posición enemiga. Mientras unos corren, los otros se asoman a disparar. En las defensas ocupan los sacos terreros y en las emboscadas atacan el centro enemigo. Con «¡Viva!» aceleran los saltos y se lanzan al asalto final.
@@ -36,7 +40,7 @@ Los legionarios no se limitan a seguirte: en los asaltos avanzan por saltos de c
 ## Estructura
 
 - `www/`: el juego (HTML + three.js r128). `js/world.js` escenario y modelos, `js/game.js` motor e IA, `js/missions.js` campaña, `js/progreso.js` progresión, anuncios y compras, `js/ui.js` menús, `js/audio.js` sonido.
-- `www/audio/`: gritos generados con voces neuronales Piper (es-ES) y procesados con ffmpeg para que suenen a grito de combate y a coro de sección. Se regeneran con `tools/gen_voices.sh` (los modelos de voz se descargan aparte en `tools/voices/`).
+- `www/audio/`: gritos generados con voces neuronales Piper de calidad media (davefx para el jugador, sharvard para la escuadra; ald solo en los coros). `tools/gen_voces.py` sintetiza varias tomas de cada frase, las transcribe con Whisper, se queda con la que mejor se entiende y aplica un procesado suave de grito. Los modelos se descargan aparte en `tools/voices/` desde Hugging Face (rhasspy/piper-voices).
 - `tools/android_ajustes.js`: fuerza horizontal, pantalla completa y pantalla encendida en el proyecto Android.
 - `.github/workflows/apk.yml`: compila el APK en GitHub Actions en cada push a `main`. El APK aparece como artefacto descargable del workflow.
 

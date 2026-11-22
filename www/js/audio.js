@@ -3,7 +3,7 @@ const Snd = (() => {
   let ctx = null, master = null, nbuf = null, vol = 0.9;
   const buf = {};
   const VOCES = ['viva_espana','viva_legion','a_mi','adelante','asalto','fuego','granada','recargando','cubridme','enemigo',
-    'herido','sanitario','tomada','aviacion','emboscada','coro_viva','coro_espana','coro_legion','coro_luchar'];
+    'herido','sanitario','tomada','aviacion','emboscada','coro_viva','coro_espana','coro_legion','coro_luchar','luchar','viva_espana_b','viva_legion_b','a_mi_b'];
 
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }

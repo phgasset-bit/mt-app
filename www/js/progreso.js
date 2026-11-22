@@ -85,7 +85,7 @@ const Progreso = (() => {
   }
 
   // ---------- perfil ----------
-  const BASE = { nombre: 'Legionario', xp: 0, pts: 300, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [] };
+  const BASE = { nombre: 'Legionario', xp: 0, pts: 300, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 0, pelo: 0, barba: 'ninguna', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [] };
   let P = JSON.parse(JSON.stringify(BASE));
   try { const s = JSON.parse(localStorage.getItem('ifni_perfil') || 'null'); if (s) P = Object.assign(P, s); } catch (e) {}
   const guardar = () => { try { localStorage.setItem('ifni_perfil', JSON.stringify(P)); } catch (e) {} };
@@ -113,7 +113,7 @@ const Progreso = (() => {
     puntos = Math.round(puntos);
     const rangoAntes = rango();
     let pts = Math.round(puntos / 6), oro = 0;
-    const ganadas = [];
+    const ganadas = []; let herida = null;
     if (r.ok) {
       const dar = id => { const m = MEDALLAS[id]; if (m.unica && P.medallas[id]) return; P.medallas[id] = (P.medallas[id] || 0) + 1; ganadas.push(id); pts += m.pts; oro += m.oro; };
       if (r.minVida < 30) dar('sufrimientos');
@@ -123,6 +123,12 @@ const Progreso = (() => {
       if (r.dif >= 1.5 && r.bajasJ >= 20) dar('militar');
       if (r.dif >= 1.5 && r.vivos === r.aliadosIni && r.vidaFinal > 50) dar('laureada');
       P.hechas[r.mision] = 1;
+      // heridas de guerra: quien sale muy tocado de una misión puede quedar marcado para siempre
+      if (r.minVida < 25 || r.revivido) {
+        const H = P.heridas, d = Math.random();
+        if (!H.ojo && d < 0.3) herida = 'ojo'; else if (!H.cicatriz && d < 0.65) herida = 'cicatriz'; else if (!H.cabeza && d < 0.85) herida = 'cabeza';
+        if (herida) H[herida] = true;
+      }
       if (MISIONES.every(m => P.hechas[m.id])) dar('campana');
     }
     P.xp += puntos; P.pts += pts; P.oro += oro;
@@ -131,7 +137,7 @@ const Progreso = (() => {
     P.historial.unshift({ m: r.mision, p: puntos, d: new Date().toISOString().slice(0, 10), dif: r.dif }); P.historial = P.historial.slice(0, 30);
     P.misionesDesdeAnuncio++;
     guardar(); Ranking.enviar();
-    return { lineas, mult, puntos, pts, oro, medallas: ganadas, rangoAntes, rangoNuevo: rango() };
+    return { lineas, mult, puntos, pts, oro, medallas: ganadas, rangoAntes, rangoNuevo: rango(), herida };
   }
 
   // ---------- ranking ----------
@@ -184,13 +190,13 @@ const Progreso = (() => {
     oro_1200: { nom: '1.200 de oro', precio: '9,99 €', oro: 1200, etiqueta: '+20 %' },
     oro_2500: { nom: '2.500 de oro', precio: '19,99 €', oro: 2500, etiqueta: '+25 %' },
     sin_anuncios: { nom: 'Sin anuncios', precio: '3,99 €', desc: 'Quita los anuncios entre misiones. Las recompensas por vídeo siguen disponibles si las quieres.' },
-    veterano: { nom: 'Pack Veterano', precio: '2,99 €', desc: '500 de oro, subfusil Z-45 y tatuaje «Novio de la Muerte». Solo una vez.', unico: true }
+    veterano: { nom: 'Pack Veterano', precio: '2,99 €', desc: '500 de oro, subfusil Z-45, tatuaje «Novio de la Muerte» y barba de gastador. Solo una vez.', unico: true }
   };
   function entregar(id) {
     const p = PRODUCTOS[id];
     if (p.oro) P.oro += p.oro;
     if (id === 'sin_anuncios') P.sinAnuncios = true;
-    if (id === 'veterano') { P.veterano = true; P.oro += 500; P.armas.z45 = 1; P.tatuajes.novio = 1; }
+    if (id === 'veterano') { P.veterano = true; P.oro += 500; P.armas.z45 = 1; P.tatuajes.novio = 1; P.cosmeticos['barba:gastador'] = 1; }
     guardar();
   }
   async function comprar(id) {

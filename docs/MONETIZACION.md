@@ -41,7 +41,7 @@ Reglas:
 | 1.200 de oro | 9,99 € | +20 % |
 | 2.500 de oro | 19,99 € | +25 % |
 | Sin anuncios | 3,99 € | Quita los intersticiales; el vídeo recompensado sigue disponible para quien lo quiera |
-| Pack Veterano | 2,99 € (una vez) | 500 de oro, Z-45 y tatuaje «Novio de la Muerte» |
+| Pack Veterano | 2,99 € (una vez) | 500 de oro, Z-45, tatuaje «Novio de la Muerte» y barba de gastador |
 
 El Pack Veterano es la oferta de entrada: aparece desde la primera partida y su valor percibido (≈ 6 € en oro y objetos) es el doble de su precio. Busca convertir al primer pagador, que es lo que más cuesta.
 
@@ -73,7 +73,25 @@ Se ven en el antebrazo en primera persona, que es lo que el jugador mira todo el
 
 Los cosméticos son la compra más aceptada en los shooters: no alteran el equilibrio y apelan a la identidad legionaria. Ampliación natural: gorrillos con borla de colores, camisas y medallas visibles en el uniforme.
 
-## 7. Escalafón
+## 7. Mi legionario (avatar)
+
+El jugador crea su legionario: apellido, tono de piel y color de pelo (gratis), y compra cosméticos que se ven en el visor 3D.
+
+| Objeto | Precio | Requisito |
+|---|---|---|
+| Casco modelo 42 | ₧ 800 | — |
+| Gorrillo de gala, borla dorada | ◆ 90 | — |
+| Uniforme verde de paseo | ₧ 1.500 | — |
+| Correaje blanco de gala | ◆ 150 | Sargento |
+| Bigote | ₧ 600 | — |
+| Barba de gastador | ◆ 80 | Incluida en el Pack Veterano |
+| Pañuelo rojo al cuello | ₧ 700 | — |
+
+Lo que se gana jugando también se ve: las medallas, como pasadores en el pecho (la Laureada, como placa); el tatuaje, en el antebrazo; y las **heridas de guerra**. Quien termina una misión con menos de 25 de salud, o vuelve al combate tras caer, puede quedar marcado para siempre: parche en el ojo, cicatriz de metralla o cabeza vendada. Las heridas son un orgullo del veterano (no se compran) y se pueden ocultar. Con el ojo perdido, en combate se oscurece levemente el borde izquierdo de la vista.
+
+El avatar es la vitrina de la progresión: cada compra y cada medalla se ve, y eso empuja a comprar cosméticos y a jugar en Veterano.
+
+## 8. Escalafón
 
 Se sube con puntos de servicio (los puntos de cada misión, multiplicados por la dificultad: Recluta ×0,7, Legionario ×1, Veterano ×1,6).
 
@@ -93,7 +111,7 @@ Se sube con puntos de servicio (los puntos de cada misión, multiplicados por la
 
 Una misión bien jugada da entre 1.500 y 5.000 puntos. Llegar a Capitán supone unas 40-60 misiones: deja recorrido para varias semanas y para añadir campañas nuevas.
 
-## 8. Medallas al mérito
+## 9. Medallas al mérito
 
 | Medalla | Cómo se gana | Premio |
 |---|---|---|
@@ -107,13 +125,13 @@ Una misión bien jugada da entre 1.500 y 5.000 puntos. Llegar a Capitán supone 
 
 Las medallas se reflejan como **logros de Google Play Juegos**, y así aparecen en el perfil del jugador fuera del juego.
 
-## 9. Ranking de usuarios
+## 10. Ranking de usuarios
 
 - **Google Play Juegos (marcadores)**: «Puntos de servicio» (total), uno por misión (mejor marca) y uno de medallas. No necesita servidor propio, es gratis y Google filtra puntuaciones imposibles.
 - **En la app**: pestaña Ranking con el global (abre Play Juegos) y las marcas propias por misión.
 - **Fase 2**: ranking por bandera o compañía (grupos de amigos) y temporadas mensuales con premio en oro para el top 100. Esto ya requiere un servidor (Firebase o Supabase).
 
-## 10. Estado de implementación
+## 11. Estado de implementación
 
 **Hecho en el prototipo:**
 
@@ -130,7 +148,7 @@ Las medallas se reflejan como **logros de Google Play Juegos**, y así aparecen 
 4. **Play Juegos**: crear los marcadores y logros e instalar un plugin de Play Games Services para Capacitor (`Capacitor.Plugins.PlayGames` en el código).
 5. **Guardado en la nube**: hoy el progreso está en el móvil; si se desinstala, se pierde. Con Play Juegos (Saved Games) o Firebase se conserva y se protegen las compras.
 
-## 11. Métricas a seguir
+## 12. Métricas a seguir
 
 | Métrica | Objetivo orientativo de referencia en juegos de acción |
 |---|---|
@@ -141,7 +159,7 @@ Las medallas se reflejan como **logros de Google Play Juegos**, y así aparecen 
 
 Son valores habituales del sector, no datos de este juego. Con las primeras 2-4 semanas de datos reales se ajustan precios, límites de anuncios y la curva del escalafón.
 
-## 12. Hoja de ruta de contenido (lo que mantiene los ingresos)
+## 13. Hoja de ruta de contenido (lo que mantiene los ingresos)
 
 1. **Campaña 2: Sáhara 1958** (operación Teide/Écouvillon, Edchera completo): de pago (2,99 €) o con oro.
 2. **Uniformes y gorrillos**: cosméticos de temporada (12 de octubre, aniversario de la Legión el 20 de septiembre).

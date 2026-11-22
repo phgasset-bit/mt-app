@@ -20,7 +20,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - name: SDK de Android preinstalado en el runner
+        run: echo "sdk.dir=$ANDROID_HOME" && ls "$ANDROID_HOME"
       - run: npm ci
       - run: npm run android
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug

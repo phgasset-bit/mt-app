@@ -1,0 +1,30 @@
+name: Ifni 1957 · compilar APK
+on:
+  push:
+    paths:
+      - 'ifni-1957/**'
+      - '.github/workflows/ifni-apk.yml'
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ifni-1957
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ifni-1957-apk
+          path: ifni-1957/android/app/build/outputs/apk/debug/app-debug.apk

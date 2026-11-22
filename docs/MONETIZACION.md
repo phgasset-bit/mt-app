@@ -40,10 +40,20 @@ Reglas:
 | 550 de oro | 4,99 € | +10 % |
 | 1.200 de oro | 9,99 € | +20 % |
 | 2.500 de oro | 19,99 € | +25 % |
+| 3.000 pesetas | 0,99 € | — |
+| 16.000 pesetas | 4,99 € | +7 % |
+| 35.000 pesetas | 9,99 € | +17 % |
 | Sin anuncios | 3,99 € | Quita los intersticiales; el vídeo recompensado sigue disponible para quien lo quiera |
 | Pack Veterano | 2,99 € (una vez) | 500 de oro, Z-45, tatuaje «Novio de la Muerte» y barba de gastador |
 
 El Pack Veterano es la oferta de entrada: aparece desde la primera partida y su valor percibido (≈ 6 € en oro y objetos) es el doble de su precio. Busca convertir al primer pagador, que es lo que más cuesta.
+
+### Precios en euros
+
+Las pesetas y el oro son monedas del juego (no son pesetas reales): se ganan jugando y también se compran. Todo pago se hace en euros a través de Google Play, IVA incluido.
+
+- Junto a cada precio de la armería, los tatuajes y el avatar aparece su equivalente en euros, calculado con la bolsa de 4,99 € (1.000 ₧ ≈ 0,31 €; 100 de oro ≈ 0,91 €). Ejemplo: el Z-45 cuesta ₧ 2.000 (≈ 0,62 €).
+- Si al jugador le falta dinero, el juego le ofrece la bolsa más barata que lo cubre y le entrega el objeto en el mismo paso: «Te faltan ◆ 200. Para llevarte el subfusil naranjero compra 550 de oro por 4,99 €». Lo que sobra queda en el saldo. Es el punto de mayor conversión: el jugador está viendo justo lo que quiere.
 
 ## 5. Armería
 

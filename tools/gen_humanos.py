@@ -228,7 +228,7 @@ def cabeza(barba, turbante=False, m=1.0):
                   * sig((labios(P) - 0.005) / 0.0015) * sig((nariz - 0.004) / 0.0015)
                   * (1 - sig((0.062 - np.abs(r[:, 0])) / 0.004) * sig((r[:, 1] + 0.032) / 0.004)))
         textura = 0.0012 * np.sin(140 * P[:, 0] + 40 * P[:, 1]) * np.sin(160 * P[:, 1]) * np.sin(120 * P[:, 2] + 50 * P[:, 0])
-        if barba == 'corta': d = d - zona_w * sig((r[:, 1] + 0.118) / 0.004) * (0.0045 + textura * 0.4)
+        if barba == 'corta': d = d - zona_w * sig((r[:, 1] + 0.126) / 0.004) * (0.0068 + textura * 0.5)
         if barba == 'gastador':
             d = d - zona_w * (0.012 + textura)
             d = smin(d, eli(P, H + V(0, -0.115, -0.068), (0.05, 0.055, 0.04)) - textura, 0.02)
@@ -250,7 +250,7 @@ def cabeza(barba, turbante=False, m=1.0):
                   * (1 - sig((0.062 - np.abs(r[:, 0])) / 0.007) * sig((r[:, 1] + 0.032) / 0.007)))
         pw = np.zeros(len(P))
         if not turbante: pw = np.maximum(pw, pelo_c)
-        if barba == 'corta': pw = np.maximum(pw, zona_c * sig((r[:, 1] + 0.118) / 0.006) * 0.92)
+        if barba == 'corta': pw = np.maximum(pw, zona_c * sig((r[:, 1] + 0.126) / 0.006))
         if barba == 'gastador': pw = np.maximum(pw, np.maximum(zona_c, sig((0.004 - eli(P, H + V(0, -0.115, -0.068), (0.05, 0.055, 0.04))) / 0.003)))
         if barba != 'ninguna': pw = np.maximum(pw, sig((0.0018 - bigote(P)) / 0.0018))
         pw = np.maximum(pw, 0.9 * sig((0.0018 - cejas(P)) / 0.0018))
@@ -262,15 +262,29 @@ def cabeza(barba, turbante=False, m=1.0):
     return f
 
 def gorrillo(P, con_mat=False):
-    r = P - H
-    d = eli(P, H + V(0, 0.083, 0.004), (0.068, 0.05, 0.112))
-    d = smax(d, -(r[:, 1] - 0.072), 0.004)
-    d = smax(d, -cap(P, H + V(0, 0.142, -0.12), H + V(0, 0.142, 0.12), 0.012), 0.006)  # hendidura
-    cordon = cap(P, H + V(0, 0.118, -0.108), H + V(0, 0.094, -0.118), 0.0022)
-    borla = eli(P, H + V(0, 0.083, -0.12), (0.011, 0.016, 0.011))
+    """Gorrillo legionario: gorro de dos picos, ladeado a la derecha, con vivo rojo en la cresta y borla colgando delante."""
+    a = -0.13                                  # inclinación: la copa se va hacia la derecha (+x)
+    c = H + V(0.012, 0.0, 0.004); p = P - c; ca, sa = np.cos(a), np.sin(a)
+    x = p[:, 0] * ca + p[:, 1] * sa; y = -p[:, 0] * sa + p[:, 1] * ca; z = p[:, 2] - 0.004
+    rim = 0.074 - 0.4 * z ** 2                 # el borde sigue la curva del cráneo
+    top = 0.132 + 1.7 * z ** 2                 # la cresta se hunde en el centro y sube en los picos
+    d1 = np.abs(x) - (0.079 - 0.95 * np.maximum(0, y - rim) ** 1.1 * 1.1)  # costados en cuña hasta la cresta
+    d2 = y - top; d3 = rim - y
+    d4 = np.abs(z) - (0.122 + 0.3 * (y - rim))   # los picos se adelantan y retrasan al subir
+    d = smax(smax(d1, d2, 0.005), smax(d3, d4, 0.006), 0.004)
+    PL = np.stack([x, y, z], -1)
+    # borla roja colgando del pico delantero hasta la frente
+    def glob(lx, ly, lz): return c + V(lx * ca - ly * sa, lx * sa + ly * ca, lz + 0.004)
+    pico = glob(0, 0.132 + 1.7 * 0.14 ** 2 - 0.006, -0.14)
+    cordon = cap(P, pico, H + V(0.004, 0.072, -0.124), 0.0018)
+    borla = smin(eli(P, H + V(0.004, 0.06, -0.126), (0.011, 0.016, 0.011)), cap(P, H + V(0.004, 0.06, -0.126), H + V(0.004, 0.036, -0.124), 0.012, 0.016), 0.006)
+    flecos = 0.0012 * np.sin(np.arctan2(P[:, 0] - H[0] - 0.004, P[:, 2] - H[2] + 0.126) * 14)
+    borla = smax(borla - flecos, -(P[:, 1] - (H[1] + 0.03)), 0.002)
     d = np.minimum(d, np.minimum(cordon, borla))
     if not con_mat: return d
-    mat = np.full(len(P), 11, dtype=np.uint8); mat[(cordon < 0.002) | (borla < 0.003)] = 12
+    mat = np.full(len(P), 11, dtype=np.uint8)
+    vivo = (y > top - 0.011) & (np.abs(x) < 0.02)
+    mat[vivo] = 12; mat[(cordon < 0.002) | (borla < 0.003)] = 12
     return d, mat, np.ones(len(P))
 
 def casco(P, con_mat=False):
@@ -356,7 +370,7 @@ for barba in ('corta', 'ninguna'):
     jnt, wgt = pesos(v, permitidos=['pecho', 'cuello', 'cabeza']); guarda(f'turbante_{barba}_baja', v, n, mat, mez, c, jnt, wgt)
 for nombre, f in (('gorrillo', gorrillo), ('casco', casco)):
     for nivel, paso, obj in (('alta', 0.0024, 5000), ('baja', 0.005, 500)):
-        print(nombre, nivel); v, n, mat, mez, c = extraer(f, (-0.13, 1.66, -0.15), (0.13, 1.84, 0.15), paso, obj)
+        print(nombre, nivel); v, n, mat, mez, c = extraer(f, (-0.13, 1.69 if nombre == 'gorrillo' else 1.66, -0.16), (0.13, 1.86, 0.16), paso, obj)
         jnt, wgt = pesos(v, fijo='cabeza'); guarda(f'{nombre}_{nivel}', v, n, mat, mez, c, jnt, wgt)
 manifiesto['cabezaCentro'] = list(H); manifiesto['ojos'] = [list(H + V(s * 0.032, 0.006, -0.082)) for s in (-1, 1)]; manifiesto['ojoI'] = list(H + V(-0.032, 0.006, -0.082)); manifiesto['juntas'] = {k: [round(x, 4) for x in v] for k, v in J.items()}
 os.makedirs(SALIDA, exist_ok=True)

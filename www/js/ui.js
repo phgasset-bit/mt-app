@@ -5,6 +5,21 @@ const UI = (() => {
   let alJugar = () => {};
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  const eur = n => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  // precio en la moneda del juego con su equivalente en euros
+  function precio(pts, oro) { return (oro ? '◆ ' + oro : '₧ ' + fmt(pts)) + ' <span class="eur">· ' + eur(Progreso.euros(oro ? 0 : pts, oro || 0)) + '</span>'; }
+  // si falta dinero, ofrece la bolsa que lo cubre y la compra en el mismo paso
+  async function conseguir(pts, oro, nombre) {
+    const P = Progreso.P, falta = oro ? oro - P.oro : pts - P.pts;
+    if (falta <= 0) return true;
+    const id = Progreso.bolsaPara(oro ? 0 : falta, oro ? falta : 0), pr = Progreso.PRODUCTOS[id];
+    const prueba = !(window.CdvPurchase && CdvPurchase.store) ? ' En el navegador la compra es simulada y no se cobra nada.' : '';
+    const ok = await confirmar('Te faltan ' + (oro ? '◆ ' + falta : '₧ ' + fmt(falta)), 'Para llevarte «' + nombre + '» compra ' + pr.nom + ' por ' + pr.precio + '. Lo que sobre se queda en tu saldo.' + prueba, 'Pagar ' + pr.precio);
+    if (!ok) return false;
+    await Progreso.comprar(id, true);
+    return oro ? P.oro >= oro : P.pts >= pts;
+  }
+
   function confirmar(tit, txt, ok, no) {
     return new Promise(res => {
       $('mTit').textContent = tit; $('mTxt').textContent = txt; $('mOk').textContent = ok || 'Aceptar'; $('mNo').textContent = no || 'Cancelar';
@@ -69,7 +84,7 @@ const UI = (() => {
       for (const id in A[cat]) {
         const o = A[cat][id], tiene = P.cosmeticos[cat + ':' + id] || (!o.pts && !o.oro), puesto = (P.avatar[cat] || { fisico: 'cachas', barba: 'corta' }[cat]) === id, bloq = o.rango && r < o.rango;
         let etiqueta = o.nom;
-        if (!tiene) etiqueta += bloq ? ' · ' + R[o.rango].nom : o.oro ? ' · ◆ ' + o.oro : ' · ₧ ' + fmt(o.pts);
+        if (!tiene) etiqueta += bloq ? ' · ' + R[o.rango].nom : ' · ' + precio(o.pts || 0, o.oro || 0);
         h += '<button type="button" class="opc' + (puesto ? ' on' : '') + (o.oro && !tiene ? ' oro' : '') + '" data-cat="' + cat + '" data-id="' + id + '"' + (bloq && !tiene ? ' disabled' : '') + '>' + etiqueta + '</button>';
       }
       h += '</div></div>';
@@ -90,7 +105,9 @@ const UI = (() => {
       if (d.cat) {
         const o = A[d.cat][d.id], k = d.cat + ':' + d.id;
         if (!P.cosmeticos[k] && (o.pts || o.oro)) {
-          if (o.oro) { if (P.oro < o.oro) { tab('tienda'); toast('Te falta oro'); return; } if (!(await confirmar('Comprar con oro', o.nom + ' por ' + o.oro + ' de oro.', 'Comprar'))) return; }
+          const tenia = o.oro ? P.oro >= o.oro : P.pts >= o.pts;
+          if (!(await conseguir(o.pts || 0, o.oro || 0, o.nom))) return;
+          if (tenia && o.oro && !(await confirmar('Comprar con oro', o.nom + ' por ' + o.oro + ' de oro (' + eur(Progreso.euros(0, o.oro)) + ').', 'Comprar'))) return;
           if (!Progreso.gastar(o.pts || 0, o.oro || 0)) { toast('Te faltan pesetas'); return; }
           P.cosmeticos[k] = 1; toast('Comprado: ' + o.nom);
         }
@@ -114,9 +131,9 @@ const UI = (() => {
         if (P.equipo.p !== id) h += '<button type="button" class="mini" data-eq="p" data-id="' + id + '">Principal</button>';
         if (P.equipo.s !== id && P.equipo.p !== id) h += '<button type="button" class="mini" data-eq="s" data-id="' + id + '">Secundaria</button>';
       } else {
-        if (r >= a.rango) h += '<button type="button" class="mini" data-buy="' + id + '" data-pts="' + a.pts + '">₧ ' + fmt(a.pts) + '</button>';
+        if (r >= a.rango) h += '<button type="button" class="mini" data-buy="' + id + '" data-pts="' + a.pts + '">' + precio(a.pts, 0) + '</button>';
         else h += '<span class="chip gris">Requiere ' + R[a.rango].nom + '</span>';
-        h += '<button type="button" class="mini oro" data-buyoro="' + id + '" data-oro="' + a.oro + '">◆ ' + a.oro + '</button>';
+        h += '<button type="button" class="mini oro" data-buyoro="' + id + '" data-oro="' + a.oro + '">' + precio(0, a.oro) + '</button>';
       }
       h += '</div></div>';
     }
@@ -126,7 +143,7 @@ const UI = (() => {
       h += '<div class="carta tat' + (eq ? ' eq' : '') + '"><canvas width="120" height="90" data-tat="' + id + '"></canvas><b>' + esc(t.nom) + '</b><div class="acc">';
       if (tiene) h += eq ? '<span class="chip">Puesto</span>' : '<button type="button" class="mini" data-tateq="' + id + '">Ponérmelo</button>';
       else if (bloq) h += '<span class="chip gris">Requiere ' + R[t.rango].nom + '</span>';
-      else h += '<button type="button" class="mini' + (t.oro ? ' oro' : '') + '" data-tatbuy="' + id + '">' + (t.oro ? '◆ ' + t.oro : '₧ ' + fmt(t.pts)) + '</button>';
+      else h += '<button type="button" class="mini' + (t.oro ? ' oro' : '') + '" data-tatbuy="' + id + '">' + precio(t.pts, t.oro) + '</button>';
       h += '</div></div>';
     }
     h += '</div>';
@@ -136,10 +153,10 @@ const UI = (() => {
       const b = e.target.closest('button'); if (!b) return;
       const d = b.dataset;
       if (d.eq) { if (d.eq === 'p') { if (P.equipo.s === d.id) P.equipo.s = P.equipo.p; P.equipo.p = d.id; } else P.equipo.s = d.id; Progreso.guardar(); armeria(); toast('Equipo actualizado'); }
-      else if (d.buy) { if (Progreso.gastar(+d.pts, 0)) { P.armas[d.buy] = 1; if (!P.equipo.s) P.equipo.s = d.buy; Progreso.guardar(); toast('Comprado: ' + A[d.buy].nom); armeria(); } else toast('Te faltan pesetas'); }
-      else if (d.buyoro) { if (P.oro < +d.oro) { tab('tienda'); toast('Te falta oro'); return; } if (await confirmar('Comprar con oro', A[d.buyoro].nom + ' por ' + d.oro + ' de oro.', 'Comprar')) { Progreso.gastar(0, +d.oro); P.armas[d.buyoro] = 1; if (!P.equipo.s) P.equipo.s = d.buyoro; Progreso.guardar(); toast('Comprado: ' + A[d.buyoro].nom); armeria(); } }
+      else if (d.buy) { if (await conseguir(+d.pts, 0, A[d.buy].nom) && Progreso.gastar(+d.pts, 0)) { P.armas[d.buy] = 1; if (!P.equipo.s) P.equipo.s = d.buy; Progreso.guardar(); toast('Comprado: ' + A[d.buy].nom); armeria(); } else toast('Te faltan pesetas'); }
+      else if (d.buyoro) { const tenia = P.oro >= +d.oro; if (!(await conseguir(0, +d.oro, A[d.buyoro].nom))) return; if (!tenia || await confirmar('Comprar con oro', A[d.buyoro].nom + ' por ' + d.oro + ' de oro (' + eur(Progreso.euros(0, +d.oro)) + ').', 'Comprar')) { Progreso.gastar(0, +d.oro); P.armas[d.buyoro] = 1; if (!P.equipo.s) P.equipo.s = d.buyoro; Progreso.guardar(); toast('Comprado: ' + A[d.buyoro].nom); armeria(); } }
       else if (d.tateq) { P.equipo.tat = d.tateq; Progreso.guardar(); armeria(); }
-      else if (d.tatbuy) { const t = T[d.tatbuy]; if (t.oro && P.oro < t.oro) { tab('tienda'); toast('Te falta oro'); return; } if (Progreso.gastar(t.pts, t.oro)) { P.tatuajes[d.tatbuy] = 1; P.equipo.tat = d.tatbuy; Progreso.guardar(); toast('Tatuaje: ' + t.nom); armeria(); } else toast('Te faltan pesetas'); }
+      else if (d.tatbuy) { const t = T[d.tatbuy]; if (!(await conseguir(t.pts, t.oro, t.nom))) return; if (Progreso.gastar(t.pts, t.oro)) { P.tatuajes[d.tatbuy] = 1; P.equipo.tat = d.tatbuy; Progreso.guardar(); toast('Tatuaje: ' + t.nom); armeria(); } else toast('Te faltan pesetas'); }
       cabecera();
     };
   }
@@ -176,9 +193,9 @@ const UI = (() => {
     h += '<div class="carta destacada"><b>Vídeo de la Bandera</b><small>Mira un anuncio y gana 5 de oro. Quedan ' + quedan + ' hoy.</small><div class="acc"><button type="button" class="mini oro" id="bVideo"' + (quedan > 0 ? '' : ' disabled') + '>Ver vídeo · +5 ◆</button></div></div>';
     for (const id in PR) {
       const p = PR[id]; if (id === 'veterano' && P.veterano) continue; if (id === 'sin_anuncios' && P.sinAnuncios) continue;
-      h += '<div class="carta' + (id === 'veterano' ? ' destacada' : '') + '"><b>' + p.nom + (p.etiqueta ? ' <span class="chip">' + p.etiqueta + '</span>' : '') + '</b><small>' + (p.desc || 'Oro para armas, tatuajes y acceso anticipado.') + '</small><div class="acc"><button type="button" class="mini" data-prod="' + id + '">' + p.precio + '</button></div></div>';
+      h += '<div class="carta' + (id === 'veterano' ? ' destacada' : '') + '"><b>' + p.nom + (p.etiqueta ? ' <span class="chip">' + p.etiqueta + '</span>' : '') + '</b><small>' + (p.desc || (p.pts ? 'Pesetas para armas, uniformes y tatuajes.' : 'Oro para objetos exclusivos y acceso anticipado a las armas.')) + '</small><div class="acc"><button type="button" class="mini" data-prod="' + id + '">' + p.precio + '</button></div></div>';
     }
-    h += '</div><p class="nota">Todo lo que se compra con oro también se puede conseguir jugando: con pesetas, subiendo de empleo y con las medallas.</p>';
+    h += '</div><p class="nota">Las pesetas y el oro son las monedas del juego: se ganan jugando y también se pueden comprar. Todo se paga en euros a través de Google Play, IVA incluido. Junto a cada precio de la armería verás su equivalente en euros.</p><p class="nota">Todo lo que se compra con oro también se puede conseguir jugando: con pesetas, subiendo de empleo y con las medallas.</p>';
     const el = $('tab-tienda'); el.innerHTML = h;
     $('bVideo') && ($('bVideo').onclick = async () => { if (await Progreso.Anuncios.recompensado()) { P.oro += 5; Progreso.guardar(); toast('+5 de oro'); tienda(); cabecera(); } });
     el.querySelectorAll('[data-prod]').forEach(b => b.onclick = async () => { if (await Progreso.comprar(b.dataset.prod)) { toast('Compra entregada'); tienda(); cabecera(); } });
@@ -245,5 +262,5 @@ const UI = (() => {
     alJugar = fJugar;
     document.querySelectorAll('.pestanas button[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
   }
-  return { init, tab, cabecera, confirmar, toast, fin, fmt, portada, emblema };
+  return { precio, conseguir, init, tab, cabecera, confirmar, toast, fin, fmt, portada, emblema };
 })();

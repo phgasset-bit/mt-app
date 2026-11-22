@@ -185,33 +185,43 @@ const Progreso = (() => {
 
   // ---------- compras ----------
   const PRODUCTOS = {
-    oro_100: { nom: '100 de oro', precio: '0,99 €', oro: 100 },
-    oro_550: { nom: '550 de oro', precio: '4,99 €', oro: 550, etiqueta: '+10 %' },
-    oro_1200: { nom: '1.200 de oro', precio: '9,99 €', oro: 1200, etiqueta: '+20 %' },
-    oro_2500: { nom: '2.500 de oro', precio: '19,99 €', oro: 2500, etiqueta: '+25 %' },
+    oro_100: { nom: '100 de oro', precio: '0,99 €', oro: 100, eur: 0.99 },
+    oro_550: { nom: '550 de oro', precio: '4,99 €', oro: 550, eur: 4.99, etiqueta: '+10 %' },
+    oro_1200: { nom: '1.200 de oro', precio: '9,99 €', oro: 1200, eur: 9.99, etiqueta: '+20 %' },
+    oro_2500: { nom: '2.500 de oro', precio: '19,99 €', oro: 2500, eur: 19.99, etiqueta: '+25 %' },
+    pts_3000: { nom: '3.000 pesetas', precio: '0,99 €', pts: 3000, eur: 0.99 },
+    pts_16000: { nom: '16.000 pesetas', precio: '4,99 €', pts: 16000, eur: 4.99, etiqueta: '+7 %' },
+    pts_35000: { nom: '35.000 pesetas', precio: '9,99 €', pts: 35000, eur: 9.99, etiqueta: '+17 %' },
     sin_anuncios: { nom: 'Sin anuncios', precio: '3,99 €', desc: 'Quita los anuncios entre misiones. Las recompensas por vídeo siguen disponibles si las quieres.' },
     veterano: { nom: 'Pack Veterano', precio: '2,99 €', desc: '500 de oro, subfusil Z-45, tatuaje «Novio de la Muerte» y barba de gastador. Solo una vez.', unico: true }
   };
   function entregar(id) {
     const p = PRODUCTOS[id];
     if (p.oro) P.oro += p.oro;
+    if (p.pts) P.pts += p.pts;
     if (id === 'sin_anuncios') P.sinAnuncios = true;
     if (id === 'veterano') { P.veterano = true; P.oro += 500; P.armas.z45 = 1; P.tatuajes.novio = 1; P.cosmeticos['barba:gastador'] = 1; }
     guardar();
   }
-  async function comprar(id) {
+  // equivalencia en euros (tarifa de la bolsa de 4,99 €) y bolsa más barata que cubre lo que falta
+  function euros(pts, oro) { return (pts || 0) * 4.99 / 16000 + (oro || 0) * 4.99 / 550; }
+  function bolsaPara(pts, oro) {
+    const lista = Object.keys(PRODUCTOS).filter(k => oro > 0 ? PRODUCTOS[k].oro >= oro : PRODUCTOS[k].pts >= pts).filter(k => k.startsWith(oro > 0 ? 'oro_' : 'pts_'));
+    return lista.sort((a, b) => PRODUCTOS[a].eur - PRODUCTOS[b].eur)[0] || (oro > 0 ? 'oro_2500' : 'pts_35000');
+  }
+  async function comprar(id, yaConfirmado) {
     const store = window.CdvPurchase && CdvPurchase.store;
     if (store) {
       // producción: Google Play Billing; la entrega se confirma en el callback 'approved' (ver docs/MONETIZACION.md)
       try { const prod = store.get(id); const oferta = prod && prod.getOffer(); if (oferta) await oferta.order(); } catch (e) {}
       return false;
     }
-    const ok = await UI.confirmar('Compra de prueba', PRODUCTOS[id].nom + ' por ' + PRODUCTOS[id].precio + '. En el navegador es una simulación: no se cobra nada.', 'Simular compra');
+    const ok = yaConfirmado || await UI.confirmar('Compra de prueba', PRODUCTOS[id].nom + ' por ' + PRODUCTOS[id].precio + '. En el navegador es una simulación: no se cobra nada.', 'Simular compra');
     if (ok) entregar(id);
     return ok;
   }
   function gastar(pts, oro) { if (P.pts < pts || P.oro < oro) return false; P.pts -= pts; P.oro -= oro; guardar(); return true; }
   function reiniciar() { P = JSON.parse(JSON.stringify(BASE)); guardar(); }
 
-  return { RANGOS, ARMAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
+  return { euros, bolsaPara, RANGOS, ARMAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
 })();

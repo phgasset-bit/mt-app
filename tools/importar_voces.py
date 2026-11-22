@@ -52,6 +52,8 @@ def main():
         texto = ' '.join(s.text.strip() for s in modelo.transcribe(a, language='es', beam_size=3)[0])
         notas = {k: difflib.SequenceMatcher(None, normal(texto), normal(v)).ratio() for k, v in FRASES.items()}
         clave = max(notas, key=notas.get)
+        forzada = os.path.basename(f).split('__')[0]   # «clave__loquesea.ext» fuerza la frase
+        if '__' in os.path.basename(f) and forzada in FRASES: clave = forzada; notas[clave] = max(notas[clave], 0.99)
         if notas[clave] < 0.6: print(f'sin asignar ({notas[clave]:.2f}): {os.path.basename(f)} -> «{texto}»'); continue
         tomas.setdefault(clave, []).append((notas[clave], wav, texto))
         print(f'{os.path.basename(f):30s} -> {clave:12s} {notas[clave]:.2f}  «{texto}»')

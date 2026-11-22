@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Ifni 1957</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Barlow+Condensed:wght@400;600;700&display=swap">
+<style>
+/* Layout: lienzo 3D a pantalla completa; HUD y mandos táctiles superpuestos; menús como partes de campaña sobre el terreno. */
+:root{
+  color-scheme:dark;
+  --tierra:#1d1710; --arena:#d9b77a; --hueso:#f1e6cf; --caqui:#8a8a55; --sangre:#b3261e; --gualda:#f2b90f; --sombra:rgba(20,14,8,.72);
+  --display:'Saira Stencil One','Impact','Arial Black',sans-serif;
+  --texto:'Barlow Condensed','Arial Narrow','Helvetica Neue',Arial,sans-serif;
+}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden;margin:0}
+body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-size:17px;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;overscroll-behavior:none}
+#app{position:relative;height:100%;overflow:hidden}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+.capa{position:absolute;inset:0;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* HUD */
+#hud{pointer-events:none}
+#mira{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:.85}
+#mira i{position:absolute;background:var(--hueso);box-shadow:0 0 2px #000}
+#mira i:nth-child(1){left:12px;top:0;width:2px;height:8px}#mira i:nth-child(2){left:12px;bottom:0;width:2px;height:8px}
+#mira i:nth-child(3){top:12px;left:0;height:2px;width:8px}#mira i:nth-child(4){top:12px;right:0;height:2px;width:8px}
+#mira.blanco i{background:var(--sangre)}
+#objetivo{position:absolute;top:8px;left:50%;transform:translateX(-50%);text-align:center;max-width:62%;
+  background:var(--sombra);padding:5px 14px;border-left:3px solid var(--gualda);font-weight:600;font-size:16px;line-height:1.15}
+#objetivo small{display:block;font-weight:400;color:var(--arena);font-size:14px}
+#flecha{display:inline-block;color:var(--gualda);margin-right:6px;font-size:18px;transition:transform .12s linear}
+#estado{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:8px;background:var(--sombra);padding:5px 10px;font-size:15px;line-height:1.25}
+#estado b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.03em}
+#vida{width:120px;height:7px;background:#3a2c1c;margin-top:3px}#vida i{display:block;height:100%;background:var(--sangre);width:100%}
+#municion{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:var(--sombra);padding:4px 14px;text-align:center;font-size:14px;color:var(--arena);pointer-events:auto}
+#municion b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--hueso);font-variant-numeric:tabular-nums}
+#grito{position:absolute;left:0;right:0;top:24%;text-align:center;font-family:var(--display);font-size:clamp(34px,8vw,84px);color:var(--gualda);
+  text-shadow:0 3px 0 var(--sangre),0 0 18px #000;opacity:0;letter-spacing:.04em}
+#grito.ver{animation:grito 2.6s ease-out}
+@keyframes grito{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1.06)}70%{opacity:1}100%{opacity:0;transform:scale(1)}}
+#aviso{position:absolute;left:0;right:0;top:62%;text-align:center;font-size:19px;font-weight:600;text-shadow:0 1px 3px #000,0 0 8px #000;opacity:0;transition:opacity .4s}
+#dano{position:absolute;inset:0;box-shadow:inset 0 0 90px 30px var(--sangre);opacity:0}
+#dir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
+#dir i{position:absolute;left:-28px;top:-120px;border-left:28px solid transparent;border-right:28px solid transparent;border-bottom:16px solid var(--sangre)}
+@media (prefers-reduced-motion:reduce){#grito.ver{animation-duration:.01s}}
+
+/* Mandos táctiles */
+#mandos{touch-action:none}
+.bt{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid rgba(241,230,207,.55);
+  background:rgba(29,23,16,.42);color:var(--hueso);font-family:var(--texto);font-weight:700;font-size:13px;letter-spacing:.06em;
+  -webkit-tap-highlight-color:transparent;padding:0;line-height:1}
+.bt.on,.bt:active{background:rgba(242,185,15,.5)}
+.bt[disabled]{opacity:.3}
+.bt:focus-visible,.boton:focus-visible,.mis:focus-visible{outline:3px solid var(--gualda);outline-offset:2px}
+#bFuego{right:max(24px,env(safe-area-inset-right,0px));bottom:56px;width:88px;height:88px;border-color:var(--sangre);font-size:15px}
+#bMira{right:calc(max(24px,env(safe-area-inset-right,0px)) + 104px);bottom:34px;width:62px;height:62px}
+#bRec{right:calc(max(24px,env(safe-area-inset-right,0px)) + 96px);bottom:112px;width:56px;height:56px;font-size:11px}
+#bAgach{right:max(24px,env(safe-area-inset-right,0px));bottom:160px;width:58px;height:58px;font-size:11px}
+#bGran{right:calc(max(24px,env(safe-area-inset-right,0px)) + 180px);bottom:34px;width:58px;height:58px;font-size:11px}
+#bViva{left:calc(max(20px,env(safe-area-inset-left,0px)) + 76px);top:118px;width:74px;height:74px;border-color:var(--gualda);color:var(--gualda);font-size:16px}
+#bArma{left:calc(max(20px,env(safe-area-inset-left,0px)) + 160px);top:126px;width:52px;height:52px;font-size:11px}
+#bCura{right:max(20px,env(safe-area-inset-right,0px));top:64px;width:52px;height:52px;font-size:11px}
+#bAvion{right:calc(max(20px,env(safe-area-inset-right,0px)) + 62px);top:64px;width:52px;height:52px;font-size:11px}
+#bPausa{right:max(20px,env(safe-area-inset-right,0px));top:8px;width:44px;height:44px;border-radius:6px;font-size:18px}
+#fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
+.zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
+.zurdo #bMira{right:auto;left:calc(max(24px,env(safe-area-inset-left,0px)) + 104px)}
+.zurdo #bRec{right:auto;left:calc(max(24px,env(safe-area-inset-left,0px)) + 96px)}
+.zurdo #bGran{right:auto;left:calc(max(24px,env(safe-area-inset-left,0px)) + 180px)}
+.zurdo #fuego2{left:auto;right:max(20px,env(safe-area-inset-right,0px))}.zurdo #bViva{left:auto;right:calc(max(20px,env(safe-area-inset-right,0px)) + 76px)}.zurdo #bArma{left:auto;right:calc(max(20px,env(safe-area-inset-right,0px)) + 160px)}
+.zurdo #bCura,.zurdo #bPausa{right:auto;left:max(20px,env(safe-area-inset-left,0px))}
+.zurdo #bAvion{right:auto;left:calc(max(20px,env(safe-area-inset-left,0px)) + 62px)}
+.zurdo #estado{left:auto;right:max(16px,env(safe-area-inset-right,0px))}
+#palanca{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(241,230,207,.4);background:rgba(29,23,16,.25);pointer-events:none}
+#palanca i{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;background:rgba(241,230,207,.55)}
+.raton #mandos .bt:not(#bPausa){display:none}
+
+/* Menús */
+.panel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:linear-gradient(180deg,rgba(29,23,16,.5),rgba(29,23,16,.9));overflow-y:auto;touch-action:pan-y}
+.hoja{width:min(680px,100%);display:flex;flex-direction:column;gap:10px;min-width:0}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,11vw,96px);line-height:.9;margin:0;color:var(--hueso);letter-spacing:.02em;text-shadow:0 4px 0 var(--sangre)}
+h1 span{color:var(--gualda)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);margin:0;line-height:1;text-wrap:balance}
+.lema{font-size:18px;color:var(--arena);letter-spacing:.14em;text-transform:uppercase;margin:0}
+.lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.mis{text-align:left;background:var(--sombra);border:1px solid rgba(217,183,122,.35);border-left:4px solid var(--gualda);color:var(--hueso);font-family:var(--texto);padding:8px 10px;font-size:17px;font-weight:600;line-height:1.15;min-width:0}
+.mis small{display:block;font-weight:400;color:var(--arena);font-size:14px}
+.mis[disabled]{opacity:.42;border-left-color:var(--caqui)}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.boton{background:var(--sangre);border:0;color:var(--hueso);font-family:var(--display);font-size:22px;padding:10px 22px;letter-spacing:.04em}
+.boton.sec{background:transparent;border:2px solid var(--arena);color:var(--arena);font-size:17px;padding:8px 16px}
+.parte{background:var(--sombra);border-left:4px solid var(--gualda);padding:10px 14px;line-height:1.3;max-width:65ch}
+.parte p{margin:0 0 6px}.parte p:last-child{margin:0}
+.dato{color:var(--arena);font-size:15px;text-transform:uppercase;letter-spacing:.1em}
+.ajuste{display:flex;justify-content:space-between;align-items:center;gap:14px;background:var(--sombra);padding:8px 12px}
+.ajuste input[type=range]{width:160px}.ajuste select,.ajuste input{font-family:var(--texto);font-size:16px}
+.nota{font-size:14px;color:var(--arena);margin:0}
+@media (max-height:430px){h1{font-size:44px}.panel{justify-content:flex-start}.lema{font-size:14px}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <div id="hud" class="capa" hidden>
+    <div id="dano"></div><div id="dir"><i></i></div>
+    <div id="mira"><i></i><i></i><i></i><i></i></div>
+    <div id="estado"><b id="tVida">100</b> salud · curas <span id="tCuras">2</span><div id="vida"><i></i></div>Escuadra: <span id="tEsc">5</span> · Bajas enemigas: <span id="tBajas">0</span></div>
+    <div id="objetivo"><span id="flecha">▲</span><span id="tObj"></span><small id="tObj2"></small></div>
+    <div id="municion"><b id="tMun">5</b> / <span id="tRes">50</span><br><span id="tArma">Mauser 7,92</span> · granadas <span id="tGran">3</span></div>
+    <div id="grito"></div><div id="aviso"></div>
+  </div>
+
+  <div id="mandos" class="capa" hidden>
+    <div id="palanca" hidden><i></i></div>
+    <button class="bt" id="bViva" type="button">¡VIVA!</button>
+    <button class="bt" id="bArma" type="button">ARMA</button>
+    <button class="bt" id="fuego2" type="button">FUEGO</button>
+    <button class="bt" id="bPausa" type="button" aria-label="Pausa">II</button>
+    <button class="bt" id="bCura" type="button">CURA</button>
+    <button class="bt" id="bAvion" type="button">AVIÓN</button>
+    <button class="bt" id="bGran" type="button">GRANADA</button>
+    <button class="bt" id="bRec" type="button">RECARGA</button>
+    <button class="bt" id="bAgach" type="button">AGACHAR</button>
+    <button class="bt" id="bMira" type="button">MIRA</button>
+    <button class="bt" id="bFuego" type="button">FUEGO</button>
+  </div>
+
+  <div id="menu" class="capa panel">
+    <div class="hoja">
+      <p class="lema">VI Bandera de la Legión · África Occidental Española</p>
+      <h1>IFNI <span>1957</span></h1>
+      <p class="nota" id="gira">Juega con el móvil en horizontal.</p>
+      <div class="lista" id="lista"></div>
+      <div class="fila"><button class="boton sec" id="bAjustes" type="button">Ajustes y mandos</button></div>
+    </div>
+  </div>
+
+  <div id="parte" class="capa panel" hidden>
+    <div class="hoja">
+      <p class="dato" id="pDato"></p>
+      <h2 id="pTit"></h2>
+      <div class="parte" id="pTxt"></div>
+      <div class="fila"><button class="boton" id="bCombate" type="button">Al combate</button><button class="boton sec" id="bVolver" type="button">Volver</button></div>
+    </div>
+  </div>
+
+  <div id="fin" class="capa panel" hidden>
+    <div class="hoja">
+      <p class="dato" id="fDato"></p>
+      <h2 id="fTit"></h2>
+      <div class="parte" id="fTxt"></div>
+      <div class="fila"><button class="boton" id="bSig" type="button">Siguiente misión</button><button class="boton sec" id="bRep" type="button">Repetir</button><button class="boton sec" id="bMenu" type="button">Menú</button></div>
+    </div>
+  </div>
+
+  <div id="pausa" class="capa panel" hidden>
+    <div class="hoja">
+      <h2>Pausa</h2>
+      <div class="fila"><button class="boton" id="bSeguir" type="button">Seguir</button><button class="boton sec" id="bAj2" type="button">Ajustes</button><button class="boton sec" id="bSalir" type="button">Abandonar misión</button></div>
+    </div>
+  </div>
+
+  <div id="ajustes" class="capa panel" hidden>
+    <div class="hoja">
+      <h2>Ajustes y mandos</h2>
+      <label class="ajuste" for="aSens">Sensibilidad de giro <input id="aSens" type="range" min="0.4" max="2.5" step="0.1"></label>
+      <label class="ajuste" for="aVol">Volumen <input id="aVol" type="range" min="0" max="1" step="0.05"></label>
+      <label class="ajuste" for="aAuto">Disparo automático al apuntar a un enemigo <input id="aAuto" type="checkbox"></label>
+      <label class="ajuste" for="aZurdo">Mandos para zurdos <input id="aZurdo" type="checkbox"></label>
+      <label class="ajuste" for="aDif">Dificultad <select id="aDif"><option value="0.6">Recluta</option><option value="1">Legionario</option><option value="1.5">Veterano</option></select></label>
+      <div class="parte"><p><b>Táctil:</b> pulgar izquierdo mueve, pulgar derecho gira la vista. FUEGO dispara y también gira si lo arrastras. MIRA apunta con precisión. ¡VIVA! lanza el grito y sube la moral de la escuadra.</p>
+      <p><b>Teclado:</b> WASD mover · ratón mirar · clic disparar · clic derecho mira · R recargar · G granada · C agacharse · V grito · Q cambiar arma · H cura · B aviación · Esc pausa.</p></div>
+      <div class="fila"><button class="boton" id="bAjOk" type="button">Hecho</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/world.js"></script>
+<script src="js/missions.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

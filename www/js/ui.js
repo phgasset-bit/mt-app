@@ -125,7 +125,8 @@ const UI = (() => {
     let h = '<h3>Armas</h3><p class="nota">Llevas dos armas: principal y secundaria (botón ARMA para cambiar). Se desbloquean al subir de empleo; con oro puedes adelantarte.</p><div class="cartas">';
     for (const id in A) {
       const a = A[id], tiene = P.armas[id], eq = P.equipo.p === id ? 'Principal' : P.equipo.s === id ? 'Secundaria' : '';
-      h += '<div class="carta' + (eq ? ' eq' : '') + '"><b>' + esc(a.nom) + '</b><small>' + esc(a.desc) + '</small>' + barras(a) + '<div class="acc">';
+      const sello = { z45: 'Recomendado', cetme: 'Prototipo 1958', fao: 'Potencia de fuego' }[id];
+      h += '<div class="carta' + (eq ? ' eq' : '') + '"><div class="vitrina">' + Laminas.lamina(id, { mauser: '7,92 × 57 mm', z45: '9 mm Largo', naranjero: '9 mm Largo', fao: '7,92 × 57 mm', cetme: '7,92 × 40 mm' }[id]) + (sello && !tiene ? '<span class="sello">' + sello + '</span>' : '') + '</div><b>' + esc(a.nom) + '</b><small>' + esc(a.desc) + '</small>' + barras(a) + '<div class="acc">';
       if (tiene) {
         h += eq ? '<span class="chip">' + eq + '</span>' : '';
         if (P.equipo.p !== id) h += '<button type="button" class="mini" data-eq="p" data-id="' + id + '">Principal</button>';

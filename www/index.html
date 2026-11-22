@@ -36,7 +36,7 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 #estado{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:8px;background:var(--sombra);padding:5px 10px;font-size:15px;line-height:1.25}
 #estado b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.03em}
 #vida{width:120px;height:7px;background:#3a2c1c;margin-top:3px}#vida i{display:block;height:100%;background:var(--sangre);width:100%}
-#municion{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:var(--sombra);padding:4px 14px;text-align:center;font-size:14px;color:var(--arena);pointer-events:auto}
+#municion{position:absolute;top:8px;right:calc(max(20px,env(safe-area-inset-right,0px)) + 54px);background:var(--sombra);padding:4px 14px;text-align:center;font-size:14px;color:var(--arena);pointer-events:auto}
 #municion b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--hueso);font-variant-numeric:tabular-nums}
 #grito{position:absolute;left:0;right:0;top:24%;text-align:center;font-family:var(--display);font-size:clamp(34px,8vw,84px);color:var(--gualda);
   text-shadow:0 3px 0 var(--sangre),0 0 18px #000;opacity:0;letter-spacing:.04em}
@@ -63,8 +63,8 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 #bGran{right:calc(max(24px,env(safe-area-inset-right,0px)) + 180px);bottom:34px;width:58px;height:58px;font-size:11px}
 #bViva{left:calc(max(20px,env(safe-area-inset-left,0px)) + 76px);top:118px;width:74px;height:74px;border-color:var(--gualda);color:var(--gualda);font-size:16px}
 #bArma{left:calc(max(20px,env(safe-area-inset-left,0px)) + 160px);top:126px;width:52px;height:52px;font-size:11px}
-#bCura{right:max(20px,env(safe-area-inset-right,0px));top:64px;width:52px;height:52px;font-size:11px}
-#bAvion{right:calc(max(20px,env(safe-area-inset-right,0px)) + 62px);top:64px;width:52px;height:52px;font-size:11px}
+#bCura{right:max(20px,env(safe-area-inset-right,0px));top:84px;width:52px;height:52px;font-size:11px}
+#bAvion{right:calc(max(20px,env(safe-area-inset-right,0px)) + 62px);top:84px;width:52px;height:52px;font-size:11px}
 #bPausa{right:max(20px,env(safe-area-inset-right,0px));top:8px;width:44px;height:44px;border-radius:6px;font-size:18px}
 #fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
 .zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
@@ -74,6 +74,7 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 .zurdo #fuego2{left:auto;right:max(20px,env(safe-area-inset-right,0px))}.zurdo #bViva{left:auto;right:calc(max(20px,env(safe-area-inset-right,0px)) + 76px)}.zurdo #bArma{left:auto;right:calc(max(20px,env(safe-area-inset-right,0px)) + 160px)}
 .zurdo #bCura,.zurdo #bPausa{right:auto;left:max(20px,env(safe-area-inset-left,0px))}
 .zurdo #bAvion{right:auto;left:calc(max(20px,env(safe-area-inset-left,0px)) + 62px)}
+.zurdo #municion{right:auto;left:calc(max(20px,env(safe-area-inset-left,0px)) + 54px)}
 .zurdo #estado{left:auto;right:max(16px,env(safe-area-inset-right,0px))}
 #palanca{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(241,230,207,.4);background:rgba(29,23,16,.25);pointer-events:none}
 #palanca i{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;background:rgba(241,230,207,.55)}
@@ -100,6 +101,62 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 .ajuste input[type=range]{width:160px}.ajuste select,.ajuste input{font-family:var(--texto);font-size:16px}
 .nota{font-size:14px;color:var(--arena);margin:0}
 @media (max-height:430px){h1{font-size:44px}.panel{justify-content:flex-start}.lema{font-size:14px}}
+
+/* Menú con pestañas, armería, hoja de servicios, tienda */
+.panel{justify-content:flex-start}
+.panel>.hoja{margin-block:auto}
+.hoja.ancha{width:min(980px,100%)}
+.hoja.estrecha{width:min(520px,100%)}
+.centro{text-align:center;align-items:center}
+.cabecera{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.perfil{display:flex;align-items:center;gap:10px;background:var(--sombra);padding:8px 12px;border-left:3px solid var(--gualda);min-width:0}
+.pf-txt{display:flex;flex-direction:column;min-width:140px}
+.pf-txt b{font-size:17px}.pf-txt span{font-size:13px;color:var(--arena)}
+.barra{height:6px;background:#3a2c1c;margin-top:4px;width:100%}.barra i{display:block;height:100%;background:var(--gualda)}
+.monedas{display:flex;flex-direction:column;gap:2px;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;padding-left:6px}
+.monedas .oro,.mini.oro,.boton.oro{color:var(--gualda)}
+.pestanas{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid rgba(217,183,122,.3)}
+.pestanas button{background:transparent;border:0;color:var(--arena);font-family:var(--texto);font-size:17px;font-weight:600;padding:8px 12px;letter-spacing:.03em}
+.pestanas button.on{color:var(--hueso);box-shadow:inset 0 -3px 0 var(--sangre)}
+.pestanas button:focus-visible{outline:2px solid var(--gualda)}
+.tab h3{font-family:var(--display);font-weight:400;font-size:22px;margin:12px 0 4px;color:var(--hueso)}
+.mis-n{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gualda);font-weight:600}
+.mis .mejor{color:var(--hueso)}
+.cartas{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.carta{background:var(--sombra);border:1px solid rgba(217,183,122,.25);padding:10px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.carta b{font-size:17px}.carta small{color:var(--arena);font-size:14px;line-height:1.2}
+.carta.eq{border-color:var(--gualda)}
+.carta.destacada{border-left:4px solid var(--gualda)}
+.carta canvas{width:100%;max-width:150px;height:auto;align-self:center;border-radius:4px}
+.st{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:6px;font-size:13px;color:var(--arena)}
+.st .barra{margin:0}
+.acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:4px}
+.mini{background:transparent;border:1.5px solid var(--arena);color:var(--hueso);font-family:var(--texto);font-weight:700;font-size:15px;padding:4px 10px}
+.mini[disabled]{opacity:.4}
+.chip{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--gualda);color:var(--tierra);padding:2px 7px}
+.chip.gris{background:#4a4030;color:var(--arena)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.dos{grid-template-columns:1fr}}
+.escala{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.escala li{display:flex;gap:8px;align-items:center;padding:4px 8px;background:var(--sombra);opacity:.55}
+.escala li.pasado{opacity:.8}.escala li.actual{opacity:1;border-left:3px solid var(--gualda)}
+.escala span,.med span,.ascenso span{display:flex;flex-direction:column;min-width:0}
+.escala small,.med small,.ascenso small{color:var(--arena);font-size:13px;line-height:1.15}
+.medallas{display:flex;flex-direction:column;gap:4px}
+.med{display:flex;gap:8px;align-items:center;background:var(--sombra);padding:5px 8px}
+.med.no{opacity:.45;filter:grayscale(.8)}
+.datos{display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin:0;background:var(--sombra);padding:8px 12px}
+.datos dt{color:var(--arena)}.datos dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.tabla{width:100%;border-collapse:collapse;background:var(--sombra);font-variant-numeric:tabular-nums}
+.tabla td,.tabla th{padding:5px 10px;text-align:left;border-bottom:1px solid rgba(217,183,122,.15)}
+.tabla td:last-child,.tabla th:last-child{text-align:right}
+.tabla .total td{font-weight:700;color:var(--gualda)}
+.botin{font-family:var(--display);font-size:26px;margin:4px 0;color:var(--hueso)}
+.ascenso{display:flex;gap:10px;align-items:center;background:var(--sombra);border-left:4px solid var(--gualda);padding:8px 12px}
+.ascenso b{font-size:20px;color:var(--gualda)}
+#toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--hueso);color:var(--tierra);font-weight:700;padding:8px 16px;z-index:5}
+#modal,#anuncio{z-index:4;background:rgba(20,14,8,.88)}
+#vineta{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(20,12,4,.45) 100%)}
 </style>
 </head>
 <body>
@@ -108,7 +165,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
   <canvas id="c"></canvas>
 
   <div id="hud" class="capa" hidden>
-    <div id="dano"></div><div id="dir"><i></i></div>
+    <div id="vineta"></div><div id="dano"></div><div id="dir"><i></i></div>
     <div id="mira"><i></i><i></i><i></i><i></i></div>
     <div id="estado"><b id="tVida">100</b> salud · curas <span id="tCuras">2</span><div id="vida"><i></i></div>Escuadra: <span id="tEsc">5</span> · Bajas enemigas: <span id="tBajas">0</span></div>
     <div id="objetivo"><span id="flecha">▲</span><span id="tObj"></span><small id="tObj2"></small></div>
@@ -132,12 +189,25 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
   </div>
 
   <div id="menu" class="capa panel">
-    <div class="hoja">
-      <p class="lema">VI Bandera de la Legión · África Occidental Española</p>
-      <h1>IFNI <span>1957</span></h1>
+    <div class="hoja ancha">
+      <div class="cabecera">
+        <div><p class="lema">VI Bandera de la Legión · África Occidental Española</p><h1>IFNI <span>1957</span></h1></div>
+        <div id="perfil" class="perfil"></div>
+      </div>
       <p class="nota" id="gira">Juega con el móvil en horizontal.</p>
-      <div class="lista" id="lista"></div>
-      <div class="fila"><button class="boton sec" id="bAjustes" type="button">Ajustes y mandos</button></div>
+      <nav class="pestanas" aria-label="Secciones">
+        <button type="button" data-tab="campana" class="on">Campaña</button>
+        <button type="button" data-tab="armeria">Armería</button>
+        <button type="button" data-tab="hoja">Hoja de servicios</button>
+        <button type="button" data-tab="ranking">Ranking</button>
+        <button type="button" data-tab="tienda">Cantina</button>
+        <button type="button" id="bAjustes">Ajustes</button>
+      </nav>
+      <div id="tab-campana" class="tab lista"></div>
+      <div id="tab-armeria" class="tab" hidden></div>
+      <div id="tab-hoja" class="tab" hidden></div>
+      <div id="tab-ranking" class="tab" hidden></div>
+      <div id="tab-tienda" class="tab" hidden></div>
     </div>
   </div>
 
@@ -155,9 +225,37 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
       <p class="dato" id="fDato"></p>
       <h2 id="fTit"></h2>
       <div class="parte" id="fTxt"></div>
+      <div id="fRes"></div>
+      <div class="fila"><button class="boton oro" id="bDoblar" type="button" hidden>Doblar pesetas</button></div>
       <div class="fila"><button class="boton" id="bSig" type="button">Siguiente misión</button><button class="boton sec" id="bRep" type="button">Repetir</button><button class="boton sec" id="bMenu" type="button">Menú</button></div>
     </div>
   </div>
+
+  <div id="revivir" class="capa panel" hidden>
+    <div class="hoja estrecha">
+      <h2>Te han herido de gravedad</h2>
+      <p class="parte">Un sanitario puede ponerte en pie con 60 de salud. Solo una vez por misión.</p>
+      <div class="fila"><button class="boton oro" id="bRevivir" type="button">Volver al combate (ver vídeo)</button><button class="boton sec" id="bRendirse" type="button">Terminar misión</button></div>
+    </div>
+  </div>
+
+  <div id="anuncio" class="capa panel" hidden>
+    <div class="hoja estrecha centro">
+      <p class="dato">Anuncio de prueba</p>
+      <h2>Aquí va el vídeo de AdMob</h2>
+      <p class="nota">En la app de Android se mostrará un anuncio real. Termina en <b id="anT">5</b> s.</p>
+      <div class="fila"><button class="boton" id="anCerrar" type="button" hidden>Cerrar y recibir recompensa</button></div>
+    </div>
+  </div>
+
+  <div id="modal" class="capa panel" hidden>
+    <div class="hoja estrecha">
+      <h2 id="mTit"></h2>
+      <p class="parte" id="mTxt"></p>
+      <div class="fila"><button class="boton" id="mOk" type="button">Aceptar</button><button class="boton sec" id="mNo" type="button">Cancelar</button></div>
+    </div>
+  </div>
+  <div id="toast" hidden></div>
 
   <div id="pausa" class="capa panel" hidden>
     <div class="hoja">
@@ -173,6 +271,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
       <label class="ajuste" for="aVol">Volumen <input id="aVol" type="range" min="0" max="1" step="0.05"></label>
       <label class="ajuste" for="aAuto">Disparo automático al apuntar a un enemigo <input id="aAuto" type="checkbox"></label>
       <label class="ajuste" for="aZurdo">Mandos para zurdos <input id="aZurdo" type="checkbox"></label>
+      <label class="ajuste" for="aCal">Gráficos <select id="aCal"><option value="alta">Alta calidad</option><option value="baja">Rendimiento (móviles modestos)</option></select></label>
       <label class="ajuste" for="aDif">Dificultad <select id="aDif"><option value="0.6">Recluta</option><option value="1">Legionario</option><option value="1.5">Veterano</option></select></label>
       <div class="parte"><p><b>Táctil:</b> pulgar izquierdo mueve, pulgar derecho gira la vista. FUEGO dispara y también gira si lo arrastras. MIRA apunta con precisión. ¡VIVA! lanza el grito y sube la moral de la escuadra.</p>
       <p><b>Teclado:</b> WASD mover · ratón mirar · clic disparar · clic derecho mira · R recargar · G granada · C agacharse · V grito · Q cambiar arma · H cura · B aviación · Esc pausa.</p></div>
@@ -185,6 +284,8 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 <script src="js/audio.js"></script>
 <script src="js/world.js"></script>
 <script src="js/missions.js"></script>
+<script src="js/progreso.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

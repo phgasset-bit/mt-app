@@ -1,11 +1,15 @@
-// Mundo 3D: terreno procedural del Anti-Atlas / Sáhara, vegetación, parapetos, fuerte, soldados y avión.
+// Mundo 3D: terreno del Anti-Atlas / Sáhara, vegetación, parapetos, fuerte, soldados y avión.
+// Gestión de color: los colores se escriben en sRGB y se convierten a lineal (salida sRGB + tone mapping ACES).
 const World = (() => {
   const C = THREE;
   let M = null, seed = 1;
+  const lin = h => new C.Color(h).convertSRGBToLinear();
   const mats = {};
-  function mat(c, extra) {
-    const k = c + (extra ? JSON.stringify(extra) : '');
-    return mats[k] || (mats[k] = new C.MeshLambertMaterial(Object.assign({ color: c }, extra || {})));
+  function mat(c, tipo, extra) {
+    const k = c + '|' + (tipo || '') + '|' + (extra ? JSON.stringify(extra) : '');
+    if (mats[k]) return mats[k];
+    const o = Object.assign({ color: lin(c) }, extra || {});
+    return mats[k] = tipo === 'phong' ? new C.MeshPhongMaterial(o) : new C.MeshLambertMaterial(o);
   }
   function rng(s) {
     s = Math.floor(s * 100000) | 0;
@@ -34,11 +38,12 @@ const World = (() => {
     if (M.mar) h -= Math.max(0, z - 228) * 0.35;
     return h;
   }
+  function pendiente(x, z) { return (Math.abs(height(x + 2, z) - height(x - 2, z)) + Math.abs(height(x, z + 2) - height(x, z - 2))) / 4; }
 
   // ---------- colisiones (círculos en rejilla) y obstáculos para balas ----------
-  const CELL = 8, grid = new Map(), blockers = [];
+  const CELL = 8, grid = new Map(), blockers = [], circulos = [];
   function addCircle(x, z, r) {
-    const c = { x, z, r };
+    const c = { x, z, r }; circulos.push(c);
     for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++)
       for (let j = Math.floor((z - r) / CELL); j <= Math.floor((z + r) / CELL); j++) {
         const k = i + ',' + j; let l = grid.get(k); if (!l) grid.set(k, l = []); l.push(c);
@@ -52,8 +57,17 @@ const World = (() => {
       if (d2 < m * m && d2 > 1e-6) { const d = Math.sqrt(d2); p.x = c.x + dx / d * m; p.z = c.z + dz / d * m; }
     }
   }
+  // obstáculo útil como cobertura más cercano a (x,z)
+  function coberturaCerca(x, z, rad) {
+    let mejor = null, md = rad * rad;
+    for (let i = Math.floor((x - rad) / CELL); i <= Math.floor((x + rad) / CELL); i++)
+      for (let j = Math.floor((z - rad) / CELL); j <= Math.floor((z + rad) / CELL); j++) {
+        const l = grid.get(i + ',' + j); if (!l) continue;
+        for (const c of l) { if (c.r < 0.55) continue; const d = (c.x - x) ** 2 + (c.z - z) ** 2; if (d < md) { md = d; mejor = c; } }
+      }
+    return mejor;
+  }
   const ray = new C.Raycaster();
-  // distancia hasta el primer obstáculo (cobertura o terreno) a lo largo de dir (normalizado)
   function obstaculo(o, dir, maxD) {
     ray.set(o, dir); ray.far = maxD;
     const hits = ray.intersectObjects(blockers, false);
@@ -64,265 +78,433 @@ const World = (() => {
     return d;
   }
 
-  function caja(w, h, d, color, x, y, z, ry, scn, bloquea) {
-    const m = new C.Mesh(new C.BoxGeometry(w, h, d), mat(color));
-    m.position.set(x, y, z); m.rotation.y = ry || 0; m.castShadow = true; m.receiveShadow = true;
-    scn.add(m); if (bloquea) blockers.push(m);
-    return m;
-  }
-  // muro de piedra/sacos con colisión a lo largo
-  function muro(scn, cx, cz, largo, alto, grueso, ang, color) {
-    const y = height(cx, cz);
-    caja(largo, alto + 0.4, grueso, color, cx, y + alto / 2 - 0.2, cz, ang, scn, true);
-    const tx = Math.cos(ang), tz = -Math.sin(ang), n = Math.max(1, Math.round(largo / 1.1));
-    for (let i = 0; i < n; i++) { const o = (i + 0.5) / n * largo - largo / 2; addCircle(cx + tx * o, cz + tz * o, grueso * 0.75); }
-  }
-
-  function texturaCanvas(w, h, pinta) {
+  // ---------- texturas procedurales ----------
+  function canvasTex(w, h, pinta, srgb) {
     const c = document.createElement('canvas'); c.width = w; c.height = h; pinta(c.getContext('2d'), w, h);
-    const t = new C.CanvasTexture(c); return t;
+    const t = new C.CanvasTexture(c); if (srgb !== false) t.encoding = C.sRGBEncoding; return t;
   }
   const TEX = {};
   function tex() {
     if (TEX.humo) return TEX;
-    TEX.humo = texturaCanvas(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 2, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,.5)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
-    TEX.fogon = texturaCanvas(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,250,220,1)'); r.addColorStop(0.3, 'rgba(255,200,80,.9)'); r.addColorStop(1, 'rgba(255,120,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
-    TEX.marca = texturaCanvas(64, 64, (g) => { g.fillStyle = '#f2b90f'; g.strokeStyle = '#1d1710'; g.lineWidth = 5; g.beginPath(); g.moveTo(8, 10); g.lineTo(56, 10); g.lineTo(32, 54); g.closePath(); g.stroke(); g.fill(); });
-    TEX.bandera = texturaCanvas(96, 64, (g) => { g.fillStyle = '#c60b1e'; g.fillRect(0, 0, 96, 64); g.fillStyle = '#ffc400'; g.fillRect(0, 16, 96, 32); });
+    TEX.humo = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 2, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+    TEX.fogon = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,250,225,1)'); r.addColorStop(0.25, 'rgba(255,205,90,.95)'); r.addColorStop(1, 'rgba(255,120,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+    TEX.marca = canvasTex(64, 64, (g) => { g.fillStyle = '#f2b90f'; g.strokeStyle = '#1d1710'; g.lineWidth = 5; g.beginPath(); g.moveTo(8, 10); g.lineTo(56, 10); g.lineTo(32, 54); g.closePath(); g.stroke(); g.fill(); });
+    TEX.bandera = canvasTex(96, 64, (g) => { g.fillStyle = '#c60b1e'; g.fillRect(0, 0, 96, 64); g.fillStyle = '#ffc400'; g.fillRect(0, 16, 96, 32); });
+    TEX.suelo = canvasTex(256, 256, (g, w, h) => {
+      g.fillStyle = 'rgb(236,236,236)'; g.fillRect(0, 0, w, h);
+      const id = g.getImageData(0, 0, w, h), d = id.data;
+      for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 34; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+      g.putImageData(id, 0, 0);
+      for (let i = 0; i < 420; i++) {
+        const x = Math.random() * w, y = Math.random() * h, r = 0.6 + Math.random() * 2.4, c = 150 + Math.random() * 105 | 0;
+        g.fillStyle = 'rgba(' + c + ',' + (c - 6) + ',' + (c - 14) + ',.6)';
+        for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.beginPath(); g.ellipse(x + ox, y + oy, r, r * 0.7, Math.random() * 3, 0, 6.3); g.fill(); }
+      }
+    }, false);
+    TEX.suelo.wrapS = TEX.suelo.wrapT = C.RepeatWrapping; TEX.suelo.repeat.set(110, 110); TEX.suelo.anisotropy = 4;
+    TEX.revoco = TEX.suelo.clone(); TEX.revoco.needsUpdate = true; TEX.revoco.repeat.set(2, 1);
+    TEX.hierba = canvasTex(64, 64, (g) => {
+      for (let i = 0; i < 26; i++) {
+        const x = 6 + Math.random() * 52, hgt = 22 + Math.random() * 38, inc = (Math.random() - 0.5) * 22, c = Math.random();
+        g.strokeStyle = 'rgb(' + (150 + c * 70 | 0) + ',' + (130 + c * 55 | 0) + ',' + (70 + c * 30 | 0) + ')'; g.lineWidth = 1.2 + Math.random() * 1.4;
+        g.beginPath(); g.moveTo(x, 64); g.quadraticCurveTo(x + inc * 0.3, 64 - hgt * 0.6, x + inc, 64 - hgt); g.stroke();
+      }
+    });
+    TEX.hierba.generateMipmaps = false; TEX.hierba.minFilter = C.LinearFilter;
+    TEX.madera = canvasTex(32, 256, (g, w, h) => {
+      g.fillStyle = '#6b4526'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 40; i++) { g.strokeStyle = 'rgba(' + (40 + Math.random() * 40 | 0) + ',22,8,' + (0.2 + Math.random() * 0.3) + ')'; g.lineWidth = 0.5 + Math.random() * 1.5; const x = Math.random() * w; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + 4, h * 0.3, x - 4, h * 0.7, x + 2, h); g.stroke(); }
+    });
     return TEX;
+  }
+
+  // ---------- utilidades de construcción ----------
+  const tmpO = new C.Object3D();
+  function mtx(x, y, z, rx, ry, rz, sx, sy, sz) { tmpO.position.set(x, y, z); tmpO.rotation.set(rx, ry, rz); tmpO.scale.set(sx, sy, sz); tmpO.updateMatrix(); return tmpO.matrix.clone(); }
+  function instancias(scn, geo, material, lista, sombra, bloquea) {
+    if (!lista.length) return null;
+    const im = new C.InstancedMesh(geo, material, lista.length);
+    lista.forEach((m, i) => im.setMatrixAt(i, m));
+    im.castShadow = !!sombra; im.receiveShadow = true; scn.add(im);
+    if (bloquea) blockers.push(im);
+    return im;
+  }
+  function geoRoca(semilla, det) {
+    const g = new C.IcosahedronGeometry(1, det || 1), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const n = 0.72 + 0.5 * Math.abs(Math.sin(x * 4.1 + semilla) * Math.cos(y * 3.7 - semilla) + Math.sin(z * 5.3 + semilla * 2) * 0.5);
+      p.setXYZ(i, x * n, y * n * 0.75, z * n);
+    }
+    g.computeVertexNormals(); return g;
+  }
+  function caja(w, h, d, material, x, y, z, ry, scn, bloquea) {
+    const m = new C.Mesh(new C.BoxGeometry(w, h, d), material);
+    m.position.set(x, y, z); m.rotation.y = ry || 0; m.castShadow = true; m.receiveShadow = true;
+    scn.add(m); if (bloquea) blockers.push(m);
+    return m;
+  }
+  function bloqueInvisible(scn, w, h, d, x, y, z, ry) {
+    const m = new C.Mesh(new C.BoxGeometry(w, h, d), mat(0x000000)); m.visible = false;
+    m.position.set(x, y, z); m.rotation.y = ry; scn.add(m); m.updateMatrixWorld(); blockers.push(m);
   }
 
   // ---------- construcción del escenario ----------
   let refs = {};
+  const piedras = [], sacosL = [];
   function build(m, scn) {
-    M = m; seed = m.seed; grid.clear(); blockers.length = 0;
-    const R = rng(seed), noche = !!m.noche, des = !!m.desierto;
-    const skyCol = noche ? 0x0d1628 : des ? 0xdccfb2 : 0xc9d4d4;
-    scn.background = new C.Color(skyCol);
-    scn.fog = new C.Fog(skyCol, noche ? 30 : 80, noche ? 190 : 360);
+    M = m; seed = m.seed; grid.clear(); blockers.length = 0; circulos.length = 0; piedras.length = 0; sacosL.length = 0;
+    const T = tex(), R = rng(seed), noche = !!m.noche, des = !!m.desierto;
+    const skyCol = noche ? 0x111a2c : des ? 0xe2d3b6 : 0xd3d6cc;
+    scn.background = lin(skyCol);
+    scn.fog = new C.Fog(lin(skyCol), noche ? 25 : 70, noche ? 210 : 520);
 
-    // bóveda celeste con degradado
-    const sg = new C.SphereGeometry(480, 24, 12), sc = [], top = new C.Color(noche ? 0x03060f : des ? 0x8fb0c8 : 0x6f9cc0), hor = new C.Color(skyCol), tc = new C.Color();
-    for (let i = 0; i < sg.attributes.position.count; i++) { const y = sg.attributes.position.getY(i) / 480; tc.copy(hor).lerp(top, Math.min(1, Math.max(0, y * 2.2))); sc.push(tc.r, tc.g, tc.b); }
+    // bóveda celeste
+    const sg = new C.SphereGeometry(800, 32, 16), sc = [], top = new C.Color(noche ? 0x02040c : des ? 0x7fa3c2 : 0x5f8fbd), hor = new C.Color(skyCol), tc = new C.Color();
+    for (let i = 0; i < sg.attributes.position.count; i++) { const y = sg.attributes.position.getY(i) / 800; tc.copy(hor).lerp(top, Math.min(1, Math.max(0, y * 2.4)) ** 0.8).convertSRGBToLinear(); sc.push(tc.r, tc.g, tc.b); }
     sg.setAttribute('color', new C.Float32BufferAttribute(sc, 3));
-    const sky = new C.Mesh(sg, new C.MeshBasicMaterial({ vertexColors: true, side: C.BackSide, fog: false, depthWrite: false }));
-    scn.add(sky);
-    if (noche) { // estrellas
-      const sp = []; for (let i = 0; i < 700; i++) { const a = R() * Math.PI * 2, e = 0.12 + R() * 1.3; sp.push(Math.cos(a) * Math.cos(e) * 450, Math.sin(e) * 450, Math.sin(a) * Math.cos(e) * 450); }
+    scn.add(new C.Mesh(sg, new C.MeshBasicMaterial({ vertexColors: true, side: C.BackSide, fog: false, depthWrite: false })));
+    const solDir = new C.Vector3(noche ? -0.4 : 0.55, noche ? 0.55 : 0.62, noche ? -0.7 : 0.4).normalize();
+    const astro = new C.Sprite(new C.SpriteMaterial({ map: noche ? T.humo : T.fogon, color: noche ? lin(0xdfe6ff) : lin(0xfff6e0), fog: false, depthWrite: false, transparent: true, blending: C.AdditiveBlending }));
+    astro.scale.setScalar(noche ? 40 : 160); astro.position.copy(solDir).multiplyScalar(700); scn.add(astro);
+    if (noche) {
+      const sp = []; for (let i = 0; i < 900; i++) { const a = R() * Math.PI * 2, e = 0.1 + R() * 1.35; sp.push(Math.cos(a) * Math.cos(e) * 760, Math.sin(e) * 760, Math.sin(a) * Math.cos(e) * 760); }
       const g = new C.BufferGeometry(); g.setAttribute('position', new C.Float32BufferAttribute(sp, 3));
-      scn.add(new C.Points(g, new C.PointsMaterial({ color: 0xdfe6ff, size: 1.3, sizeAttenuation: false, fog: false })));
+      scn.add(new C.Points(g, new C.PointsMaterial({ color: 0xdfe6ff, size: 1.4, sizeAttenuation: false, fog: false })));
+    } else {
+      for (let i = 0; i < 14; i++) {
+        const nube = new C.Sprite(new C.SpriteMaterial({ map: T.humo, color: lin(0xffffff), opacity: 0.35 + R() * 0.3, fog: false, depthWrite: false, transparent: true }));
+        const a = R() * 6.28, r = 250 + R() * 350; nube.position.set(Math.cos(a) * r, 150 + R() * 90, Math.sin(a) * r); nube.scale.set(120 + R() * 140, 30 + R() * 30, 1); scn.add(nube);
+      }
     }
+    // sierras lejanas en capas (perspectiva aérea)
+    sierra(scn, 470, des ? 25 : 70, noche ? 0x1c2436 : des ? 0xc9b48f : 0x9c8f80, hor, 1.3);
+    sierra(scn, 610, des ? 40 : 120, noche ? 0x161d2c : des ? 0xd4c4a4 : 0xb3ad9f, hor, 4.7);
 
     // luces
-    const hemi = new C.HemisphereLight(noche ? 0x5a6c95 : 0xfff2dc, noche ? 0x1c1a22 : 0x8a6842, noche ? 0.62 : 0.6);
+    const hemi = new C.HemisphereLight(lin(noche ? 0x6a7fae : 0xfff1dc), lin(noche ? 0x1a1820 : 0x7a5838), noche ? 0.75 : 1.05);
     scn.add(hemi);
-    const sun = new C.DirectionalLight(noche ? 0xa8bce6 : 0xfff0d6, noche ? 0.42 : 0.82);
-    sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
-    const sh = sun.shadow.camera; sh.left = -45; sh.right = 45; sh.top = 45; sh.bottom = -45; sh.near = 1; sh.far = 260; sun.shadow.bias = -0.0008;
+    const sun = new C.DirectionalLight(lin(noche ? 0xb0c4ee : 0xffeccc), noche ? 0.55 : 2.4);
+    sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+    const sh = sun.shadow.camera; sh.left = -50; sh.right = 50; sh.top = 50; sh.bottom = -50; sh.near = 1; sh.far = 300; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     scn.add(sun); scn.add(sun.target);
-    const flare = new C.PointLight(0xfff1c8, 0, 280, 1.6); scn.add(flare);
+    const flare = new C.PointLight(lin(0xfff1c8), 0, 300, 1.6); scn.add(flare);
 
-    // terreno
-    const S = 640, N = 160, g = new C.PlaneGeometry(S, S, N, N); g.rotateX(-Math.PI / 2);
+    // terreno con color por vértice + textura de detalle
+    const S = 640, N = 200, g = new C.PlaneGeometry(S, S, N, N); g.rotateX(-Math.PI / 2);
     const pos = g.attributes.position, col = new Float32Array(pos.count * 3), cc = new C.Color(), tmp = new C.Color();
-    const base = des ? new C.Color(0.74, 0.6, 0.42) : new C.Color(0.6, 0.47, 0.32);
-    const roca = new C.Color(0.55, 0.49, 0.42), verde = new C.Color(0.47, 0.47, 0.28), pista = new C.Color(0.82, 0.7, 0.52), arenaM = new C.Color(0.62, 0.55, 0.42);
+    const base = des ? new C.Color(0xd9b07a) : new C.Color(0xb88b5a);
+    const roca = new C.Color(0x8a6450), roca2 = new C.Color(0x7d7368), matorral = new C.Color(0x7d7a4a), pista = new C.Color(0xd2b48a), arenaM = new C.Color(0xa69276), sombraC = new C.Color(0x8d6a45);
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), y = height(x, z); pos.setY(i, y);
-      const s = (Math.abs(height(x + 2, z) - height(x - 2, z)) + Math.abs(height(x, z + 2) - height(x, z - 2))) / 4;
-      const n = fbm(x * 0.09, z * 0.09);
-      cc.copy(base).multiplyScalar(0.84 + 0.3 * n);
+      const s = pendiente(x, z), n = fbm(x * 0.09, z * 0.09), n2 = fbm(x * 0.02 + 7, z * 0.02 - 3);
+      cc.copy(base).lerp(sombraC, n2 * 0.5).multiplyScalar(0.88 + 0.24 * n);
       if (!des) {
-        if (s > 0.35) cc.lerp(roca, Math.min(1, (s - 0.35) * 2.2));
-        if (fbm(x * 0.03 + 9, z * 0.03) > 0.6) cc.lerp(verde, 0.45);
-        const dp = Math.abs(x - pathX(z)); if (dp < 3.5) cc.lerp(pista, 0.55 * (1 - dp / 3.5));
+        if (s > 0.3) cc.lerp(n > 0.5 ? roca : roca2, Math.min(1, (s - 0.3) * 2.4));
+        if (fbm(x * 0.035 + 9, z * 0.035) > 0.58) cc.lerp(matorral, 0.4);
+        const dp = Math.abs(x - pathX(z)); if (dp < 3.5) cc.lerp(pista, 0.6 * (1 - dp / 3.5));
       } else {
-        cc.lerp(tmp.setRGB(0.82, 0.68, 0.5), Math.max(0, Math.min(1, y * 0.12)));
+        cc.lerp(tmp.setHex(0xead1a2), Math.max(0, Math.min(1, y * 0.15))); // crestas de duna más claras
+        if (s > 0.25) cc.lerp(tmp.setHex(0xb88d5e), Math.min(0.6, (s - 0.25) * 2));
       }
       if (m.mar && y < 0.4) cc.lerp(arenaM, 0.7);
+      if (noche) cc.multiplyScalar(0.9);
+      cc.convertSRGBToLinear();
       col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
     }
     g.setAttribute('color', new C.BufferAttribute(col, 3)); g.computeVertexNormals();
-    const terr = new C.Mesh(g, new C.MeshLambertMaterial({ vertexColors: true })); terr.receiveShadow = true; scn.add(terr);
-    if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(700, 160), new C.MeshLambertMaterial({ color: noche ? 0x16303e : 0x2f6476, transparent: true, opacity: 0.92 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 320); scn.add(w); }
+    const terr = new C.Mesh(g, new C.MeshLambertMaterial({ vertexColors: true, map: T.suelo })); terr.receiveShadow = true; scn.add(terr);
+    if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(900, 200), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 330); scn.add(w); }
 
-    // zonas libres: alrededor de objetivos, inicio y pista
+    // zonas libres
     const libres = m.fases.map(f => [f.x, f.z, 16]).concat([[m.inicio[0], m.inicio[1], 10]]);
     if (m.fuerte) libres.push([m.fuerte[0], m.fuerte[1], 26]);
-    const libre = (x, z) => libres.every(l => (x - l[0]) ** 2 + (z - l[1]) ** 2 > l[2] * l[2]) && Math.abs(x - pathX(z)) > 4.5;
+    const libre = (x, z, r) => libres.every(l => (x - l[0]) ** 2 + (z - l[1]) ** 2 > (l[2] - (r || 0)) ** 2) && Math.abs(x - pathX(z)) > 4.5;
+    const punto = (r) => { for (let t = 0; t < 20; t++) { const x = (R() - 0.5) * 300, z = 268 - R() * 540; if (libre(x, z, r)) return [x, z]; } return null; };
 
-    // rocas
-    const nR = des ? 120 : 380, rg = new C.DodecahedronGeometry(1, 0);
-    const rocas = new C.InstancedMesh(rg, mat(des ? 0xa88a62 : 0x8a7b68), nR);
-    const d = new C.Object3D(); let ir = 0;
-    for (let t = 0; t < nR * 3 && ir < nR; t++) {
-      const x = (R() - 0.5) * 300, z = 270 - R() * 540; if (!libre(x, z)) continue;
-      const s = R() < 0.15 ? 1.2 + R() * 1.4 : 0.25 + R() * 0.8;
-      d.position.set(x, height(x, z) + s * 0.25, z); d.rotation.set(R() * 3, R() * 3, R() * 3); d.scale.set(s * (0.8 + R() * 0.6), s * (0.6 + R() * 0.5), s * (0.8 + R() * 0.6)); d.updateMatrix();
-      rocas.setMatrixAt(ir++, d.matrix); if (s > 0.9) addCircle(x, z, s * 0.85);
+    // rocas (3 formas, 2 tonos)
+    const rocasGeo = [geoRoca(1.3), geoRoca(4.1), geoRoca(7.7)];
+    const rocaMat = [mat(des ? 0xa8875e : 0x8e6e58, null, { flatShading: true }), mat(des ? 0x9a7f5d : 0x84796c, null, { flatShading: true })];
+    const listas = [[], [], [], [], [], []];
+    for (let i = 0; i < (des ? 130 : 420); i++) {
+      const p = punto(); if (!p) continue; const [x, z] = p;
+      const s = R() < 0.14 ? 1.3 + R() * 1.6 : 0.2 + R() * 0.75;
+      listas[(i % 3) + 3 * (R() < 0.5 ? 0 : 1)].push(mtx(x, height(x, z) + s * 0.15, z, R() * 0.4, R() * 6, R() * 0.4, s * (0.9 + R() * 0.5), s * (0.7 + R() * 0.5), s * (0.9 + R() * 0.5)));
+      if (s > 0.9) addCircle(x, z, s * 0.95);
     }
-    rocas.count = ir; rocas.castShadow = true; rocas.receiveShadow = true; scn.add(rocas); blockers.push(rocas);
+    listas.forEach((l, i) => instancias(scn, rocasGeo[i % 3], rocaMat[i < 3 ? 0 : 1], l, true, true));
+
+    // hierba seca (esparto)
+    const gH = new C.BufferGeometry();
+    gH.setAttribute('position', new C.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0, 0, 0, -0.5, 0, 0, 0.5, 0, 1, 0.5, 0, 1, -0.5], 3));
+    gH.setAttribute('uv', new C.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1], 2));
+    gH.setAttribute('normal', new C.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    gH.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    const hierba = [];
+    for (let i = 0; i < (des ? 900 : 4200); i++) {
+      const x = (R() - 0.5) * 300, z = 268 - R() * 540; if (pendiente(x, z) > 0.55) continue;
+      const s = 0.4 + R() * 0.6; hierba.push(mtx(x, height(x, z) - 0.03, z, 0, R() * 6, 0, s * 1.2, s, s * 1.2));
+    }
+    const ih = instancias(scn, gH, new C.MeshLambertMaterial({ map: T.hierba, alphaTest: 0.5, side: C.DoubleSide, color: lin(des ? 0xe8d29a : 0xf0dca8) }), hierba, false, false); if (ih) ih.receiveShadow = false;
 
     if (!des) {
-      // chumberas (palas aplanadas)
-      const nC = 95, pads = new C.InstancedMesh(new C.SphereGeometry(1, 7, 5), mat(0x6c7d48), nC * 7); let ip = 0;
-      for (let t = 0; t < nC * 3 && ip < nC * 7 - 7; t++) {
-        const x = (R() - 0.5) * 260, z = 260 - R() * 520; if (!libre(x, z)) continue;
-        const y0 = height(x, z), k = 4 + Math.floor(R() * 4);
-        for (let p = 0; p < k; p++) {
-          const a = R() * 6.28, rr = p === 0 ? 0 : 0.35 + R() * 0.35, hy = p === 0 ? 0.45 : 0.7 + R() * 0.7;
-          d.position.set(x + Math.cos(a) * rr, y0 + hy, z + Math.sin(a) * rr); d.rotation.set((R() - 0.5) * 0.8, a, (R() - 0.5) * 0.8); d.scale.set(0.38, 0.48, 0.09); d.updateMatrix(); pads.setMatrixAt(ip++, d.matrix);
+      // chumberas con higos
+      const pads = [], higos = [];
+      for (let i = 0; i < 90; i++) {
+        const p = punto(); if (!p) continue; const [x, z] = p, y0 = height(x, z), k = 5 + Math.floor(R() * 5);
+        for (let q = 0; q < k; q++) {
+          const a = R() * 6.28, rr = q === 0 ? 0 : 0.3 + R() * 0.45, hy = q === 0 ? 0.45 : 0.6 + R() * 0.9, tilt = (R() - 0.5) * 0.9;
+          pads.push(mtx(x + Math.cos(a) * rr, y0 + hy, z + Math.sin(a) * rr, tilt, a, (R() - 0.5) * 0.6, 0.36, 0.46, 0.08));
+          if (R() < 0.5) higos.push(mtx(x + Math.cos(a) * rr, y0 + hy + 0.44, z + Math.sin(a) * rr, 0, 0, 0, 0.05, 0.065, 0.05));
         }
-        addCircle(x, z, 0.7);
+        addCircle(x, z, 0.75);
       }
-      pads.count = ip; pads.castShadow = true; scn.add(pads);
+      instancias(scn, new C.SphereGeometry(1, 9, 6), mat(0x6f8149), pads, true, false);
+      instancias(scn, new C.SphereGeometry(1, 5, 4), mat(0xb4503a), higos, false, false);
+      // euforbias en cojín (típicas del Anti-Atlas)
+      const cols = [];
+      for (let i = 0; i < 45; i++) {
+        const p = punto(); if (!p) continue; const [x, z] = p, y0 = height(x, z), rad = 0.6 + R() * 0.8;
+        for (let q = 0; q < 26; q++) { const a = R() * 6.28, r = Math.sqrt(R()) * rad, hh = (1 - (r / rad) ** 2) * (0.5 + rad * 0.5) + 0.15; cols.push(mtx(x + Math.cos(a) * r, y0 + hh / 2, z + Math.sin(a) * r, (R() - 0.5) * 0.2, 0, (R() - 0.5) * 0.2, 0.06, hh, 0.06)); }
+        addCircle(x, z, rad * 0.8);
+      }
+      instancias(scn, new C.CylinderGeometry(1, 1, 1, 5), mat(0x7b8a55), cols, true, false);
       // arganes
-      const nA = 55, tr = new C.InstancedMesh(new C.CylinderGeometry(0.13, 0.22, 1.7, 5), mat(0x5a4632), nA), cr = new C.InstancedMesh(new C.IcosahedronGeometry(1, 0), mat(0x56613b), nA * 2); let ia = 0, ic = 0;
-      for (let t = 0; t < nA * 3 && ia < nA; t++) {
-        const x = (R() - 0.5) * 280, z = 260 - R() * 520; if (!libre(x, z)) continue;
-        const y0 = height(x, z), s = 0.8 + R() * 0.6;
-        d.position.set(x, y0 + 0.85 * s, z); d.rotation.set(0, R() * 6, (R() - 0.5) * 0.3); d.scale.set(s, s, s); d.updateMatrix(); tr.setMatrixAt(ia++, d.matrix);
-        for (let k = 0; k < 2; k++) { d.position.set(x + (R() - 0.5) * 1.2, y0 + (1.7 + R() * 0.6) * s, z + (R() - 0.5) * 1.2); d.rotation.set(R(), R() * 6, R()); d.scale.set((1.6 + R()) * s, (0.8 + R() * 0.4) * s, (1.6 + R()) * s); d.updateMatrix(); cr.setMatrixAt(ic++, d.matrix); }
+      const tr = [], cr = [];
+      for (let i = 0; i < 60; i++) {
+        const p = punto(); if (!p) continue; const [x, z] = p, y0 = height(x, z), s = 0.8 + R() * 0.7;
+        tr.push(mtx(x, y0 + 0.8 * s, z, (R() - 0.5) * 0.3, R() * 6, (R() - 0.5) * 0.3, s, s, s));
+        tr.push(mtx(x + 0.3 * s, y0 + 1.5 * s, z, 0, R() * 6, 0.7, s * 0.6, s * 0.7, s * 0.6));
+        for (let q = 0; q < 4; q++) cr.push(mtx(x + (R() - 0.5) * 2.2 * s, y0 + (1.9 + R() * 0.8) * s, z + (R() - 0.5) * 2.2 * s, R(), R() * 6, R(), (1.1 + R() * 0.8) * s, (0.6 + R() * 0.4) * s, (1.1 + R() * 0.8) * s));
         addCircle(x, z, 0.35);
       }
-      tr.count = ia; cr.count = ic; tr.castShadow = cr.castShadow = true; scn.add(tr); scn.add(cr); blockers.push(tr);
+      instancias(scn, new C.CylinderGeometry(0.12, 0.2, 1.7, 6), mat(0x584330), tr, true, true);
+      instancias(scn, geoRoca(2.2, 1), mat(0x515c35, null, { flatShading: true }), cr, true, false);
     } else {
-      // tarajes y matas del desierto
-      const nT = 70, mt = new C.InstancedMesh(new C.IcosahedronGeometry(1, 0), mat(0x7a7a4a), nT); let it = 0;
-      for (let t = 0; t < nT * 3 && it < nT; t++) {
-        const x = (R() - 0.5) * 280, z = 260 - R() * 520; if (!libre(x, z)) continue;
-        const s = 0.5 + R() * 0.9; d.position.set(x, height(x, z) + s * 0.4, z); d.rotation.set(R(), R() * 6, R()); d.scale.set(s * 1.4, s * 0.7, s * 1.4); d.updateMatrix(); mt.setMatrixAt(it++, d.matrix);
-      }
-      mt.count = it; mt.castShadow = true; scn.add(mt);
+      const mt = [];
+      for (let i = 0; i < 80; i++) { const p = punto(); if (!p) continue; const [x, z] = p, s = 0.5 + R() * 0.9; mt.push(mtx(x, height(x, z) + s * 0.3, z, R(), R() * 6, R(), s * 1.4, s * 0.7, s * 1.4)); }
+      instancias(scn, geoRoca(3.3, 1), mat(0x7f7d4c, null, { flatShading: true }), mt, true, false);
     }
 
-    // casas encaladas de Sidi Ifni
+    // casas encaladas de Sidi Ifni (estilo colonial, carpintería azul)
     if (m.mar) {
+      const encalado = new C.MeshLambertMaterial({ color: lin(0xf1ece0), map: T.revoco }), azul = mat(0x2d5a80);
       for (let i = 0; i < 16; i++) {
         const x = -70 + i * 9 + (R() - 0.5) * 3; if (Math.abs(x) < 7) continue;
         const z = 222 + R() * 14, w = 5 + R() * 4, h = 3 + R() * 3, dd = 5 + R() * 3, y = height(x, z);
-        caja(w, h + 2, dd, 0xe9e4d8, x, y + h / 2 - 1, z, 0, scn, true);
-        caja(1, 1.9, 0.1, 0x2d4f6b, x, y + 0.9, z - dd / 2 - 0.02, 0, scn, false);
+        caja(w, h + 2, dd, encalado, x, y + h / 2 - 1, z, 0, scn, true);
+        caja(w + 0.3, 0.4, dd + 0.3, encalado, x, y + h + 0.2, z, 0, scn, false);
+        caja(1, 2, 0.12, azul, x - w * 0.2, y + 1, z - dd / 2 - 0.03, 0, scn, false);
+        caja(0.8, 0.9, 0.12, azul, x + w * 0.25, y + h * 0.6, z - dd / 2 - 0.03, 0, scn, false);
         addCircle(x, z, Math.max(w, dd) * 0.55);
       }
     }
 
-    // parapetos de las posiciones enemigas, sacos de las posiciones propias, cobertura de emboscadas
+    // posiciones: parapetos de piedra seca, sacos terreros, cobertura de emboscadas
     m.fases.forEach((f, i) => {
       const prev = i === 0 ? { x: m.inicio[0], z: m.inicio[1] } : m.fases[i - 1];
       if (f.tipo === 'take') f._spots = parapeto(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
-      else if (f.tipo === 'hold') sacos(scn, f);
+      else if (f.tipo === 'hold') sacos(scn, f, R);
       else if (f.tipo === 'ambush') {
         f._spots = [];
         for (let k = 0; k < f.n; k++) {
-          const lado = k % 2 ? 1 : -1, x = f.x + lado * (28 + R() * 26), z = f.z + (R() - 0.5) * 70, s = 1.1 + R() * 0.6;
-          const rx = x - lado * 1.6;
-          d.position.set(rx, height(rx, z) + s * 0.3, z); d.rotation.set(R(), R(), R()); d.scale.set(s * 1.3, s, s); d.updateMatrix();
-          const r = new C.Mesh(rg, mat(des ? 0xa88a62 : 0x8a7b68)); r.applyMatrix4(d.matrix); r.castShadow = true; scn.add(r); blockers.push(r); addCircle(rx, z, s);
+          const lado = k % 2 ? 1 : -1, x = f.x + lado * (28 + R() * 26), z = f.z + (R() - 0.5) * 70, s = 1.1 + R() * 0.6, rx = x - lado * 1.6;
+          const r = new C.Mesh(rocasGeo[k % 3], rocaMat[k % 2]); r.position.set(rx, height(rx, z) + s * 0.2, z); r.rotation.set(R(), R() * 6, R()); r.scale.set(s * 1.4, s, s * 1.2);
+          r.castShadow = r.receiveShadow = true; scn.add(r); r.updateMatrixWorld(); blockers.push(r); addCircle(rx, z, s);
           f._spots.push({ x, z, yaw: Math.atan2(lado, 0) });
         }
       }
     });
+    instancias(scn, new C.DodecahedronGeometry(1, 0), mat(des ? 0xa68b67 : 0x8f7f6a, null, { flatShading: true }), piedras, true, false);
+    instancias(scn, new C.SphereGeometry(1, 8, 5), mat(0xb39a6c), sacosL, true, false);
     if (m.fuerte) fuerte(scn, m.fuerte[0], m.fuerte[1]);
 
-    refs = { sun, hemi, flare, terr };
+    refs = { sun, hemi, flare, terr, solDir };
     return refs;
   }
 
+  function sierra(scn, Rr, alto, color, horizonte, sem) {
+    const n = 160, p = [], c = [], idx = [], cTop = new C.Color(color), cBot = horizonte.clone(), t = new C.Color();
+    for (let i = 0; i <= n; i++) {
+      const a = i / n * Math.PI * 2, h = alto * (0.25 + fbm(Math.cos(a) * 2.5 + sem, Math.sin(a) * 2.5 + sem) * 1.1);
+      p.push(Math.cos(a) * Rr, h, Math.sin(a) * Rr, Math.cos(a) * Rr, -40, Math.sin(a) * Rr);
+      t.copy(cTop).convertSRGBToLinear(); c.push(t.r, t.g, t.b); t.copy(cBot).lerp(cTop, 0.3).convertSRGBToLinear(); c.push(t.r, t.g, t.b);
+      if (i < n) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const g = new C.BufferGeometry(); g.setAttribute('position', new C.Float32BufferAttribute(p, 3)); g.setAttribute('color', new C.Float32BufferAttribute(c, 3)); g.setIndex(idx);
+    scn.add(new C.Mesh(g, new C.MeshBasicMaterial({ vertexColors: true, fog: false, side: C.DoubleSide })));
+  }
+
+  // muro de piedra seca: bloque invisible para balas + piedras apiladas visibles
+  function muroPiedra(scn, cx, cz, largo, alto, grueso, ang, R) {
+    const y = height(cx, cz);
+    bloqueInvisible(scn, largo, alto + 0.4, grueso, cx, y + alto / 2 - 0.2, cz, ang);
+    const tx = Math.cos(ang), tz = -Math.sin(ang);
+    const filas = Math.round(alto / 0.3);
+    for (let f = 0; f < filas; f++) {
+      const n = Math.round(largo / 0.5), desf = f % 2 ? 0.25 : 0;
+      for (let i = 0; i < n; i++) {
+        const o = -largo / 2 + (i + 0.5) * largo / n + desf * (i === n - 1 ? 0 : 1) * 0.5;
+        for (const lado of [-0.22, 0.22]) {
+          const nx = Math.sin(ang) * lado, nz = Math.cos(ang) * lado;
+          piedras.push(mtx(cx + tx * o + nx, y + 0.12 + f * 0.3 + R() * 0.04, cz + tz * o + nz, R() * 0.5, ang + R() * 0.6, R() * 0.5, 0.28 + R() * 0.08, 0.17 + R() * 0.05, 0.24 + R() * 0.06));
+        }
+      }
+    }
+    const nc = Math.max(1, Math.round(largo / 1.1));
+    for (let i = 0; i < nc; i++) { const o = (i + 0.5) / nc * largo - largo / 2; addCircle(cx + tx * o, cz + tz * o, grueso * 0.75); }
+  }
   function parapeto(scn, f, face, R) {
-    const spots = [], Rr = 10, piedra = [0x8c7d68, 0x7f715e, 0x96876f];
-    let k = 0;
+    const spots = [], Rr = 10; let k = 0;
     for (let a = face - 1.3; a <= face + 1.31; a += 0.29, k++) {
       if (k > 1 && R() < 0.12) continue; // portillos
-      const cx = f.x + Math.sin(a) * Rr, cz = f.z + Math.cos(a) * Rr;
-      muro(scn, cx, cz, 3.2, 1.1 + R() * 0.15, 0.8, a, piedra[k % 3]);
+      muroPiedra(scn, f.x + Math.sin(a) * Rr, f.z + Math.cos(a) * Rr, 3.2, 1.15, 0.8, a, R);
       if (k % 2 === 0) spots.push({ x: f.x + Math.sin(a) * (Rr - 1.3), z: f.z + Math.cos(a) * (Rr - 1.3), yaw: a + Math.PI, muro: true });
     }
-    // casamata de piedra en el centro
-    const y = height(f.x, f.z);
-    caja(4.2, 3, 3.2, 0x7a6c58, f.x, y + 0.9, f.z - 2, face, scn, true);
-    caja(4.6, 0.25, 3.6, 0x5d5244, f.x, y + 2.45, f.z - 2, face, scn, false);
-    addCircle(f.x, f.z - 2, 2.2);
-    for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.6; spots.push({ x: f.x + Math.sin(a) * 5, z: f.z + Math.cos(a) * 5, yaw: a + Math.PI, muro: false }); }
+    // casamata de piedra con techo de vigas
+    const y = height(f.x, f.z), cx = f.x - Math.sin(face) * 2, cz = f.z - Math.cos(face) * 2;
+    caja(4.2, 3, 3.2, new C.MeshLambertMaterial({ color: lin(0x8a7660), map: tex().revoco }), cx, y + 0.9, cz, face, scn, true);
+    caja(4.8, 0.22, 3.8, mat(0x4f3f2c), cx, y + 2.45, cz, face, scn, false);
+    caja(1, 1.6, 0.1, mat(0x1d1710), cx + Math.sin(face) * 1.62, y + 0.8, cz + Math.cos(face) * 1.62, face, scn, false);
+    addCircle(cx, cz, 2.2);
+    for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.6; spots.push({ x: f.x + Math.sin(a) * 5.5, z: f.z + Math.cos(a) * 5.5, yaw: a + Math.PI, muro: false }); }
     return spots;
   }
-  function sacos(scn, f) {
+  function sacos(scn, f, R) {
     for (let i = -6; i <= 6; i++) {
       if (i === 0) continue;
-      const x = f.x + i * 2.1, z = f.z - 5 + Math.abs(i) * 0.25;
-      muro(scn, x, z, 2.2, 1.05, 0.9, 0, 0xa8946b);
+      const x = f.x + i * 2.1, z = f.z - 5 + Math.abs(i) * 0.25, y = height(x, z);
+      bloqueInvisible(scn, 2.2, 1.45, 0.9, x, y + 0.5, z, 0);
+      for (let fl = 0; fl < 4; fl++) for (let s = 0; s < 3; s++) {
+        sacosL.push(mtx(x - 0.7 + s * 0.7 + (fl % 2) * 0.3 - 0.15, y + 0.13 + fl * 0.26, z + (R() - 0.5) * 0.06, 0, (R() - 0.5) * 0.15, 0, 0.38, 0.14, 0.27));
+      }
+      addCircle(x - 0.55, z, 0.65); addCircle(x + 0.55, z, 0.65);
     }
   }
   function fuerte(scn, fx, fz) {
-    const L = 30, H = 4.6, blanco = 0xe8e2d2;
+    const L = 30, H = 4.6, h = L / 2;
+    const cal = new C.MeshLambertMaterial({ color: lin(0xece5d3), map: tex().revoco }), zocalo = mat(0xa8957a), almenas = [];
     const lado = (x0, z0, x1, z1, hueco) => {
       const n = 7;
       for (let i = 0; i < n; i++) {
         const t = (i + 0.5) / n; if (hueco && Math.abs(t - 0.5) < 0.08) continue;
-        const cx = x0 + (x1 - x0) * t, cz = z0 + (z1 - z0) * t;
-        const a = Math.atan2(-(z1 - z0), x1 - x0), y = height(cx, cz);
-        caja(L / n + 0.1, H + 2, 1, blanco, cx, y + H / 2 - 1, cz, a, scn, true);
+        const cx = x0 + (x1 - x0) * t, cz = z0 + (z1 - z0) * t, a = Math.atan2(-(z1 - z0), x1 - x0), y = height(cx, cz);
+        caja(L / n + 0.1, H + 2, 1, cal, cx, y + H / 2 - 1, cz, a, scn, true);
+        caja(L / n + 0.12, 0.8, 1.06, zocalo, cx, y + 0.1, cz, a, scn, false);
+        for (let q = 0; q < 2; q++) { const o = (q - 0.5) * (L / n) * 0.5; almenas.push(mtx(cx + Math.cos(a) * o, y + H + 1.25, cz - Math.sin(a) * o, 0, a, 0, 0.9, 0.5, 1)); }
         addCircle(cx, cz, 2.3);
       }
     };
-    const h = L / 2;
     lado(fx - h, fz + h, fx + h, fz + h, true); lado(fx - h, fz - h, fx + h, fz - h); lado(fx - h, fz - h, fx - h, fz + h); lado(fx + h, fz - h, fx + h, fz + h);
-    [[-h, -h], [h, -h], [-h, h], [h, h]].forEach(([dx, dz]) => { const y = height(fx + dx, fz + dz); caja(4.5, 8, 4.5, 0xdcd5c3, fx + dx, y + 3, fz + dz, 0, scn, true); addCircle(fx + dx, fz + dz, 3); });
+    instancias(scn, new C.BoxGeometry(1, 1, 1), cal, almenas, true, false);
+    [[-h, -h], [h, -h], [-h, h], [h, h]].forEach(([dx, dz]) => { const y = height(fx + dx, fz + dz); caja(4.5, 8, 4.5, cal, fx + dx, y + 3, fz + dz, 0, scn, true); caja(4.9, 0.4, 4.9, zocalo, fx + dx, y + 7.1, fz + dz, 0, scn, false); addCircle(fx + dx, fz + dz, 3); });
     const y = height(fx, fz);
-    caja(10, 5, 7, 0xd8d0bd, fx, y + 1.8, fz - 4, 0, scn, true); addCircle(fx, fz - 4, 5);
-    const asta = new C.Mesh(new C.CylinderGeometry(0.06, 0.06, 9, 5), mat(0x444444)); asta.position.set(fx + h, height(fx + h, fz + h) + 11, fz + h); scn.add(asta);
-    const ban = new C.Mesh(new C.PlaneGeometry(2.4, 1.6), new C.MeshLambertMaterial({ map: tex().bandera, side: C.DoubleSide }));
+    caja(10, 5, 7, cal, fx, y + 1.8, fz - 4, 0, scn, true); addCircle(fx, fz - 4, 5);
+    const asta = new C.Mesh(new C.CylinderGeometry(0.06, 0.06, 9, 6), mat(0x444444)); asta.position.set(fx + h, height(fx + h, fz + h) + 11, fz + h); scn.add(asta);
+    const bg = new C.PlaneGeometry(2.4, 1.6, 12, 4);
+    const ban = new C.Mesh(bg, new C.MeshLambertMaterial({ map: tex().bandera, side: C.DoubleSide }));
     ban.position.set(fx + h + 1.2, asta.position.y + 3.6, fz + h); scn.add(ban); refs.bandera = ban;
   }
 
-  // ---------- soldados ----------
+  // ---------- soldados articulados ----------
+  const GEO = {};
+  function geo() {
+    if (GEO.muslo) return GEO;
+    GEO.muslo = new C.CylinderGeometry(0.085, 0.072, 0.46, 8); GEO.muslo.translate(0, -0.23, 0);
+    GEO.pierna = new C.CylinderGeometry(0.07, 0.058, 0.44, 8); GEO.pierna.translate(0, -0.22, 0);
+    GEO.bota = new C.BoxGeometry(0.12, 0.11, 0.27); GEO.bota.translate(0, -0.47, -0.04);
+    GEO.alpargata = new C.BoxGeometry(0.1, 0.05, 0.25); GEO.alpargata.translate(0, -0.47, -0.04);
+    GEO.torso = new C.CylinderGeometry(0.21, 0.17, 0.58, 10); GEO.torso.scale(1, 1, 0.62);
+    GEO.brazo = new C.CylinderGeometry(0.062, 0.055, 0.31, 7); GEO.brazo.translate(0, -0.155, 0);
+    GEO.antebrazo = new C.CylinderGeometry(0.052, 0.042, 0.29, 7); GEO.antebrazo.translate(0, -0.145, 0);
+    GEO.mano = new C.SphereGeometry(0.048, 6, 5); GEO.mano.translate(0, -0.31, 0);
+    GEO.cabeza = new C.SphereGeometry(0.112, 12, 10); GEO.cabeza.scale(0.92, 1.08, 1);
+    GEO.cuello = new C.CylinderGeometry(0.05, 0.055, 0.1, 7);
+    GEO.chilaba = new C.CylinderGeometry(0.2, 0.34, 1.08, 12, 1, true);
+    GEO.capucha = new C.SphereGeometry(0.15, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6);
+    GEO.turbante = new C.TorusGeometry(0.105, 0.045, 6, 12);
+    GEO.gorrillo = new C.CylinderGeometry(0.11, 0.125, 0.1, 10); GEO.gorrillo.scale(0.8, 1, 1.15);
+    GEO.casco = new C.SphereGeometry(0.155, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    GEO.borla = new C.SphereGeometry(0.028, 6, 5);
+    GEO.caja = new C.BoxGeometry(1, 1, 1);
+    return GEO;
+  }
   function soldado(team, k) {
-    const g = new C.Group(); g.rotation.order = 'YXZ';
+    const Gm = geo(), g = new C.Group(); g.rotation.order = 'YXZ';
     const L = team === 'L';
-    const piel = (L ? [0xd2a37c, 0xc0916a, 0xb58561] : [0x9c6c4a, 0x8a5c3c, 0xa87754])[k % 3];
-    const uni = L ? [0x6e6c47, 0x666440, 0x737048][k % 3] : [0x8d7b62, 0x6e6352, 0xb5a78a, 0x5a5046, 0x9c8a6c][k % 5];
-    const bota = L ? 0x2a2118 : 0x4a3a28;
-    const parte = (geo, color, x, y, z, padre) => { const m = new C.Mesh(geo, mat(color)); m.position.set(x, y, z); m.castShadow = true; (padre || g).add(m); return m; };
-    const pierna = (x) => { const p = new C.Group(); p.position.set(x, 0.92, 0); g.add(p); parte(new C.BoxGeometry(0.17, 0.82, 0.19), L ? uni : 0x3d342a, 0, -0.41, 0, p); parte(new C.BoxGeometry(0.18, 0.14, 0.28), bota, 0, -0.86, -0.04, p); return p; };
-    const legL = pierna(-0.11), legR = pierna(0.11);
-    const torso = parte(new C.BoxGeometry(0.46, 0.62, 0.27), uni, 0, 1.22, 0);
+    const pielC = (L ? [0xd8a984, 0xc4946c, 0xb98860] : [0x9c6c4a, 0x875a3a, 0xa87754])[k % 3];
+    const uniC = L ? [0x7a7350, 0x726c49, 0x807854][k % 3] : [0x8d7b62, 0x6e6352, 0xbcae90, 0x5a5046, 0x9c8a6c][k % 5];
+    const piel = mat(pielC), uni = mat(uniC), cuero = mat(0x5a3f25);
+    const add = (geo_, m, padre, x, y, z, sx, sy, sz) => { const o = new C.Mesh(geo_, m); o.position.set(x || 0, y || 0, z || 0); if (sx) o.scale.set(sx, sy, sz); o.castShadow = true; (padre || g).add(o); return o; };
+    const cadera = new C.Group(); cadera.position.y = 0.95; g.add(cadera);
+    const pierna = (x) => {
+      const p = new C.Group(); p.position.set(x, 0, 0); cadera.add(p);
+      add(Gm.muslo, L ? uni : mat(0x40362b), p);
+      const rod = new C.Group(); rod.position.y = -0.46; p.add(rod);
+      add(Gm.pierna, L ? mat(0x6a6446) : mat(0x40362b), rod);
+      add(L ? Gm.bota : Gm.alpargata, L ? mat(0x2a2118) : mat(0x6a5236), rod);
+      if (L) add(Gm.caja, mat(0x8a8466), rod, 0, -0.33, 0, 0.15, 0.16, 0.15); // polainas
+      return { p, rod };
+    };
+    const pl = pierna(-0.1), pr = pierna(0.1);
+    const torso = new C.Group(); torso.position.y = 0.95; g.add(torso);
+    add(Gm.torso, uni, torso, 0, 0.3, 0);
     if (L) {
-      parte(new C.BoxGeometry(0.48, 0.09, 0.29), 0x5b4127, 0, 0.95, 0);
-      parte(new C.BoxGeometry(0.07, 0.62, 0.29), 0x5b4127, 0.1, 1.24, 0).rotation.z = 0.5; // correaje
-      parte(new C.BoxGeometry(0.3, 0.12, 0.08), 0x5b4127, 0, 1.0, -0.16); // cartucheras
+      add(Gm.caja, piel, torso, 0, 0.5, -0.115, 0.12, 0.12, 0.02);                // camisa abierta, pecho al aire
+      add(Gm.caja, cuero, torso, 0, 0.02, 0, 0.42, 0.08, 0.28);                   // cinturón
+      add(Gm.caja, cuero, torso, -0.11, 0.06, -0.135, 0.11, 0.1, 0.06);           // cartucheras
+      add(Gm.caja, cuero, torso, 0.11, 0.06, -0.135, 0.11, 0.1, 0.06);
+      const t = add(Gm.caja, cuero, torso, 0, 0.32, 0, 0.05, 0.62, 0.3); t.rotation.z = 0.55; // tirante
+      add(Gm.caja, mat(0x5d5a3c), torso, 0.16, 0.08, 0.1, 0.1, 0.16, 0.1);        // cantimplora
     } else {
-      parte(new C.CylinderGeometry(0.25, 0.37, 0.95, 8), uni, 0, 0.55, 0); // chilaba
-      if (k % 3 === 0) parte(new C.BoxGeometry(0.47, 0.5, 0.28), 0x3c3226, 0, 1.25, 0); // chaleco
-      parte(new C.BoxGeometry(0.06, 0.6, 0.29), 0x4b3a24, -0.1, 1.24, 0).rotation.z = -0.5; // canana
+      add(Gm.chilaba, uni, g, 0, 0.78, 0).material = mat(uniC, null, { side: C.DoubleSide });
+      const b = add(Gm.caja, mat(0x4b3a24), torso, 0, 0.32, 0, 0.06, 0.66, 0.3); b.rotation.z = -0.6; // canana
+      if (k % 3 === 0) add(Gm.caja, mat(0x3c3226), torso, 0, 0.32, 0, 0.4, 0.42, 0.27);             // chaleco
     }
-    const brazo = (x) => { const p = new C.Group(); p.position.set(x, 1.47, 0); g.add(p); parte(new C.BoxGeometry(0.13, 0.6, 0.14), uni, 0, -0.28, 0, p); parte(new C.BoxGeometry(0.1, 0.1, 0.1), piel, 0, -0.6, 0, p); return p; };
-    const armL = brazo(-0.3), armR = brazo(0.3);
-    const head = parte(new C.SphereGeometry(0.12, 8, 6), piel, 0, 1.67, 0);
+    add(Gm.cuello, piel, torso, 0, 0.63, 0);
+    const cabeza = new C.Group(); cabeza.position.y = 0.73; torso.add(cabeza);
+    add(Gm.cabeza, piel, cabeza);
+    add(Gm.caja, piel, cabeza, 0, -0.01, -0.105, 0.025, 0.045, 0.03);  // nariz
+    add(Gm.caja, mat(0x1a1410), cabeza, -0.04, 0.025, -0.1, 0.022, 0.012, 0.01);
+    add(Gm.caja, mat(0x1a1410), cabeza, 0.04, 0.025, -0.1, 0.022, 0.012, 0.01);
     if (L) {
-      if (k % 3 === 2) { const c = parte(new C.SphereGeometry(0.16, 8, 6, 0, 6.3, 0, 1.6), 0x4d5238, 0, 1.7, 0); c.scale.y = 0.85; } // casco
-      else { parte(new C.BoxGeometry(0.21, 0.09, 0.27), 0x3a4632, 0, 1.79, 0); parte(new C.SphereGeometry(0.03, 5, 4), 0xb3261e, 0, 1.79, -0.15); } // gorrillo con borla roja
+      if (k % 3 === 2) add(Gm.casco, mat(0x535a3e), cabeza, 0, 0.02, 0);
+      else { add(Gm.gorrillo, mat(0x3c4a33), cabeza, 0, 0.115, 0); const b = add(Gm.borla, mat(0xb3261e), cabeza, 0, 0.12, -0.14); b.scale.y = 1.3; } // gorrillo con borla roja
     } else {
-      parte(new C.CylinderGeometry(0.145, 0.14, 0.13, 8), [0xe8e0cc, 0xcfc3a5, 0x6b5c45][k % 3], 0, 1.76, 0); // turbante
-      if (k % 4 === 1) parte(new C.BoxGeometry(0.2, 0.05, 0.05), 0x2a2018, 0, 1.6, -0.1); // barba
+      const col = [0xece4d0, 0xd2c6a8, 0x6b5c45][k % 3];
+      if (k % 4 === 3) add(Gm.capucha, uni, cabeza, 0, 0.0, 0.01).rotation.x = -0.3;
+      else { const t = add(Gm.turbante, mat(col), cabeza, 0, 0.07, 0); t.rotation.x = Math.PI / 2; add(Gm.cabeza, mat(col), cabeza, 0, 0.1, 0, 0.85, 0.5, 0.9); }
+      if (k % 2) add(Gm.caja, mat(0x221a12), cabeza, 0, -0.07, -0.08, 0.14, 0.07, 0.05); // barba
     }
-    // arma
+    const brazo = (x) => {
+      const p = new C.Group(); p.position.set(x, 0.55, 0); torso.add(p);
+      add(Gm.brazo, uni, p);
+      const codo = new C.Group(); codo.position.y = -0.31; p.add(codo);
+      add(Gm.antebrazo, L ? piel : uni, codo); // remangado en la Legión
+      add(Gm.mano, piel, codo);
+      return { p, codo };
+    };
+    const bl = brazo(-0.25), br = brazo(0.25);
+    // fusil
     const arma = new C.Group(); g.add(arma);
-    parte(new C.BoxGeometry(0.05, 0.07, 0.75), 0x5a3a20, 0, 0, 0.05, arma);
-    parte(new C.BoxGeometry(0.03, 0.03, 0.55), 0x252525, 0, 0.03, -0.55, arma);
-    parte(new C.BoxGeometry(0.06, 0.12, 0.22), 0x4a2e18, 0, -0.05, 0.45, arma);
-    return { g, legL, legR, armL, armR, torso, head, arma };
+    const madera = mat(0x6a4426), hierro = mat(0x2a2a2a, 'phong', { shininess: 40 });
+    add(Gm.caja, madera, arma, 0, 0, 0.08, 0.05, 0.07, 0.78);
+    add(Gm.caja, madera, arma, 0, -0.05, 0.47, 0.055, 0.13, 0.22);
+    add(Gm.caja, hierro, arma, 0, 0.035, -0.5, 0.025, 0.025, 0.5);
+    add(Gm.caja, hierro, arma, 0, 0.05, 0.12, 0.04, 0.04, 0.16);
+    return { g, cadera, torso, cabeza, legL: pl.p, legR: pr.p, rodL: pl.rod, rodR: pr.rod, armL: bl.p, armR: br.p, codoL: bl.codo, codoR: br.codo, arma };
   }
 
   function avion() {
-    const g = new C.Group(), gris = mat(0x5f6656), oscuro = mat(0x2b2f28);
-    const f = new C.Mesh(new C.CylinderGeometry(0.9, 0.5, 16, 8), gris); f.rotation.x = Math.PI / 2; g.add(f);
-    const morro = new C.Mesh(new C.SphereGeometry(0.9, 8, 6), mat(0x8fa0a8)); morro.position.z = -8; g.add(morro);
+    const g = new C.Group(), gris = mat(0x667060, 'phong', { shininess: 30 }), oscuro = mat(0x2b2f28), cristal = mat(0x9fb3bb, 'phong', { shininess: 90 });
+    const f = new C.Mesh(new C.CylinderGeometry(0.95, 0.4, 16, 12), gris); f.rotation.x = Math.PI / 2; g.add(f);
+    const morro = new C.Mesh(new C.SphereGeometry(0.95, 12, 8), cristal); morro.position.z = -8; morro.scale.z = 1.4; g.add(morro);
     const ala = new C.Mesh(new C.BoxGeometry(22, 0.3, 3.2), gris); ala.position.z = -1.5; g.add(ala);
     const cola = new C.Mesh(new C.BoxGeometry(7, 0.2, 1.8), gris); cola.position.z = 7.2; g.add(cola);
     const deriva = new C.Mesh(new C.BoxGeometry(0.2, 2.6, 2), gris); deriva.position.set(0, 1.2, 7.3); g.add(deriva);
-    [-4.5, 4.5].forEach(x => { const mo = new C.Mesh(new C.CylinderGeometry(0.55, 0.45, 3.6, 8), oscuro); mo.rotation.x = Math.PI / 2; mo.position.set(x, -0.2, -2.6); g.add(mo); });
+    [-4.5, 4.5].forEach(x => { const mo = new C.Mesh(new C.CylinderGeometry(0.6, 0.48, 3.8, 10), oscuro); mo.rotation.x = Math.PI / 2; mo.position.set(x, -0.2, -2.6); g.add(mo); const h = new C.Mesh(new C.CircleGeometry(1.5, 16), new C.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.25 })); h.position.set(x, -0.2, -4.6); g.add(h); });
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, soldado, avion, tex, rng, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, tex, rng, lin, mat, get refs() { return refs; } };
 })();

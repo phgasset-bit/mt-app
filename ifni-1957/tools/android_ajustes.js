@@ -68,4 +68,8 @@ if (process.env.FIRMA_ALMACEN && !b.includes('signingConfigs.release')) {
         }`).replace(/release \{\s*minifyEnabled/, 'release {\n            signingConfig signingConfigs.release\n            minifyEnabled');
 }
 fs.writeFileSync(gr, b);
+// iconos de la app (bandera de España y emblema legionario), generados con tools/gen_iconos.js
+const path = require('path');
+const copia = (de, a) => { for (const f of fs.readdirSync(de)) { const o = path.join(de, f), d = path.join(a, f); if (fs.statSync(o).isDirectory()) { fs.mkdirSync(d, { recursive: true }); copia(o, d); } else fs.copyFileSync(o, d); } };
+copia('recursos/android/res', 'android/app/src/main/res');
 console.log('Proyecto Android ajustado');

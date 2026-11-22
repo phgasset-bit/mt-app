@@ -5,9 +5,10 @@ const Avatar = (() => {
   const PIEL = [0xe2b792, 0xcc9c74, 0xab7a52, 0x7f5636];
   const PELO = [0x1c1612, 0x4a3324, 0x8a6a3a, 0x9c9a94];
   const COSMETICOS = {
+    fisico: { atletico: { nom: 'Atlético' }, cachas: { nom: 'Cachas' }, muycachas: { nom: 'Muy cachas' } },
     tocado: { gorrillo: { nom: 'Gorrillo con borla roja' }, sin: { nom: 'Sin tocado' }, casco: { nom: 'Casco modelo 42', pts: 800 }, gala: { nom: 'Gorrillo de gala, borla dorada', oro: 90 } },
     camisa: { caqui: { nom: 'Camisa caqui de campaña' }, verde: { nom: 'Uniforme verde de paseo', pts: 1500 }, gala: { nom: 'Correaje blanco de gala', oro: 150, rango: 4 } },
-    barba: { ninguna: { nom: 'Afeitado' }, bigote: { nom: 'Bigote', pts: 600 }, gastador: { nom: 'Barba de gastador', oro: 80 } },
+    barba: { corta: { nom: 'Barba corta' }, bigote: { nom: 'Bigote' }, ninguna: { nom: 'Afeitado' }, gastador: { nom: 'Barba de gastador', oro: 80 } },
     panuelo: { no: { nom: 'Sin pañuelo' }, rojo: { nom: 'Pañuelo rojo al cuello', pts: 700 } }
   };
   const HERIDAS = {
@@ -19,7 +20,54 @@ const Avatar = (() => {
   const geo = {};
   function g(nombre, f) { return geo[nombre] || (geo[nombre] = f()); }
 
+  // avatar con el modelo esculpido: cuerpo según físico, cabeza según barba, tocado y detalles en los huesos
+  function construirEsculpido() {
+    const P = Progreso.P, av = P.avatar, M2 = c => World.mat(c, null, { side: C.FrontSide });
+    const fisico = av.fisico || 'cachas', barba = av.barba || 'corta';
+    const piezas = ['cuerpo_' + fisico + '_alta', 'cabeza_' + barba + '_alta'];
+    if (av.tocado === 'gorrillo' || av.tocado === 'gala') piezas.push('gorrillo_alta'); else if (av.tocado === 'casco') piezas.push('casco_alta');
+    const h = Humanos.crear(piezas, Humanos.paletaAvatar(av)), B = h.B;
+    const pon = (hueso, geo, mat, p, s, r) => { const m = new C.Mesh(geo, mat); m.position.copy(Humanos.local(hueso, p)); if (s) m.scale.set(...s); if (r) m.rotation.set(...r); m.castShadow = true; B[hueso].add(m); return m; };
+    const esfera = new C.SphereGeometry(1, 20, 14), caja = new C.BoxGeometry(1, 1, 1), cil = new C.CylinderGeometry(1, 1, 1, 24);
+    const muscular = { atletico: 0, cachas: 1, muycachas: 2 }[fisico];
+    // medallas: pasadores sobre el pecho izquierdo
+    const ids = Object.keys(Progreso.MEDALLAS).filter(id => P.medallas[id]), zp = -0.13 - 0.012 * muscular;
+    ids.forEach((id, i) => {
+      const f = Math.floor(i / 3), c = i % 3, x = -0.05 - c * 0.034, y = 1.40 - f * 0.018;
+      pon('pecho', caja, M2(Progreso.MEDALLAS[id].color), [x, y, zp], [0.032, 0.014, 0.008]);
+      pon('pecho', caja, M2(0xffc400), [x, y, zp - 0.002], [0.008, 0.014, 0.006]);
+    });
+    if (P.medallas.laureada) pon('pecho', cil, World.mat(0xe8b923, 'phong', { shininess: 80 }), [0.085, 1.37, zp + 0.005], [0.022, 0.006, 0.022], [Math.PI / 2, 0, 0]);
+    // tatuaje en la cara exterior del antebrazo izquierdo
+    if (P.equipo.tat && P.equipo.tat !== 'ninguno') {
+      const J = Humanos.man.juntas, e = new C.Vector3(...J.codoI), w = new C.Vector3(...J.munecaI), p = e.clone().lerp(w, 0.42);
+      const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; Progreso.dibujaTatuaje(P.equipo.tat, cv.getContext('2d'), 64, 64, 1.45);
+      const t = new C.CanvasTexture(cv); t.encoding = C.sRGBEncoding;
+      const d = new C.Mesh(new C.PlaneGeometry(0.07, 0.07), new C.MeshLambertMaterial({ map: t, transparent: true, polygonOffset: true, polygonOffsetFactor: -2, depthWrite: false }));
+      d.position.copy(Humanos.local('antebrazoI', [p.x - 0.006, p.y, p.z - 0.045 - 0.006 * muscular])); d.rotation.y = Math.PI; d.rotation.z = -0.2; B.antebrazoI.add(d);
+    }
+    // pañuelo
+    if (av.panuelo === 'rojo') pon('cuello', new C.CylinderGeometry(0.075, 0.1, 0.05, 24, 1, true), World.mat(0xb3261e, null, { side: C.DoubleSide }), [0, 1.5, 0.0]);
+    // heridas de guerra
+    if (P.mostrarHeridas) {
+      const o = Humanos.man.ojoI;
+      if (P.heridas.ojo) {
+        pon('cabeza', esfera, World.mat(0x111111), [o[0], o[1], o[2] - 0.012], [0.019, 0.016, 0.008]);
+        pon('cabeza', new C.TorusGeometry(0.098, 0.0028, 6, 40), World.mat(0x111111), [0, 1.69, 0.0], [1, 1, 1.08], [Math.PI / 2 - 0.35, 0, -0.32]);
+      }
+      if (P.heridas.cicatriz) pon('cabeza', caja, World.mat(0xa05a4a), [0.05, 1.655, -0.088], [0.004, 0.04, 0.004], [0, -0.5, 0.35]);
+      if (P.heridas.cabeza) { pon('cabeza', cil, World.mat(0xf0ece2), [0, 1.735, 0.005], [0.091, 0.03, 0.101]); pon('cabeza', esfera, World.mat(0x8a1c1c), [0.045, 1.738, -0.08], [0.012, 0.01, 0.005]); }
+    }
+    // fusil a la espalda
+    const f = new C.Group(); f.position.copy(Humanos.local('pecho', [0, 1.2, 0.17 + 0.01 * muscular])); f.rotation.z = -0.75; B.pecho.add(f);
+    const fm = (c, y, sx, sy, sz) => { const m = new C.Mesh(caja, World.mat(c)); m.position.y = y; m.scale.set(sx, sy, sz); m.castShadow = true; f.add(m); };
+    fm(0x6a4426, 0, 0.05, 0.95, 0.06); fm(0x2a2a2a, 0.62, 0.025, 0.35, 0.025);
+    B.brazoI.rotation.z = 0.1; B.brazoD.rotation.z = -0.1;
+    const raiz = new C.Group(); raiz.add(h.g); h.g.rotation.y = Math.PI; return raiz;
+  }
+
   function construir(o) {
+    if (typeof Humanos !== 'undefined' && Humanos.listo) return construirEsculpido();
     const P = Progreso.P, av = P.avatar, grupo = new C.Group();
     const piel = M(PIEL[av.piel] || PIEL[0]), pelo = M(PELO[av.pelo] || PELO[0]);
     const tela = av.camisa === 'caqui' ? 0x7a7350 : 0x4d5a3a, pantalon = av.camisa === 'caqui' ? 0x6c6747 : 0x404b31;
@@ -134,8 +182,8 @@ const Avatar = (() => {
     if (w && (c.width !== Math.round(w * Math.min(2, devicePixelRatio)) || c.height !== Math.round(h * Math.min(2, devicePixelRatio)))) { rend.setPixelRatio(Math.min(2, devicePixelRatio)); rend.setSize(w, h, false); camara.aspect = w / h; camara.updateProjectionMatrix(); }
     if (arrastre == null) angulo += 0.004;
     modelo.rotation.y = angulo;
-    if (enfoque === 'cara') { camara.position.set(0, 1.7, 1.05); camara.lookAt(0, 1.66, 0); }
-    else { camara.position.set(0, 1.15, 4.2); camara.lookAt(0, 0.95, 0); }
+    if (enfoque === 'cara') { camara.position.set(0, 1.66, 1.0); camara.lookAt(0, 1.63, 0); }
+    else { camara.position.set(0, 1.0, 4.3); camara.lookAt(0, 0.92, 0); }
     rend.render(escena, camara);
   }
   return { COSMETICOS, HERIDAS, PIEL, PELO, montar, actualizar, set activo(v) { activo = v; }, set enfoque(v) { enfoque = v; } };

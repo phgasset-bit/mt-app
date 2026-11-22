@@ -7,6 +7,7 @@
   const H = (x, z) => World.height(x, z);
   const lin = World.lin;
 
+  Humanos.cargar();
   // ---------- ajustes ----------
   const AJ = { sens: 1, vol: 0.9, auto: true, zurdo: false, dif: 1, calidad: 'alta', calAuto: true };
   try { Object.assign(AJ, JSON.parse(localStorage.getItem('ifni_aj') || '{}')); } catch (e) {}
@@ -95,8 +96,38 @@
   }
   const brazos = new THREE.Group(); vm.add(brazos);
   let texTat = null;
+  // antebrazo esculpido colocado de la muñeca (en el arma) hacia el codo (fuera de pantalla)
+  let matAnte = null;
+  function antebrazoEsculpido(lado, mano, codo, pulgar, paleta) {
+    const J = Humanos.man.juntas, W = new V3(...J['muneca' + lado]), E = new V3(...J['codo' + lado]);
+    const as = E.clone().sub(W).normalize(), bs = new V3(0, 0, -1).addScaledVector(as, -as.z * -1).projectOnPlane(as).normalize();
+    const at = codo.clone().sub(mano).normalize(), bt = pulgar.clone().projectOnPlane(at).normalize();
+    const Ms = new THREE.Matrix4().makeBasis(as, bs, new V3().crossVectors(as, bs)), Mt = new THREE.Matrix4().makeBasis(at, bt, new V3().crossVectors(at, bt));
+    const R = Mt.multiply(Ms.transpose());
+    const m = new THREE.Matrix4().makeTranslation(mano.x, mano.y, mano.z).multiply(R).multiply(new THREE.Matrix4().makeTranslation(-W.x, -W.y, -W.z));
+    matAnte = matAnte || new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, fog: false });
+    const malla = new THREE.Mesh(Humanos.geometria('antebrazo' + lado, paleta), matAnte);
+    malla.matrixAutoUpdate = false; malla.matrix.copy(m); malla.frustumCulled = false; brazos.add(malla);
+    return { m, W, E };
+  }
   function construyeBrazos(izqZ, tat) {
     while (brazos.children.length) brazos.remove(brazos.children[0]);
+    if (Humanos.listo) {
+      const paleta = Humanos.paletaAvatar(Progreso.P.avatar);
+      const hI = new V3(-0.01, -0.07, izqZ), cI = new V3(-0.16, -0.42, 0.14), hD = new V3(0.025, -0.1, 0.17), cD = new V3(0.16, -0.42, 0.42);
+      const iz = antebrazoEsculpido('I', hI, cI, new V3(0.3, 0.6, -1), paleta);
+      antebrazoEsculpido('D', hD, cD, new V3(-0.4, 1, -0.4), paleta);
+      if (tat && tat !== 'ninguno') {
+        const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+        Progreso.dibujaTatuaje(tat, c.getContext('2d'), 64, 64, 1.45);
+        if (texTat) texTat.dispose(); texTat = new THREE.CanvasTexture(c); texTat.encoding = THREE.sRGBEncoding;
+        const p = iz.W.clone().lerp(iz.E, 0.45).applyMatrix4(iz.m), eje = cI.clone().sub(hI).normalize();
+        const z = new V3(-0.22, 0.22, 0.42).sub(p).normalize(), y = eje.clone().addScaledVector(z, -eje.dot(z)).normalize(), x = new V3().crossVectors(y, z);
+        const dec = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.06), new THREE.MeshLambertMaterial({ map: texTat, transparent: true, fog: false, polygonOffset: true, polygonOffsetFactor: -2, depthWrite: false }));
+        dec.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)); dec.position.copy(p).addScaledVector(z, 0.04); brazos.add(dec);
+      }
+      return;
+    }
     const hI = new V3(-0.005, -0.05, izqZ), cI = new V3(-0.2, -0.32, 0.1), hD = new V3(0.02, -0.07, 0.15), cD = new V3(0.13, -0.31, 0.12);
     tubo(0.046, 0.036, cI, hI, mPiel, brazos); tubo(0.062, 0.058, cI.clone().add(new V3(-0.06, -0.1, 0.12)), cI, mManga, brazos);
     tubo(0.048, 0.037, cD, hD, mPiel, brazos);

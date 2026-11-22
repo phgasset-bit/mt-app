@@ -5,7 +5,7 @@ const Progreso = (() => {
   // ---------- escalafón ----------
   const RANGOS = [
     { nom: 'Legionario', xp: 0, ins: 'leg', ventaja: 'Mauser y escuadra de 5' },
-    { nom: 'Legionario de 1ª', xp: 2400, ins: 'r1', ventaja: 'Desbloquea el subfusil Z-45' },
+    { nom: 'Legionario de 1ª', xp: 2400, ins: 'r1', ventaja: '+1 granada', gran: 1 },
     { nom: 'Cabo', xp: 7500, ins: 'r2', ventaja: '+1 legionario en tu escuadra', esc: 1 },
     { nom: 'Cabo 1º', xp: 15000, ins: 'r3', ventaja: 'Desbloquea el subfusil naranjero' },
     { nom: 'Sargento', xp: 27000, ins: 'o1', ventaja: '+1 granada y fusil ametrallador FAO', gran: 1 },
@@ -34,7 +34,7 @@ const Progreso = (() => {
   // ---------- armería ----------
   const ARMAS = {
     mauser: { nom: 'Mauser M43 7,92', desc: 'Fusil de cerrojo reglamentario. Cinco cartuchos, mata de un disparo.', rango: 0, pts: 0, oro: 0, tipo: 'mauser', carg: 5, res: 45, cad: 1.2, dmg: 120, disp: 0.03, dispM: 0.002, rec: 2.6, auto: false, retro: 0.06 },
-    z45: { nom: 'Subfusil Star Z-45', desc: 'Subfusil de 9 mm. Cadencia alta, alcance corto.', rango: 1, pts: 2000, oro: 120, tipo: 'z45', carg: 30, res: 120, cad: 0.13, dmg: 34, disp: 0.045, dispM: 0.018, rec: 2.3, auto: true, retro: 0.018 },
+    z45: { nom: 'Subfusil Star Z-45', desc: 'Subfusil de 9 mm. Cadencia alta, alcance corto.', rango: 0, pts: 2000, oro: 120, tipo: 'z45', carg: 30, res: 120, cad: 0.13, dmg: 34, disp: 0.045, dispM: 0.018, rec: 2.3, auto: true, retro: 0.018 },
     naranjero: { nom: 'Subfusil naranjero', desc: 'Copia valenciana del MP-28 con cargador lateral de 32.', rango: 3, pts: 4500, oro: 200, tipo: 'z45', carg: 32, res: 128, cad: 0.1, dmg: 32, disp: 0.05, dispM: 0.02, rec: 2.6, auto: true, retro: 0.02 },
     fao: { nom: 'Fusil ametrallador FAO', desc: 'Arma de pelotón de 7,92. Pega fuerte y se recarga despacio.', rango: 4, pts: 8000, oro: 320, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 80, disp: 0.055, dispM: 0.012, rec: 3.6, auto: true, retro: 0.035 },
     cetme: { nom: 'CETME modelo A', desc: 'Fusil de asalto español de 1958, los primeros en pruebas. Preciso y automático.', rango: 6, pts: 14000, oro: 480, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 72, disp: 0.035, dispM: 0.006, rec: 2.4, auto: true, retro: 0.028 }
@@ -85,7 +85,7 @@ const Progreso = (() => {
   }
 
   // ---------- perfil ----------
-  const BASE = { nombre: 'Legionario', xp: 0, pts: 300, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 0, pelo: 0, barba: 'ninguna', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [] };
+  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [] };
   let P = JSON.parse(JSON.stringify(BASE));
   try { const s = JSON.parse(localStorage.getItem('ifni_perfil') || 'null'); if (s) P = Object.assign(P, s); } catch (e) {}
   const guardar = () => { try { localStorage.setItem('ifni_perfil', JSON.stringify(P)); } catch (e) {} };

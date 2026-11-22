@@ -429,7 +429,16 @@ const World = (() => {
     GEO.caja = new C.BoxGeometry(1, 1, 1);
     return GEO;
   }
+  // soldado con el modelo esculpido y esqueleto (si está cargado); si no, el modelo sencillo
   function soldado(team, k) {
+    if (typeof Humanos !== 'undefined' && Humanos.listo) {
+      const h = team === 'L' ? Humanos.legionario(k) : Humanos.enemigo(k), B = h.B, g = h.g; g.rotation.order = 'YXZ';
+      const arma = new C.Group(); g.add(arma);
+      const madera = mat(0x6a4426), hierro = mat(0x2a2a2a, 'phong', { shininess: 40 }), Gm = geo();
+      const pz = (m, x, y, z, sx, sy, sz) => { const o = new C.Mesh(Gm.caja, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; arma.add(o); };
+      pz(madera, 0, 0, 0.08, 0.05, 0.07, 0.78); pz(madera, 0, -0.05, 0.47, 0.055, 0.13, 0.22); pz(hierro, 0, 0.035, -0.5, 0.025, 0.025, 0.5); pz(hierro, 0, 0.05, 0.12, 0.04, 0.04, 0.16);
+      return { g, cadera: B.cadera, torso: B.columna, cabeza: B.cabeza, legL: B.musloI, legR: B.musloD, rodL: B.piernaI, rodR: B.piernaD, armL: B.brazoI, armR: B.brazoD, codoL: B.antebrazoI, codoR: B.antebrazoD, arma, humano: true };
+    }
     const Gm = geo(), g = new C.Group(); g.rotation.order = 'YXZ';
     const L = team === 'L';
     const pielC = (L ? [0xd8a984, 0xc4946c, 0xb98860] : [0x9c6c4a, 0x875a3a, 0xa87754])[k % 3];

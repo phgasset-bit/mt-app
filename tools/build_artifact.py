@@ -13,4 +13,6 @@ assert 'src="js/' not in s, 'quedan scripts sin incrustar'
 (dist / 'index.html').write_text(s)
 if (dist / 'audio').exists(): shutil.rmtree(dist / 'audio')
 shutil.copytree(www / 'audio', dist / 'audio')
+if (dist / 'modelos').exists(): shutil.rmtree(dist / 'modelos')
+shutil.copytree(www / 'modelos', dist / 'modelos')
 print('dist/index.html', len(s) // 1024, 'KB')

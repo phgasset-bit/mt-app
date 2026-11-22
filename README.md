@@ -23,9 +23,15 @@ Lugares, fechas y unidades son históricos; el detalle táctico de cada combate 
 - **Ingresos**: vídeo recompensado (doblar pesetas, revivir, oro), intersticial cada 2 misiones y compras (oro, sin anuncios, Pack Veterano). En el navegador funcionan en modo prueba.
 - La estrategia completa está en [docs/MONETIZACION.md](docs/MONETIZACION.md).
 
+## Modelos humanos
+
+`tools/gen_humanos.py` esculpe los personajes con campos de distancia (anatomía con pectorales, deltoides, bíceps, antebrazos, cuádriceps y gemelos; cara con cráneo, mandíbula, pómulos, nariz, párpados, labios y orejas) y les da ropa con volumen: camisa remangada con escote, pantalón bombacho con pliegues, polainas, botas, correaje con cartucheras, hebilla y cantimplora. Genera tres físicos (atlético, cachas, muy cachas), cuatro barbas, gorrillo y casco, y el enemigo con chilaba y turbante, a dos niveles de detalle, con esqueleto de 17 huesos y pesos de piel. Resultado en `www/modelos/` (unos 4 MB). `www/js/humanos.js` los carga, aplica los colores (piel, pelo, uniforme) y monta cada soldado con su esqueleto animado. Los ojos son globos oculares aparte, con iris y pupila.
+
 ## Mi legionario
 
-Avatar 3D personalizable: apellido, piel, pelo, barba (bigote o de gastador), tocado (gorrillo, casco, gorrillo de gala), uniforme y pañuelo. Muestra las medallas como pasadores en el pecho, el tatuaje en el antebrazo y las heridas de guerra ganadas en combate (parche en el ojo, cicatriz, cabeza vendada).
+Avatar 3D personalizable sobre el modelo esculpido: apellido, piel, pelo, físico (atlético, cachas, muy cachas), barba (corta, bigote, afeitado o de gastador), tocado (gorrillo, casco, gorrillo de gala), uniforme y pañuelo. Muestra las medallas como pasadores en el pecho, el tatuaje en el antebrazo y las heridas de guerra ganadas en combate (parche en el ojo, cicatriz, cabeza vendada).
+
+La primera vez que se abre el juego hay un alistamiento en dos pasos: crear el legionario y comprar arma con las 2.500 pesetas de enganche.
 
 ## La escuadra
 

@@ -29,6 +29,7 @@ const UI = (() => {
     ['campana', 'avatar', 'armeria', 'hoja', 'ranking', 'tienda'].forEach(t => $('tab-' + t).hidden = t !== nombre);
     Avatar.activo = nombre === 'avatar';
     ({ campana, avatar, armeria, hoja, ranking, tienda })[nombre]();
+    if (alistando) bandaAlistamiento(nombre);
     cabecera();
   }
 
@@ -42,10 +43,23 @@ const UI = (() => {
     });
   }
 
+  // ---------- alistamiento: primera vez, crear el legionario y comprar arma ----------
+  let alistando = false;
+  function alistamiento() { alistando = true; tab('avatar'); }
+  function bandaAlistamiento(nombre) {
+    const pasos = {
+      avatar: ['Alistamiento · paso 1 de 2', 'Crea tu legionario: apellido, físico, barba y cara. Lo que ganes en combate (medallas, tatuajes, heridas) se verá en él.', 'Siguiente: armería', () => tab('armeria')],
+      armeria: ['Alistamiento · paso 2 de 2', 'Tienes ₧ ' + fmt(Progreso.P.pts) + ' de enganche. Compra tu arma (el subfusil Z-45 ya está a tu alcance) o guárdalas para más adelante.', '¡A filas!', () => { alistando = false; Progreso.P.alistado = true; Progreso.guardar(); tab('campana'); toast('¡Bienvenido a la Legión!'); Snd.voz('coro_legion', 1); }]
+    };
+    const p = pasos[nombre]; if (!p) return;
+    $('tab-' + nombre).insertAdjacentHTML('afterbegin', '<div class="alistamiento"><span><b>' + p[0] + '</b><small>' + p[1] + '</small></span><button type="button" class="boton" id="bAlist">' + p[2] + '</button></div>');
+    $('bAlist').onclick = e => { e.stopPropagation(); p[3](); };
+  }
+
   // ---------- Mi legionario ----------
   function avatar() {
     const P = Progreso.P, A = Avatar.COSMETICOS, r = Progreso.rango(), R = Progreso.RANGOS;
-    const nombres = { tocado: 'Tocado', camisa: 'Uniforme', barba: 'Barba', panuelo: 'Pañuelo' };
+    const nombres = { fisico: 'Físico', tocado: 'Tocado', camisa: 'Uniforme', barba: 'Barba', panuelo: 'Pañuelo' };
     let h = '<div class="avatar-grid"><div class="visor"><canvas id="avCanvas"></canvas><div class="fila visor-bt"><button type="button" class="mini" data-enf="cuerpo">Cuerpo</button><button type="button" class="mini" data-enf="cara">Cara</button></div></div><div class="av-opc">';
     h += '<label class="ajuste" for="avNombre">Apellido <input id="avNombre" maxlength="16" placeholder="Por ejemplo, Millán" value="' + esc(P.avatar.nombre) + '"></label>';
     h += '<div class="av-fila"><span>Piel</span>' + Avatar.PIEL.map((c, i) => '<button type="button" class="muestra' + (P.avatar.piel === i ? ' on' : '') + '" data-piel="' + i + '" style="background:#' + c.toString(16).padStart(6, '0') + '" aria-label="Tono ' + (i + 1) + '"></button>').join('') + '</div>';
@@ -53,7 +67,7 @@ const UI = (() => {
     for (const cat in A) {
       h += '<div class="av-cat"><span>' + nombres[cat] + '</span><div class="chips">';
       for (const id in A[cat]) {
-        const o = A[cat][id], tiene = P.cosmeticos[cat + ':' + id], puesto = P.avatar[cat] === id, bloq = o.rango && r < o.rango;
+        const o = A[cat][id], tiene = P.cosmeticos[cat + ':' + id] || (!o.pts && !o.oro), puesto = (P.avatar[cat] || { fisico: 'cachas', barba: 'corta' }[cat]) === id, bloq = o.rango && r < o.rango;
         let etiqueta = o.nom;
         if (!tiene) etiqueta += bloq ? ' · ' + R[o.rango].nom : o.oro ? ' · ◆ ' + o.oro : ' · ₧ ' + fmt(o.pts);
         h += '<button type="button" class="opc' + (puesto ? ' on' : '') + (o.oro && !tiene ? ' oro' : '') + '" data-cat="' + cat + '" data-id="' + id + '"' + (bloq && !tiene ? ' disabled' : '') + '>' + etiqueta + '</button>';
@@ -75,7 +89,7 @@ const UI = (() => {
       if (d.pelo) { P.avatar.pelo = +d.pelo; refresca(); avatar(); return; }
       if (d.cat) {
         const o = A[d.cat][d.id], k = d.cat + ':' + d.id;
-        if (!P.cosmeticos[k]) {
+        if (!P.cosmeticos[k] && (o.pts || o.oro)) {
           if (o.oro) { if (P.oro < o.oro) { tab('tienda'); toast('Te falta oro'); return; } if (!(await confirmar('Comprar con oro', o.nom + ' por ' + o.oro + ' de oro.', 'Comprar'))) return; }
           if (!Progreso.gastar(o.pts || 0, o.oro || 0)) { toast('Te faltan pesetas'); return; }
           P.cosmeticos[k] = 1; toast('Comprado: ' + o.nom);
@@ -223,6 +237,7 @@ const UI = (() => {
       setTimeout(() => Snd.voz('viva_legion', 1), 1900);
       setTimeout(() => Snd.voz('coro_viva', 1), 3100);
       $('portada').hidden = true; alEntrar && alEntrar();
+      if (!Progreso.P.alistado) Humanos.cargar().then(() => alistamiento());
     };
   }
 

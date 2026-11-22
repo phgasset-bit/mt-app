@@ -14,5 +14,8 @@ assert 'src="js/' not in s, 'quedan scripts sin incrustar'
 if (dist / 'audio').exists(): shutil.rmtree(dist / 'audio')
 shutil.copytree(www / 'audio', dist / 'audio')
 if (dist / 'modelos').exists(): shutil.rmtree(dist / 'modelos')
-shutil.copytree(www / 'modelos', dist / 'modelos')
+(dist / 'modelos').mkdir(exist_ok=True)
+shutil.copy(www / 'modelos' / 'humanos.json', dist / 'modelos' / 'humanos.json')
+import base64
+(dist / 'modelos' / 'humanos.b64.txt').write_text(base64.b64encode((www / 'modelos' / 'humanos.bin').read_bytes()).decode())
 print('dist/index.html', len(s) // 1024, 'KB')

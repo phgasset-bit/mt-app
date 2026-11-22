@@ -12,7 +12,10 @@ const Humanos = (() => {
 
   function cargar() {
     if (promesa) return promesa;
-    promesa = Promise.all([fetch('modelos/humanos.json').then(r => r.json()), fetch('modelos/humanos.bin').then(r => r.arrayBuffer())])
+    // el binario va tal cual en la app; en la versión web publicada va en base64 como texto
+    const binario = () => fetch('modelos/humanos.bin').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+      .catch(() => fetch('modelos/humanos.b64.txt').then(r => r.text()).then(t => { const s = atob(t.trim()), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; }));
+    promesa = Promise.all([fetch('modelos/humanos.json').then(r => r.json()), binario()])
       .then(([m, b]) => { man = m; bin = b; listo = true; return true; })
       .catch(() => { listo = false; return false; });
     return promesa;

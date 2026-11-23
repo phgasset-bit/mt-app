@@ -37,7 +37,17 @@ const Progreso = (() => {
     z45: { nom: 'Subfusil Star Z-45', desc: 'Subfusil de 9 mm. Cadencia alta, alcance corto.', rango: 0, pts: 2000, oro: 120, tipo: 'z45', carg: 30, res: 120, cad: 0.13, dmg: 34, disp: 0.045, dispM: 0.018, rec: 2.3, auto: true, retro: 0.018 },
     naranjero: { nom: 'Subfusil naranjero', desc: 'Copia valenciana del MP-28 con cargador lateral de 32.', rango: 3, pts: 4500, oro: 200, tipo: 'z45', carg: 32, res: 128, cad: 0.1, dmg: 32, disp: 0.05, dispM: 0.02, rec: 2.6, auto: true, retro: 0.02 },
     fao: { nom: 'Fusil ametrallador FAO', desc: 'Arma de pelotón de 7,92. Pega fuerte y se recarga despacio.', rango: 4, pts: 8000, oro: 320, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 80, disp: 0.055, dispM: 0.012, rec: 3.6, auto: true, retro: 0.035 },
-    cetme: { nom: 'CETME modelo A', desc: 'Fusil de asalto español de 1958, los primeros en pruebas. Preciso y automático.', rango: 6, pts: 14000, oro: 480, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 72, disp: 0.035, dispM: 0.006, rec: 2.4, auto: true, retro: 0.028 }
+    cetme: { nom: 'CETME modelo A', desc: 'Fusil de asalto español de 1958, los primeros en pruebas. Preciso y automático.', rango: 6, pts: 14000, oro: 480, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 72, disp: 0.035, dispM: 0.006, rec: 2.4, auto: true, retro: 0.028 },
+    astra: { nom: 'Pistola Astra 400', desc: 'El «puro»: pistola reglamentaria de 9 mm Largo. Ocho cartuchos, se saca y se recarga en un momento.', rango: 0, pts: 900, oro: 50, tipo: 'z45', carg: 8, res: 48, cad: 0.26, dmg: 46, disp: 0.04, dispM: 0.014, rec: 1.4, auto: false, retro: 0.03, pistola: true },
+    star: { nom: 'Pistola Star Super', desc: 'Pistola Star de 9 mm Largo, de las últimas en llegar. Nueve cartuchos y más precisa.', rango: 2, pts: 2600, oro: 110, tipo: 'z45', carg: 9, res: 54, cad: 0.22, dmg: 50, disp: 0.032, dispM: 0.01, rec: 1.3, auto: false, retro: 0.028, pistola: true }
+  };
+
+  // ---------- granadas y arma blanca ----------
+  const EXTRAS = {
+    bayoneta: { nom: 'Machete-bayoneta Bolo', desc: 'El machete reglamentario. Botón CUCHILLO cuando tengas a un enemigo a un paso.', pts: 0, oro: 0, grupo: 'blanca' },
+    cuchillo: { nom: 'Cuchillo de monte', desc: 'Más ligero: golpe más rápido y con algo más de alcance.', pts: 1800, oro: 70, grupo: 'blanca' },
+    bolsa: { nom: 'Bolsa de granadas', desc: 'Dos granadas de mano más en cada misión.', pts: 1500, oro: 60, grupo: 'granadas' },
+    defensiva: { nom: 'Granadas defensivas', desc: 'Con camisa de metralla: más radio de acción. Lánzalas a cubierto.', pts: 3200, oro: 120, grupo: 'granadas' }
   };
 
   // ---------- tatuajes (en el antebrazo, visibles en primera persona) ----------
@@ -85,7 +95,7 @@ const Progreso = (() => {
   }
 
   // ---------- perfil ----------
-  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [] };
+  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [], extras: { bayoneta: 1 } };
   let P = JSON.parse(JSON.stringify(BASE));
   try { const s = JSON.parse(localStorage.getItem('ifni_perfil') || 'null'); if (s) P = Object.assign(P, s); } catch (e) {}
   const guardar = () => { try { localStorage.setItem('ifni_perfil', JSON.stringify(P)); } catch (e) {} };
@@ -217,5 +227,5 @@ const Progreso = (() => {
   function reiniciar() { P = JSON.parse(JSON.stringify(BASE)); guardar(); }
 
   Nativo.iniciarPagos(PRODUCTOS, entregar);
-  return { euros, bolsaPara, RANGOS, ARMAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
+  return { euros, bolsaPara, RANGOS, ARMAS, EXTRAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
 })();

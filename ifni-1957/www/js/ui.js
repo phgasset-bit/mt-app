@@ -126,7 +126,7 @@ const UI = (() => {
     for (const id in A) {
       const a = A[id], tiene = P.armas[id], eq = P.equipo.p === id ? 'Principal' : P.equipo.s === id ? 'Secundaria' : '';
       const sello = { z45: 'Recomendado', cetme: 'Prototipo 1958', fao: 'Potencia de fuego' }[id];
-      h += '<div class="carta' + (eq ? ' eq' : '') + '"><div class="vitrina">' + Laminas.lamina(id, { mauser: '7,92 × 57 mm', z45: '9 mm Largo', naranjero: '9 mm Largo', fao: '7,92 × 57 mm', cetme: '7,92 × 40 mm' }[id]) + (sello && !tiene ? '<span class="sello">' + sello + '</span>' : '') + '</div><b>' + esc(a.nom) + '</b><small>' + esc(a.desc) + '</small>' + barras(a) + '<div class="acc">';
+      h += '<div class="carta' + (eq ? ' eq' : '') + '"><div class="vitrina">' + Laminas.lamina(id, { mauser: '7,92 × 57 mm', z45: '9 mm Largo', naranjero: '9 mm Largo', fao: '7,92 × 57 mm', cetme: '7,92 × 40 mm', astra: '9 mm Largo', star: '9 mm Largo' }[id]) + (sello && !tiene ? '<span class="sello">' + sello + '</span>' : '') + '</div><b>' + esc(a.nom) + '</b><small>' + esc(a.desc) + '</small>' + barras(a) + '<div class="acc">';
       if (tiene) {
         h += eq ? '<span class="chip">' + eq + '</span>' : '';
         if (P.equipo.p !== id) h += '<button type="button" class="mini" data-eq="p" data-id="' + id + '">Principal</button>';
@@ -136,6 +136,15 @@ const UI = (() => {
         else h += '<span class="chip gris">Requiere ' + R[a.rango].nom + '</span>';
         h += '<button type="button" class="mini oro" data-buyoro="' + id + '" data-oro="' + a.oro + '">' + precio(0, a.oro) + '</button>';
       }
+      h += '</div></div>';
+    }
+    const X = Progreso.EXTRAS, ex = P.extras || (P.extras = { bayoneta: 1 });
+    h += '</div><h3>Granadas y arma blanca</h3><p class="nota">Las granadas se lanzan con el botón GRANADA. El botón CUCHILLO aparece cuando tienes a un enemigo a un paso.</p><div class="cartas">';
+    for (const id in X) {
+      const x = X[id], tiene = ex[id];
+      h += '<div class="carta' + (tiene ? ' eq' : '') + '"><div class="vitrina">' + Laminas.lamina(id) + '</div><b>' + esc(x.nom) + '</b><small>' + esc(x.desc) + '</small><div class="acc">';
+      if (tiene) h += '<span class="chip">En tu equipo</span>';
+      else h += '<button type="button" class="mini" data-extra="' + id + '" data-pts="' + x.pts + '">' + precio(x.pts, 0) + '</button><button type="button" class="mini oro" data-extra="' + id + '" data-oro="' + x.oro + '">' + precio(0, x.oro) + '</button>';
       h += '</div></div>';
     }
     h += '</div><h3>Tatuajes</h3><p class="nota">Se ven en tu antebrazo mientras combates.</p><div class="cartas">';
@@ -156,6 +165,7 @@ const UI = (() => {
       if (d.eq) { if (d.eq === 'p') { if (P.equipo.s === d.id) P.equipo.s = P.equipo.p; P.equipo.p = d.id; } else P.equipo.s = d.id; Progreso.guardar(); armeria(); toast('Equipo actualizado'); }
       else if (d.buy) { if (await conseguir(+d.pts, 0, A[d.buy].nom) && Progreso.gastar(+d.pts, 0)) { P.armas[d.buy] = 1; if (!P.equipo.s) P.equipo.s = d.buy; Progreso.guardar(); toast('Comprado: ' + A[d.buy].nom); armeria(); } else toast('Te faltan pesetas'); }
       else if (d.buyoro) { const tenia = P.oro >= +d.oro; if (!(await conseguir(0, +d.oro, A[d.buyoro].nom))) return; if (!tenia || await confirmar('Comprar con oro', A[d.buyoro].nom + ' por ' + d.oro + ' de oro (' + eur(Progreso.euros(0, +d.oro)) + ').', 'Comprar')) { Progreso.gastar(0, +d.oro); P.armas[d.buyoro] = 1; if (!P.equipo.s) P.equipo.s = d.buyoro; Progreso.guardar(); toast('Comprado: ' + A[d.buyoro].nom); armeria(); } }
+      else if (d.extra) { const x = Progreso.EXTRAS[d.extra], pts = +d.pts || 0, oro = +d.oro || 0; if (!(await conseguir(pts, oro, x.nom))) return; if (Progreso.gastar(pts, oro)) { (P.extras || (P.extras = { bayoneta: 1 }))[d.extra] = 1; Progreso.guardar(); toast('Comprado: ' + x.nom); armeria(); } else toast(oro ? 'Te falta oro' : 'Te faltan pesetas'); }
       else if (d.tateq) { P.equipo.tat = d.tateq; Progreso.guardar(); armeria(); }
       else if (d.tatbuy) { const t = T[d.tatbuy]; if (!(await conseguir(t.pts, t.oro, t.nom))) return; if (Progreso.gastar(t.pts, t.oro)) { P.tatuajes[d.tatbuy] = 1; P.equipo.tat = d.tatbuy; Progreso.guardar(); toast('Tatuaje: ' + t.nom); armeria(); } else toast('Te faltan pesetas'); }
       cabecera();

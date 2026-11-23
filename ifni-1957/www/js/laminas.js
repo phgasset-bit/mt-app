@@ -75,6 +75,30 @@ const Laminas = (() => {
       metal(id, 'M376 51 L392 51 L392 60 L376 60 Z') + '<path d="M380 51 L380 60 M384 51 L384 60 M388 51 L388 60" stroke="#0a0b0c" stroke-width=".7"/>' +
       '<circle cx="132" cy="44" r="6" fill="' + B(id) + '" stroke="#0c0d0e" stroke-width=".8"/>' +
       metal(id, 'M326 34 L332 34 L332 42 L326 42 Z') + metal(id, 'M200 44 L212 40 L212 48 L200 48 Z')
+,
+    astra: id =>
+      metal(id, 'M150 44 L262 44 L262 60 L150 60 Z', true) + metal(id, 'M262 47 L300 47 L300 57 L262 57 Z') +
+      metal(id, 'M150 60 L205 60 L205 66 L150 66 Z') + madera(id, 'M152 62 L190 62 L178 104 L142 104 Z') +
+      '<path d="M190 66 Q192 80 206 80 Q216 80 216 66" fill="none" stroke="#1d1f21" stroke-width="2.4"/><path d="M201 66 L200 75" stroke="#1d1f21" stroke-width="2"/>' +
+      metal(id, 'M146 40 L156 40 L156 46 L146 46 Z') + metal(id, 'M294 43 L298 43 L298 48 L294 48 Z') + '<path d="M158 50 L196 50 M158 54 L196 54" stroke="#0a0b0c" stroke-width=".7"/>',
+    star: id =>
+      metal(id, 'M148 44 L270 44 L270 59 L148 59 Z', true) + metal(id, 'M270 48 L282 48 L282 56 L270 56 Z') +
+      metal(id, 'M148 59 L208 59 L208 65 L148 65 Z') + madera(id, 'M150 62 L190 62 L182 106 L146 106 Z') +
+      '<path d="M190 65 Q192 79 206 79 Q216 79 216 65" fill="none" stroke="#1d1f21" stroke-width="2.4"/><path d="M201 65 L200 74" stroke="#1d1f21" stroke-width="2"/>' +
+      metal(id, 'M138 46 L150 42 L150 52 L140 54 Z') + metal(id, 'M264 40 L268 40 L268 45 L264 45 Z') + '<path d="M156 48 L186 48 M156 52 L186 52 M156 56 L186 56" stroke="#0a0b0c" stroke-width=".7"/>',
+    bayoneta: id =>
+      metal(id, 'M150 50 L330 46 L352 56 L330 64 L150 62 Z', true) + '<path d="M156 56 L330 55" stroke="#0a0b0c" stroke-width=".6"/>' +
+      metal(id, 'M140 40 L152 40 L152 74 L140 74 Z') + madera(id, 'M62 48 L140 48 L140 66 L62 66 Z') + metal(id, 'M52 46 L64 46 L64 68 L52 68 Z'),
+    cuchillo: id =>
+      metal(id, 'M170 52 L300 50 L330 60 L296 66 L170 64 Z', true) + '<path d="M176 56 L300 55" stroke="#0a0b0c" stroke-width=".6"/>' +
+      metal(id, 'M162 44 L172 44 L172 72 L162 72 Z') + madera(id, 'M84 50 Q120 46 162 50 L162 66 Q120 70 84 66 Z') + metal(id, 'M76 50 L86 50 L86 66 L76 66 Z'),
+    bolsa: id =>
+      madera(id, 'M120 36 L260 36 L272 96 L108 96 Z') + '<path d="M120 36 Q190 62 260 36" fill="none" stroke="#2a160a" stroke-width="2"/>' + metal(id, 'M184 50 L196 50 L196 60 L184 60 Z', true) +
+      [150, 190, 230].map(x => '<ellipse cx="' + x + '" cy="30" rx="13" ry="10" fill="' + M(id) + '" stroke="#0c0d0e"/><rect x="' + (x - 3) + '" y="14" width="6" height="8" fill="' + B(id) + '"/>').join(''),
+    defensiva: id =>
+      '<ellipse cx="200" cy="62" rx="34" ry="40" fill="' + M(id) + '" stroke="#0c0d0e" stroke-width="1"/>' +
+      '<path d="M172 40 L228 40 M168 54 L232 54 M167 68 L233 68 M171 82 L229 82 M186 24 L186 100 M200 22 L200 102 M214 24 L214 100" stroke="#0a0b0c" stroke-width="1.6"/>' +
+      metal(id, 'M192 10 L208 10 L208 24 L192 24 Z', true) + '<path d="M208 14 Q244 20 240 70" fill="none" stroke="#6b7075" stroke-width="4"/><circle cx="184" cy="14" r="7" fill="none" stroke="#8f969c" stroke-width="2"/>'
   };
   // lámina: el arma sobre fondo de catálogo, con sombra y una etiqueta de calibre
   function lamina(id, calibre) {

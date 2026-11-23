@@ -3,8 +3,8 @@ const fs = require('fs');
 const man = 'android/app/src/main/AndroidManifest.xml';
 let m = fs.readFileSync(man, 'utf8');
 if (!m.includes('screenOrientation')) m = m.replace('<activity', '<activity android:screenOrientation="sensorLandscape"');
-// identificador de la app de AdMob (variable ADMOB_APP_ID; por defecto el de prueba oficial de Google)
-const admobApp = process.env.ADMOB_APP_ID || 'ca-app-pub-3940256099942544~3347511713';
+// identificador de la app de AdMob «Ifni 1957» (se puede cambiar con la variable ADMOB_APP_ID)
+const admobApp = process.env.ADMOB_APP_ID || 'ca-app-pub-5467403730677498~5825361998';
 if (!m.includes('com.google.android.gms.ads.APPLICATION_ID')) m = m.replace(/<application([^>]*)>/, `<application$1>
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobApp}"/>`);
 fs.writeFileSync(man, m);

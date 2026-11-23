@@ -2,7 +2,7 @@
 
 ## Lo que ya está hecho en el juego
 
-- Anuncios reales de Google (AdMob): vídeo recompensado (doblar pesetas, revivir, oro) e intersticial cada 2 misiones, con el formulario de consentimiento obligatorio en la UE. Ahora usa los identificadores de prueba oficiales de Google.
+- Anuncios reales de Google (AdMob): vídeo recompensado (doblar pesetas, revivir, oro) e intersticial cada 2 misiones, con el formulario de consentimiento obligatorio en la UE. Ya usa los bloques reales de la cuenta de AdMob (app `ca-app-pub-5467403730677498~5825361998`); el APK de pruebas pide anuncios de prueba y solo el paquete de Google Play muestra anuncios reales.
 - Pagos reales de Google Play: bolsas de oro y de pesetas, «Sin anuncios» y Pack Veterano. Cada compra se entrega una sola vez y hay botón «Restaurar compras». Los precios se muestran como los fija Google Play.
 - La compilación de GitHub genera el APK de pruebas y, cuando tenga la clave de subida, el paquete AAB firmado que se sube a Google Play. El número de versión sube solo.
 
@@ -37,7 +37,6 @@
 - Google Play firma la app con su clave («Firma de apps de Google Play»); tú solo necesitas una clave de subida.
 - La genero yo y te la entrego por un canal privado (tu Google Drive). Tú la guardas en GitHub → repositorio → Settings → Secrets and variables → Actions:
   - `FIRMA_B64` (el archivo de la clave en base64), `FIRMA_CLAVE` (contraseña), `FIRMA_ALIAS` (alias)
-  - y en la pestaña Variables: `ADMOB_APP_ID`
 - Desde ese momento cada compilación genera también `ifni-1957-google-play-aab`, que es lo que se sube a Play Console.
 
 ### 5. Pruebas y publicación
@@ -48,7 +47,7 @@
 
 ## Pendiente técnico antes de producción
 
-- Poner los identificadores reales de AdMob en `www/js/nativo.js` (`CONFIG`, con `pruebas: false`).
+- Publicar `app-ads.txt` en la web del desarrollador con la línea `google.com, pub-5467403730677498, DIRECT, f08c47fec0942fa0`.
 - Guardado en la nube del progreso (Play Juegos) para no perder compras al desinstalar.
 - Recomendado: verificación de compras en servidor (contra fraude).
 - Consultar el uso comercial del emblema de la Legión con el Ministerio de Defensa.

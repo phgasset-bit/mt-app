@@ -49,13 +49,15 @@ jobs:
         with:
           tag_name: ifni-1957
           name: Ifni 1957 · versión de prueba
-          body: APK de prueba de Ifni 1957. Se actualiza solo con cada cambio del juego. Anuncios y compras en modo simulado.
+          body: APK de prueba de Ifni 1957. Se actualiza solo con cada cambio del juego. Anuncios de prueba de Google y compras en modo simulado.
           prerelease: true
           make_latest: false
           files: ifni-1957/ifni-1957.apk
       - name: Paquete para Google Play (AAB firmado)
         if: env.FIRMA_B64 != ''
-        run: cd android && ./gradlew bundleRelease
+        run: |
+          echo 'window.IFNI_PRODUCCION = true;' > android/app/src/main/assets/public/js/entorno.js
+          cd android && ./gradlew bundleRelease
       - uses: actions/upload-artifact@v4
         if: env.FIRMA_B64 != ''
         with:

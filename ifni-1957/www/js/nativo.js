@@ -1,12 +1,14 @@
 // Integración nativa en Android: anuncios de Google (AdMob) y pagos de Google Play.
 // En el navegador no hay nada nativo y el juego usa el modo de prueba (anuncios y compras simulados).
 const Nativo = (() => {
-  // Al publicar: poner aquí los identificadores reales de los bloques de anuncios de AdMob y pruebas: false.
-  // El identificador de la app de AdMob va en el AndroidManifest (variable ADMOB_APP_ID de la compilación).
+  // Bloques de anuncios reales de AdMob (cuenta de MNM soft, app «Ifni 1957»).
+  // En el APK de pruebas se piden como anuncios de prueba, para no generar tráfico no válido;
+  // solo el paquete de Google Play (js/entorno.js con IFNI_PRODUCCION = true) muestra anuncios reales.
+  // El identificador de la app de AdMob va en el AndroidManifest (tools/android_ajustes.js).
   const CONFIG = {
-    anuncioRecompensado: 'ca-app-pub-3940256099942544/5224354917', // prueba oficial de Google
-    anuncioIntersticial: 'ca-app-pub-3940256099942544/1033173712', // prueba oficial de Google
-    pruebas: true
+    anuncioRecompensado: 'ca-app-pub-5467403730677498/8403550183', // revivir_y_premios
+    anuncioIntersticial: 'ca-app-pub-5467403730677498/6685862574', // entre_misiones
+    pruebas: !window.IFNI_PRODUCCION
   };
   const admob = () => window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.Plugins && Capacitor.Plugins.AdMob;
 

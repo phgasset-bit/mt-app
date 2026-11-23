@@ -13,16 +13,18 @@ const Nativo = (() => {
   const admob = () => window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.Plugins && Capacitor.Plugins.AdMob;
 
   // ---------- anuncios ----------
-  let iniciado = null;
+  let iniciado = null, ultimoError = '';
   function iniciarAnuncios() {
     const A = admob(); if (!A) return Promise.resolve(false);
     return iniciado || (iniciado = (async () => {
+      try { await A.initialize({ initializeForTesting: CONFIG.pruebas }); } catch (e) { iniciado = null; ultimoError = 'inicio: ' + (e && e.message || e); return false; }
+      // consentimiento de la UE (formulario UMP de Google). Si en AdMob aún no hay mensaje de consentimiento
+      // configurado para la app, la consulta falla: no debe impedir que se pidan anuncios.
       try {
-        await A.initialize({ initializeForTesting: CONFIG.pruebas });
-        const info = await A.requestConsentInfo(); // consentimiento obligatorio en la UE (formulario UMP de Google)
+        const info = await A.requestConsentInfo();
         if (info.isConsentFormAvailable && info.status === 'REQUIRED') await A.showConsentForm();
-        return true;
-      } catch (e) { iniciado = null; return false; }
+      } catch (e) { ultimoError = 'consentimiento: ' + (e && e.message || e); }
+      return true;
     })());
   }
   function esperar(A, eventos, ms) {
@@ -44,7 +46,7 @@ const Nativo = (() => {
       const cerrado = esperar(A, ['onRewardedVideoAdDismissed', 'onRewardedVideoAdFailedToShow'], 120000);
       await A.showRewardVideoAd();
       await cerrado;
-    } catch (e) { /* sin anuncio disponible */ } finally { if (h && h.remove) h.remove(); }
+    } catch (e) { ultimoError = 'recompensado: ' + (e && e.message || e); } finally { if (h && h.remove) h.remove(); }
     return premio;
   }
   async function intersticial() {
@@ -55,7 +57,7 @@ const Nativo = (() => {
       const cerrado = esperar(A, ['interstitialAdDismissed', 'interstitialAdFailedToShow'], 90000);
       await A.showInterstitial();
       await cerrado;
-    } catch (e) { /* sin anuncio disponible */ }
+    } catch (e) { ultimoError = 'intersticial: ' + (e && e.message || e); }
     return true;
   }
 
@@ -91,5 +93,5 @@ const Nativo = (() => {
   }
   function restaurar() { return tienda ? tienda.restorePurchases() : Promise.resolve(); }
 
-  return { CONFIG, recompensado, intersticial, iniciarPagos, comprar, restaurar, get pagos() { return !!tienda; }, get anuncios() { return !!admob(); } };
+  return { CONFIG, recompensado, intersticial, iniciarPagos, comprar, restaurar, get pagos() { return !!tienda; }, get anuncios() { return !!admob(); }, get ultimoError() { return ultimoError; } };
 })();

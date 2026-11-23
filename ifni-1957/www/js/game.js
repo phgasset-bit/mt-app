@@ -1293,6 +1293,7 @@
   let ajDesde = 'menu';
   function abrirAjustes(desde) {
     ajDesde = desde; $(desde).hidden = true; $('ajustes').hidden = false;
+    $('aDiag').textContent = Nativo.anuncios ? 'Anuncios de Google: ' + (Nativo.ultimoError ? 'último aviso → ' + Nativo.ultimoError : 'sin errores') + (Nativo.CONFIG.pruebas ? ' · modo de prueba' : '') : 'Anuncios y compras simulados (versión web)';
     $('aSens').value = AJ.sens; $('aVol').value = AJ.vol; $('aAuto').checked = AJ.auto; $('aZurdo').checked = AJ.zurdo; $('aDif').value = String(AJ.dif); $('aCal').value = AJ.calidad;
   }
   $('aSens').oninput = e => AJ.sens = +e.target.value;

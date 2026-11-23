@@ -735,6 +735,7 @@
       pasos.forEach((t, i) => setTimeout(() => { if (G && G.m === m && jugando && !P.muerto) aviso(t, 5); }, 4500 + i * 8000));
     }
     if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
+    if (m.avion && !m.salto) setTimeout(() => { if (G && G.m === m && jugando && P.avion > 0) aviso('Tienes una pasada de aviación: pulsa ✈ AVIÓN (arriba a la derecha) y pilotas tú el Heinkel', 6); }, 9000);
     if (m.carro) aviso('Mandas una sección de tres M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);

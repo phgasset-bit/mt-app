@@ -64,7 +64,10 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 #bViva{left:calc(max(20px,env(safe-area-inset-left,0px)) + 76px);top:118px;width:74px;height:74px;border-color:var(--gualda);color:var(--gualda);font-size:16px}
 #bArma{left:calc(max(20px,env(safe-area-inset-left,0px)) + 160px);top:126px;width:52px;height:52px;font-size:11px}
 #bCura{right:max(20px,env(safe-area-inset-right,0px));top:84px;width:52px;height:52px;font-size:11px}
-#bAvion{right:calc(max(20px,env(safe-area-inset-right,0px)) + 62px);top:84px;width:52px;height:52px;font-size:11px}
+#bAvion{right:calc(max(20px,env(safe-area-inset-right,0px)) + 62px);top:80px;width:66px;height:66px;font-size:12px;border-color:#f2b90f;color:#f2b90f;line-height:1.1}
+#bAvion:not(:disabled){animation:avisoAvion 1.6s ease-in-out infinite}
+@keyframes avisoAvion{50%{box-shadow:0 0 0 6px rgba(242,185,15,.35)}}
+@media (prefers-reduced-motion:reduce){#bAvion:not(:disabled){animation:none}}
 #bPausa{right:max(20px,env(safe-area-inset-right,0px));top:8px;width:44px;height:44px;border-radius:6px;font-size:18px}
 #fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
 .zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
@@ -227,7 +230,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
     <button class="bt" id="fuego2" type="button">FUEGO</button>
     <button class="bt" id="bPausa" type="button" aria-label="Pausa">II</button>
     <button class="bt" id="bCura" type="button">CURA</button>
-    <button class="bt" id="bAvion" type="button">AVIÓN</button>
+    <button class="bt" id="bAvion" type="button">✈<br>AVIÓN</button>
     <button class="bt" id="bGran" type="button">GRANADA</button>
     <button class="bt" id="bRec" type="button">RECARGA</button>
     <button class="bt" id="bAgach" type="button">AGACHAR</button>

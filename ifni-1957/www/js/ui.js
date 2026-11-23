@@ -51,9 +51,14 @@ const UI = (() => {
   function campana() {
     const l = $('tab-campana'); l.innerHTML = '';
     const P = Progreso.P;
+    if (window.IfniDiaria) { // orden del día
+      const D = IfniDiaria.info(), b = document.createElement('button'); b.className = 'mis diaria'; b.type = 'button'; b.disabled = !!D.hecha;
+      b.innerHTML = '<span class="mis-n">Orden del día' + (D.hecha ? ' · cumplida' : '') + '</span>' + esc(D.texto) + '<small>' + (D.hecha ? 'Vuelve mañana a por otra' : 'Premio: ' + D.premio) + '</small>';
+      b.onclick = () => IfniDiaria.jugar(); l.appendChild(b);
+    }
     MISIONES.forEach((m, i) => {
       const b = document.createElement('button'); b.className = 'mis'; b.type = 'button'; b.id = 'mis-' + m.id;
-      b.innerHTML = '<span class="mis-n">' + (m.epilogo ? 'Epílogo' : 'Misión ' + (i + 1)) + (P.hechas[m.id] ? ' · cumplida' : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
+      b.innerHTML = '<span class="mis-n">' + (m.epilogo ? 'Epílogo' : 'Misión ' + (i + 1)) + (P.hechas[m.id] ? ' · cumplida' : '') + ((P.estrellas || {})[m.id] != null ? ' · ' + '★'.repeat(P.estrellas[m.id]) + '☆'.repeat(3 - P.estrellas[m.id]) : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
       b.onclick = () => alJugar(i); l.appendChild(b);
     });
   }

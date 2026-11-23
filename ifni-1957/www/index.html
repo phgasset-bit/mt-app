@@ -70,6 +70,11 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 @keyframes avisoAvion{50%{box-shadow:0 0 0 6px rgba(242,185,15,.35)}}
 @media (prefers-reduced-motion:reduce){#bAvion:not(:disabled){animation:none}}
 #bPausa{right:max(20px,env(safe-area-inset-right,0px));top:8px;width:44px;height:44px;border-radius:6px;font-size:18px}
+#bOrden{left:max(20px,env(safe-area-inset-left,0px));top:194px;width:66px;height:54px;border-radius:14px;font-size:10px;line-height:1.15;border-color:var(--arena)}
+.zurdo #bOrden{left:auto;right:max(20px,env(safe-area-inset-right,0px))}
+.mken.jefe i{border-top-color:#f2b90f}.mken.jefe small{color:#ffe08a;width:110px;left:-55px}
+.mken.herido i{border-top-color:#39c46a}.mken.herido small{color:#b9ffd0}.mken.herido.borde i{border-top-color:transparent;border-left-color:#39c46a}
+.mis.diaria{border-color:var(--gualda)}
 #fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
 .zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
 .zurdo #bMira{right:auto;left:calc(max(24px,env(safe-area-inset-left,0px)) + 104px)}
@@ -240,6 +245,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
     <div id="palanca" hidden><i></i></div>
     <button class="bt" id="bViva" type="button">¡VIVA!</button>
     <button class="bt" id="bArma" type="button">ARMA</button>
+    <button class="bt" id="bOrden" type="button">ORDEN<br>AUTO</button>
     <button class="bt" id="fuego2" type="button">FUEGO</button>
     <button class="bt" id="bPausa" type="button" aria-label="Pausa">II</button>
     <button class="bt" id="bCura" type="button">CURA</button>

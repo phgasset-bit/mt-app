@@ -351,8 +351,17 @@
       if (P.vida <= 0) { P.vida = 0; P.muerto = true; G.finT = 2.5; aviso('Has caído', 4); }
       return;
     }
+    if (s.herido > 0) return;
     s.vida -= dmg;
+    if (s.vida <= 0 && s.team === 'L' && !s.heridoYa && !s.elev && dmg < 500 && Math.random() < 0.6) { // cae herido: se le puede salvar
+      s.heridoYa = true; s.herido = 45; s.venda = 0; s.vida = 1; s.obj = null;
+      voz(Math.random() < 0.5 ? 'herido' : 'sanitario', null, 0.9, panDe(s.pos)); aviso('¡' + s.nombre + ' está herido! Llega hasta él para vendarlo', 3.5); return;
+    }
     if (s.vida <= 0) {
+      if (s.jefe) { // sin su jefe, la partida se desbanda
+        let n = 0; for (const e of G.sold) if (e.team === 'E' && !e.muerto && e !== s && e.fase === G.faseI) { e.estado = 'huye'; e.dest = { x: e.pos.x + rnd(-30, 30), z: e.pos.z + (e.pos.z < P.pos.z ? -150 : 150) }; e.fase = -1; n++; }
+        G.jefeCaido = true; cartel('¡HA CAÍDO SU JEFE!'); aviso(n ? 'Sin jefe, los demás huyen' : 'El jefe de la partida ha caído', 3);
+      }
       s.muerto = true; s.muertoT = 0; s.estado = 'muerto'; s.caida = Math.floor(Math.random() * 3); s.caidaLado = Math.random() < 0.5 ? 1 : -1;
       if (s.humano) { s.armL.rotation.set(rnd(-0.6, 1.2), 0, rnd(-1.4, -0.3)); s.armR.rotation.set(rnd(-0.6, 1.2), 0, rnd(0.3, 1.4)); s.codoL.rotation.set(rnd(0, 1), 0, 0); s.codoR.rotation.set(rnd(0, 1), 0, 0); } if (s.humano) { s.arma.position.set(0.35, 1.05, -0.25); s.arma.rotation.set(0, 0.9, 1.4); } if (!s.elev) setTimeout(() => G && s.g.parent && mancha(s.pos.x - Math.sin(s.yaw) * 0.5, s.pos.z - Math.cos(s.yaw) * 0.5, rnd(0.9, 1.5), true), 700);
       if (s.team === 'E') {
@@ -551,7 +560,7 @@
     if (s.team === 'E') {
       const cands = [];
       if (!P.muerto && dist2D(s.pos, P.pos) < 170) cands.push(P);
-      for (const a of G.sold) if (a.team === 'L' && !a.muerto && dist2D(s.pos, a.pos) < 160) cands.push(a);
+      for (const a of G.sold) if (a.team === 'L' && !a.muerto && !(a.herido > 0) && dist2D(s.pos, a.pos) < 160) cands.push(a);
       cands.sort((a, b) => (dist2D(s.pos, a.pos) - (a === P ? 20 : 0)) - (dist2D(s.pos, b.pos) - (b === P ? 20 : 0)));
       for (let i = 0; i < Math.min(3, cands.length); i++) if (puedeVer(s, cands[i])) return cands[i];
       return null;
@@ -571,7 +580,7 @@
     particula(mz, 0xffffff, 0.55, 0.07, 0.5, 0, true);
     if (s.team === 'E') Snd.disparo('enemigo', dj, panDe(s.pos)); else Snd.disparo(fao ? 'z45' : 'enemigo', Math.max(dj, 8), panDe(s.pos));
     let p;
-    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif; if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; if (t === P && G.salto && G.salto.fase !== 'suelo') p = G.salto.fase === 'campana' ? p * 0.3 : 0; if (t === P && G.nido) p *= 0.7; }
+    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif * (G.difX || 1); if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; if (t === P && G.salto && G.salto.fase !== 'suelo') p = G.salto.fase === 'campana' ? p * 0.3 : 0; if (t === P && G.nido) p *= 0.7; }
     else { p = (0.26 * Math.exp(-d / 60) + 0.05) * (G.viva > 0 ? 1.7 : 1); if (t.agach) p *= 0.6; if (fao) p *= 0.55; }
     const acierta = Math.random() < p;
     const dest = new V3(t.pos.x, t.pos.y + (t.agach ? 1 : 1.35), t.pos.z);
@@ -642,6 +651,14 @@
   }
 
   function actualizaSoldado(s, dt) {
+    if (s.herido > 0) { // tendido, esperando al que lo vende
+      s.herido -= dt; s.g.rotation.x += (1.45 - s.g.rotation.x) * Math.min(1, dt * 5); s.g.position.set(s.pos.x, s.pos.y + 0.14, s.pos.z);
+      const aPie = !G.carro && !G.nido && !G.vuelo && !P.muerto;
+      if (aPie && dist2D(s.pos, P.pos) < 2.4) { s.venda += dt; if (s.venda > 1.6) { s.herido = 0; s.vida = 60; s.g.rotation.x = 0; G.rescates = (G.rescates || 0) + 1; aviso('Has salvado a ' + s.nombre, 2.5); voz('viva_legion_b', '¡VIVA LA LEGIÓN!', 0.9, panDe(s.pos)); } }
+      else s.venda = Math.max(0, s.venda - dt);
+      if (s.herido <= 0 && s.vida < 60) { s.herido = 0; s.g.rotation.x = 0; herir(s, 999, s.pos); }
+      return;
+    }
     if (s.aire) {
       const A = s.aire; s.pos.x += A.vx * dt; s.pos.z += A.vz * dt; s.pos.y += A.vy * dt;
       const h = H(s.pos.x, s.pos.z);
@@ -703,6 +720,7 @@
     if (f && f.tipo === 'take' && enem.length) modo = 'asalto';
     else if (f && f.tipo === 'ambush' && G.disparada && enem.length) modo = 'asalto';
     else if (f && f.tipo === 'hold' && Math.hypot(P.pos.x - f.x, P.pos.z - f.z) < 60) modo = 'defensa';
+    if (G.orden === 'cubrir' && modo !== 'defensa') { s.modo = 'cubrir'; s.cp = null; tiroteoCubierto(s, dt, f ? { x: f.x, z: f.z } : { x: s.pos.x, z: s.pos.z - 50 }); return; }
     if (modo !== s.modo) { s.modo = modo; s.cp = null; s.salto = 'cubre'; s.t = rnd(0.2, 2) + (s.hueco % 2) * 2.5; }
 
     if (modo === 'formacion') {
@@ -722,7 +740,7 @@
     s.enSitio = false;
     let ox = f.x, oz = f.z;
     if (f.tipo === 'ambush') { ox = enem.reduce((a, e) => a + e.pos.x, 0) / enem.length; oz = enem.reduce((a, e) => a + e.pos.z, 0) / enem.length; }
-    const final = G.asalto || enem.length <= 2 || (G.viva > 0 && enem.length <= 4);
+    const final = G.asalto || G.orden === 'asalto' || enem.length <= 2 || (G.viva > 0 && enem.length <= 4);
     if (s.salto === 'cubre') {
       tiroteoCubierto(s, dt, { x: ox, z: oz });
       s.t -= dt * (G.viva > 0 ? 1.8 : 1);
@@ -766,6 +784,9 @@
     Object.assign(P, { yaw: 0, pitch: -0.02, vida: 100, curas: 2 + v.cura, agach: false, mira: false, arma: 0, granadas: 3 + v.gran + ((Progreso.P.extras || {}).bolsa ? 2 : 0), avion: (m.avion || 0) + (m.avion ? v.avion : 0), muerto: false, retroceso: 0 });
     P.pos.set(m.inicio[0], 0, m.inicio[1]); P.pos.y = H(P.pos.x, P.pos.z);
     G.nido = null; G.salto = null; mg.g.visible = false; G.carro = null;
+    G.orden = 'auto'; $('bOrden').innerHTML = 'ORDEN<br>AUTO'; $('bOrden').style.visibility = m.nido ? 'hidden' : '';
+    G.diaria = G_diaria && G_diaria.idx === i ? G_diaria : null; G_diaria = null;
+    if (G.diaria) { const md = G.diaria.mod.id; if (md === 'sinCuras') P.curas = 0; if (md === 'sinGranadas') P.granadas = 0; G.difX = md === 'duro' ? 1.35 : 1; }
     if (m.carro) {
       const c = World.carro(); scene.add(c.g);
       G.carro = Object.assign(c, { yaw: 0, vel: 0, rec: 0, obuses: 48, mgT: 0, n: 0, polvoT: 0, cab: 0, bal: 0, retro: 0 });
@@ -786,7 +807,7 @@
         const x = m.inicio[0] + (k % 2 ? 1 : -1) * (4 + Math.floor(k / 2) * 3.6);
         crearSoldado('L', x, m.inicio[1], k, { hueco: k, muralla: true, elev: 4.4, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
       }
-    } else for (let k = 0; k < nAli; k++) {
+    } else for (let k = 0; k < (G.diaria && G.diaria.mod.id === 'pocos' ? Math.ceil(nAli / 2) : nAli); k++) {
       const h = huecos[k % huecos.length], s = crearSoldado('L', P.pos.x + h[0], P.pos.z + h[1], k, { hueco: k, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
       if (k === 1) s.tipoArma = 'fao';
     }
@@ -818,6 +839,7 @@
         const sp = spots[k % spots.length], off = k >= spots.length ? 2.5 : 0;
         const s = crearSoldado('E', sp.x + rnd(-off, off), sp.z + rnd(-off, off), k, { fase: G.faseI, spotYaw: sp.yaw, muro: sp.muro && off === 0, estado: 'idle' });
         s.yaw = sp.yaw; if (k % 5 === 3) s.tipoArma = 'fao';
+        if (k === 0 && !G.m.fases.slice(G.faseI + 1).some(x => x.tipo === 'take')) { s.jefe = true; s.vida = 240; s.tipoArma = 'fao'; s.g.scale.setScalar(1.12); }
       }
       aviso(f.nom, 3);
       if (G.faseI > 0) { Snd.corneta('ataque'); setTimeout(() => G && voz('adelante', '¡ADELANTE, LEGIONARIOS!'), 1700); }
@@ -932,6 +954,24 @@
       if (G.convoy <= 0) { P.muerto = true; P.vida = 0; G.finT = 2.5; aviso('El convoy ha sido destruido', 4); explotar(G.camiones[0].pos.clone(), 6, 0, false); }
     }
   }
+  // objetivos de mérito: tres por misión, con premio en pesetas y estrellas
+  function meritos(m) {
+    const par = m.par || (m.fases.length * 110 + 60);
+    return [
+      { t: 'Sin perder un solo hombre', ok: r => r.vivos >= r.aliadosIni },
+      { t: 'Cuatro tiros a la cabeza', ok: r => r.cabezas >= 4 },
+      { t: 'En menos de ' + Math.floor(par / 60) + ':' + String(par % 60).padStart(2, '0'), ok: r => r.tiempo <= par }
+    ];
+  }
+  // orden del día: una misión con una condición, distinta cada día, con premio
+  const MODS = [{ id: 'sinCuras', t: 'sin vendas' }, { id: 'pocos', t: 'con media escuadra' }, { id: 'duro', t: 'contra tiradores escogidos' }, { id: 'sinGranadas', t: 'sin granadas' }];
+  let G_diaria = null;
+  function diaria() {
+    const d = new Date(), dia = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); let h = 0; for (const c of dia) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const lista = MISIONES.map((m, i) => i).filter(i => !MISIONES[i].carro && !MISIONES[i].nido && !MISIONES[i].salto), idx = lista[h % lista.length], mod = MODS[(h >>> 5) % MODS.length], D = Progreso.P.diaria || {};
+    return { dia, idx, mod, hecha: D.dia === dia && D.hecha, texto: MISIONES[idx].tit + ', ' + mod.t, premio: '₧ 1.500 y ◆ 5' };
+  }
+  window.IfniDiaria = { info: diaria, jugar() { G_diaria = diaria(); abrirParte(G_diaria.idx); } };
   function resultado(ok) {
     const vivos = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
     return Progreso.terminar({ ok, revivido: G.revivido, mision: G.m.id, dif: AJ.dif, bajas: G.bajas, bajasJ: G.bajasJ, cabezas: G.cabezas, tiros: G.tiros, aciertos: G.aciertos, vivos, aliadosIni: G.aliadosIni, minVida: G.minVida, vidaFinal: P.vida, tiempo: G.t });
@@ -945,10 +985,20 @@
     jugando = false; pausado = true; $('hud').hidden = $('mandos').hidden = true; Snd.motor(-1);
     if (document.pointerLockElement) document.exitPointerLock();
     const res = resultado(ok), m = G.m;
+    let extra = '';
+    if (ok) {
+      const r = { vivos: G.sold.filter(s => s.team === 'L' && !s.muerto).length, aliadosIni: G.sold.filter(s => s.team === 'L').length, cabezas: G.cabezas, tiempo: G.t };
+      const ms = meritos(m), hechos = ms.filter(x => x.ok(r)), PP = Progreso.P;
+      PP.pts += hechos.length * 300; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
+      extra = '<p><b>Méritos:</b> ' + ms.map(x => (x.ok(r) ? '★ ' : '☆ ') + x.t).join(' · ') + (hechos.length ? ' · <b>+₧ ' + hechos.length * 300 + '</b>' : '') + '</p>';
+      if (G.rescates) extra += '<p>Heridos salvados: ' + G.rescates + '</p>';
+      if (G.diaria) { const D = PP.diaria || {}; if (!(D.dia === G.diaria.dia && D.hecha)) { PP.diaria = { dia: G.diaria.dia, hecha: true }; PP.pts += 1500; PP.oro += 5; extra += '<p><b>Orden del día cumplida:</b> +₧ 1.500 y ◆ 5</p>'; } }
+      Progreso.guardar();
+    }
     await Progreso.Anuncios.intersticial();
     $('fDato').textContent = m.dato;
     $('fTit').textContent = ok ? 'Misión cumplida: ' + m.tit : 'Has caído en combate';
-    $('fTxt').innerHTML = '<p>' + (ok ? m.historia : 'La misión ha fracasado. Vuelve a intentarlo.') + '</p>';
+    $('fTxt').innerHTML = '<p>' + (ok ? m.historia : 'La misión ha fracasado. Vuelve a intentarlo.') + '</p>' + extra;
     UI.fin(res, ok);
     $('bSig').hidden = !ok || misionIdx >= MISIONES.length - 1;
     $('fin').hidden = false;
@@ -1280,14 +1330,15 @@
   function actualizaMarcas() {
     const w = capaMarcas.clientWidth || innerWidth, h = capaMarcas.clientHeight || innerHeight;
     const lista = G.sold.filter(s => s.team === 'E' && !s.muerto && s.estado !== 'huye' && (s.alerta || (s.ultimoTiro && G.t - s.ultimoTiro < 4)))
-      .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < 170).sort((a, b) => a.d - b.d).slice(0, 10);
+      .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < 170).sort((a, b) => a.d - b.d).slice(0, 10)
+      .concat(G.sold.filter(s => s.herido > 0).map(s => ({ s, d: dist2D(s.pos, P.pos) })));
     let i = 0;
     for (const { s, d } of lista) {
-      _m.set(s.pos.x, s.pos.y + (s.agach ? 1.5 : 2.05), s.pos.z).project(cam);
+      _m.set(s.pos.x, s.pos.y + (s.herido > 0 ? 1.2 : s.agach ? 1.5 : 2.05), s.pos.z).project(cam);
       const detras = _m.z > 1; let x = _m.x, y = _m.y; if (detras) { x = -x; y = -y; }
       const dentro = !detras && Math.abs(x) < 0.94 && Math.abs(y) < 0.9;
-      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4));
-      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = Math.round(d) + ' m'; }
+      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4)); e.classList.toggle('jefe', !!s.jefe); e.classList.toggle('herido', s.herido > 0);
+      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = s.herido > 0 ? '✚ ' + Math.ceil(s.herido) + ' s' : s.jefe ? 'JEFE · ' + Math.round(d) + ' m' : Math.round(d) + ' m'; }
       else {
         const a = Math.atan2(y, x), k = Math.min(0.9 / Math.abs(Math.cos(a) || 1e-6), 0.82 / Math.abs(Math.sin(a) || 1e-6));
         e.style.left = ((Math.cos(a) * k + 1) / 2 * w) + 'px'; e.style.top = ((1 - Math.sin(a) * k) / 2 * h) + 'px';
@@ -1355,7 +1406,7 @@
   function abrirParte(i) {
     Snd.init(); misionIdx = i; const m = MISIONES[i];
     $('pDato').textContent = m.dato; $('pTit').textContent = m.tit;
-    $('pTxt').innerHTML = m.parte.map(p => '<p>' + p + '</p>').join('');
+    $('pTxt').innerHTML = m.parte.map(p => '<p>' + p + '</p>').join('') + (G_diaria && G_diaria.idx === i ? '<p><b>Orden del día:</b> cúmplela ' + G_diaria.mod.t + '. Premio: ' + G_diaria.premio + '.</p>' : '') + '<p class="nota"><b>Méritos (₧ 300 cada uno):</b> ' + meritos(m).map(x => x.t).join(' · ') + '</p>';
     $('menu').hidden = true; $('parte').hidden = false; Snd.musica(true);
   }
   function alMenu() {
@@ -1385,7 +1436,7 @@
   $('bAjustes').onclick = () => abrirAjustes('menu');
   $('bAj2').onclick = () => abrirAjustes('pausa');
   $('bCombate').onclick = () => { Snd.init(); Snd.setVol(AJ.vol); Snd.musica(false); $('parte').hidden = true; empezar(misionIdx); };
-  $('bVolver').onclick = () => { Snd.musica(false); $('parte').hidden = true; $('menu').hidden = false; };
+  $('bVolver').onclick = () => { G_diaria = null; Snd.musica(false); $('parte').hidden = true; $('menu').hidden = false; };
   $('bSig').onclick = () => { $('fin').hidden = true; abrirParte(misionIdx + 1); };
   $('bRep').onclick = () => { $('fin').hidden = true; empezar(misionIdx); };
   $('bMenu').onclick = alMenu;
@@ -1449,6 +1500,14 @@
   boton('bArma', cambiarArma);
   boton('bCura', curar);
   boton('bCuch', acuchillar);
+  function ordenar() {
+    const sig = { auto: 'cubrir', cubrir: 'asalto', asalto: 'auto' }[G.orden || 'auto']; G.orden = sig;
+    $('bOrden').innerHTML = 'ORDEN<br>' + { auto: 'AUTO', cubrir: 'CUBRIR', asalto: 'ASALTO' }[sig];
+    if (sig === 'cubrir') { voz('cubridme', '¡CUBRIDME!', 1); aviso('La escuadra se queda a cubierto y te cubre con su fuego', 3); }
+    else if (sig === 'asalto') { voz('asalto', '¡AL ASALTO!', 1); aviso('La escuadra se lanza al asalto', 3); }
+    else aviso('La escuadra avanza por saltos, a su aire', 2.5);
+  }
+  boton('bOrden', ordenar);
   boton('bAvion', pedirAvion);
   boton('bPausa', () => pausar(true));
   addEventListener('keydown', e => {
@@ -1457,7 +1516,7 @@
     if (e.code === 'Escape') { pausar(!pausado); return; }
     if (pausado) return;
     if (e.code === 'KeyR') recargar(); else if (e.code === 'KeyG') lanzarGranada(); else if (e.code === 'KeyC') P.agach = !P.agach;
-    else if (e.code === 'KeyV') gritoViva(); else if (e.code === 'KeyQ') cambiarArma(); else if (e.code === 'KeyH') curar(); else if (e.code === 'KeyF') acuchillar(); else if (e.code === 'KeyB') pedirAvion();
+    else if (e.code === 'KeyV') gritoViva(); else if (e.code === 'KeyQ') cambiarArma(); else if (e.code === 'KeyH') curar(); else if (e.code === 'KeyF') acuchillar(); else if (e.code === 'KeyT') ordenar(); else if (e.code === 'KeyB') pedirAvion();
   });
   addEventListener('keyup', e => { teclas[e.code] = false; });
   addEventListener('blur', () => { for (const k in teclas) teclas[k] = false; if (jugando && !pausado) pausar(true); });

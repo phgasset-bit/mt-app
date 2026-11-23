@@ -121,6 +121,7 @@ const World = (() => {
   // ---------- utilidades de construcción ----------
   const tmpO = new C.Object3D();
   function mtx(x, y, z, rx, ry, rz, sx, sy, sz) { tmpO.position.set(x, y, z); tmpO.rotation.set(rx, ry, rz); tmpO.scale.set(sx, sy, sz); tmpO.updateMatrix(); return tmpO.matrix.clone(); }
+  function mtxY(...a) { tmpO.rotation.order = 'YXZ'; const r = mtx(...a); tmpO.rotation.order = 'XYZ'; return r; }
   function instancias(scn, geo, material, lista, sombra, bloquea) {
     if (!lista.length) return null;
     const im = new C.InstancedMesh(geo, material, lista.length);
@@ -290,6 +291,24 @@ const World = (() => {
       instancias(scn, geoRoca(3.3, 1), mat(0x7f7d4c, null, { flatShading: true }), mt, true, false);
     }
 
+    // palmeras datileras: palmeral junto al fuerte y sueltas por las vaguadas
+    {
+      const troncos = [], hojas = [], sitios = [];
+      if (m.fuerte) for (let i = 0; i < 9; i++) { const a = R() * 6.28, r = 30 + R() * 16; sitios.push([m.fuerte[0] + Math.cos(a) * r, m.fuerte[1] + Math.sin(a) * r]); }
+      for (let i = 0; i < (des ? 14 : 22); i++) { const p = punto(3); if (p) sitios.push(p); }
+      for (const [x, z] of sitios) {
+        if (!libre(x, z, 2)) continue;
+        const y0 = height(x, z), alto = 4.5 + R() * 3.5, inc = (R() - 0.5) * 0.25, ay = R() * 6.28;
+        for (let q = 0; q < 5; q++) { const t = (q + 0.5) / 5; troncos.push(mtx(x + Math.sin(ay) * inc * alto * t * t, y0 + alto * t, z + Math.cos(ay) * inc * alto * t * t, 0, R() * 6, 0, 1 - t * 0.35, alto / 5 + 0.05, 1 - t * 0.35)); }
+        const cx = x + Math.sin(ay) * inc * alto, cz = z + Math.cos(ay) * inc * alto;
+        for (let q = 0; q < 11; q++) { const a = q / 11 * 6.28 + R() * 0.3, cae = 0.35 + R() * 0.55; hojas.push(mtxY(cx + Math.sin(a) * 1.25 * Math.cos(cae), y0 + alto + 0.25 - Math.sin(cae) * 1.1, cz + Math.cos(a) * 1.25 * Math.cos(cae), cae, a, 0, 0.42, 0.05, 2.7)); }
+        addCircle(x, z, 0.4);
+      }
+      instancias(scn, new C.CylinderGeometry(0.2, 0.24, 1, 7), mat(0x6e5a41), troncos, true, true);
+      const gHoja = new C.SphereGeometry(0.5, 5, 6);
+      instancias(scn, gHoja, mat(noche ? 0x39472b : 0x5d7036), hojas, true, false);
+    }
+
     // casas encaladas de Sidi Ifni (estilo colonial, carpintería azul)
     if (m.mar) {
       const encalado = new C.MeshLambertMaterial({ color: lin(0xf1ece0), map: T.revoco }), azul = mat(0x2d5a80);
@@ -445,7 +464,9 @@ const World = (() => {
       const arma = new C.Group(); g.add(arma);
       const madera = mat(0x6a4426), hierro = mat(0x2a2a2a, 'phong', { shininess: 40 }), Gm = geo();
       const pz = (m, x, y, z, sx, sy, sz) => { const o = new C.Mesh(Gm.caja, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; arma.add(o); };
-      pz(madera, 0, 0, 0.08, 0.05, 0.07, 0.78); pz(madera, 0, -0.05, 0.47, 0.055, 0.13, 0.22); pz(hierro, 0, 0.035, -0.5, 0.025, 0.025, 0.5); pz(hierro, 0, 0.05, 0.12, 0.04, 0.04, 0.16);
+      pz(madera, 0, 0, 0.02, 0.045, 0.06, 0.66); pz(madera, 0, -0.035, 0.4, 0.045, 0.1, 0.2); pz(madera, 0, -0.05, 0.52, 0.048, 0.125, 0.1);
+      const cil = (m, r, l, y, z) => { const o = new C.Mesh(Gm.canon || (Gm.canon = new C.CylinderGeometry(1, 1, 1, 7).rotateX(Math.PI / 2)), m); o.position.set(0, y, z); o.scale.set(r, r, l); o.castShadow = true; arma.add(o); };
+      cil(hierro, 0.012, 0.62, 0.03, -0.46); cil(hierro, 0.02, 0.2, 0.035, 0.1); pz(hierro, 0.035, 0.04, 0.12, 0.05, 0.012, 0.012); pz(hierro, 0, 0.05, -0.74, 0.006, 0.025, 0.012); pz(hierro, 0, -0.045, 0.12, 0.012, 0.05, 0.1);
       return { g, cadera: B.cadera, torso: B.columna, cabeza: B.cabeza, legL: B.musloI, legR: B.musloD, rodL: B.piernaI, rodR: B.piernaD, armL: B.brazoI, armR: B.brazoD, codoL: B.antebrazoI, codoR: B.antebrazoD, arma, humano: true };
     }
     const Gm = geo(), g = new C.Group(); g.rotation.order = 'YXZ';
@@ -513,6 +534,35 @@ const World = (() => {
     return { g, cadera, torso, cabeza, legL: pl.p, legR: pr.p, rodL: pl.rod, rodR: pr.rod, armL: bl.p, armR: br.p, codoL: bl.codo, codoR: br.codo, arma };
   }
 
+  // carro ligero M-24 Chaffee: barcaza, torre giratoria y cañón de 75 mm
+  function carro() {
+    const g = new C.Group(), verde = mat(0x5b6040), oscuro = mat(0x2a2b26), goma = mat(0x1c1c1a), acero = mat(0x3a3d36, 'phong', { shininess: 30 });
+    const caj = (w, h, d, m, x, y, z, p, rx) => { const o = new C.Mesh(new C.BoxGeometry(w, h, d), m); o.position.set(x, y, z); if (rx) o.rotation.x = rx; o.castShadow = o.receiveShadow = true; p.add(o); return o; };
+    const barcaza = new C.Group(); g.add(barcaza);
+    caj(2.3, 0.75, 5.0, verde, 0, 1.15, 0.1, barcaza);
+    caj(2.3, 0.6, 1.5, verde, 0, 0.98, -2.55, barcaza, -0.55);
+    caj(2.2, 0.5, 1.0, verde, 0, 0.9, 2.75, barcaza, 0.5);
+    caj(2.9, 0.08, 5.3, verde, 0, 1.36, 0.1, barcaza);
+    for (const lado of [-1, 1]) {
+      caj(0.48, 0.7, 5.5, oscuro, lado * 1.22, 0.55, 0.05, barcaza);
+      for (let i = 0; i < 5; i++) { const r = new C.Mesh(new C.CylinderGeometry(0.34, 0.34, 0.5, 12), goma); r.rotation.z = Math.PI / 2; r.position.set(lado * 1.24, 0.36, -1.95 + i * 0.98); r.castShadow = true; barcaza.add(r); const t = new C.Mesh(new C.CylinderGeometry(0.15, 0.15, 0.53, 8), acero); t.rotation.z = Math.PI / 2; t.position.copy(r.position); barcaza.add(t); }
+      for (const z of [-2.75, 2.75]) { const r = new C.Mesh(new C.CylinderGeometry(0.3, 0.3, 0.5, 10), acero); r.rotation.z = Math.PI / 2; r.position.set(lado * 1.24, 0.72, z); barcaza.add(r); }
+      caj(0.14, 0.14, 0.14, mat(0xe9e2c8), lado * 0.8, 1.33, -2.75, barcaza);
+    }
+    caj(0.5, 0.35, 0.7, oscuro, -0.7, 1.55, 2.2, barcaza); caj(0.5, 0.35, 0.7, oscuro, 0.7, 1.55, 2.2, barcaza);
+    const torre = new C.Group(); torre.position.set(0, 1.55, -0.35); g.add(torre);
+    const cuerpo = new C.Mesh(new C.CylinderGeometry(0.98, 1.12, 0.72, 10), verde); cuerpo.position.y = 0.36; cuerpo.scale.z = 1.25; cuerpo.castShadow = true; torre.add(cuerpo);
+    caj(1.5, 0.6, 0.9, verde, 0, 0.36, 1.45, torre);
+    const cup = new C.Mesh(new C.CylinderGeometry(0.34, 0.38, 0.22, 10), verde); cup.position.set(0.42, 0.83, 0.3); torre.add(cup);
+    const cunaG = new C.Group(); cunaG.position.set(0, 0.4, -1.15); torre.add(cunaG);
+    caj(0.75, 0.6, 0.5, verde, 0, 0, 0, cunaG);
+    const tubo = new C.Mesh(new C.CylinderGeometry(0.058, 0.07, 2.7, 10), acero); tubo.rotation.x = Math.PI / 2; tubo.position.z = -1.55; tubo.castShadow = true; cunaG.add(tubo);
+    const coax = new C.Mesh(new C.CylinderGeometry(0.02, 0.02, 0.5, 6), oscuro); coax.rotation.x = Math.PI / 2; coax.position.set(0.24, 0.02, -0.4); cunaG.add(coax);
+    const am = new C.Mesh(new C.CylinderGeometry(0.025, 0.025, 1.2, 6), oscuro); am.rotation.x = Math.PI / 2; am.position.set(-0.3, 1.05, 0.5); torre.add(am);
+    const ant = new C.Mesh(new C.CylinderGeometry(0.008, 0.012, 2.4, 4), oscuro); ant.position.set(-0.6, 1.9, 1.5); torre.add(ant);
+    return { g, barcaza, torre, cuna: cunaG, boca: new C.Vector3(0, 0, -2.95) };
+  }
+
   function avion() {
     const g = new C.Group(), gris = mat(0x667060, 'phong', { shininess: 30 }), oscuro = mat(0x2b2f28), cristal = mat(0x9fb3bb, 'phong', { shininess: 90 });
     const f = new C.Mesh(new C.CylinderGeometry(0.95, 0.4, 16, 12), gris); f.rotation.x = Math.PI / 2; g.add(f);
@@ -524,5 +574,5 @@ const World = (() => {
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, carro, tex, rng, lin, mat, get refs() { return refs; } };
 })();

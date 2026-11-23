@@ -35,7 +35,7 @@
   // ---------- arma en primera persona, brazos remangados y tatuaje ----------
   const vm = new THREE.Group(); cam.add(vm);
   const T = World.tex();
-  const mMadera = new THREE.MeshLambertMaterial({ map: T.madera, color: lin(0xb08060), fog: false });
+  const mMadera = new THREE.MeshLambertMaterial({ map: T.madera, color: lin(0xc9b08c), fog: false });
   const mMetal = new THREE.MeshPhongMaterial({ color: lin(0x2a2b2e), shininess: 70, specular: lin(0x6a6a6a), fog: false });
   const mMetal2 = new THREE.MeshPhongMaterial({ color: lin(0x45474a), shininess: 50, specular: lin(0x555555), fog: false });
   const mPiel = new THREE.MeshLambertMaterial({ color: lin(0xc8996f), fog: false });
@@ -209,7 +209,38 @@
     efectos.push({ sp, t: 0, vida, tam, crece, vy: vy || 0, adit: !!aditivo });
   }
   function polvo(p, n, tam) { for (let i = 0; i < (n || 2); i++) particula(p.clone().add(new V3(rnd(-.2, .2), rnd(0, .3), rnd(-.2, .2))), 0xc9a982, tam || 0.55, rnd(0.6, 1.1), 1.8, 0.45); }
-  function sangre(p) { particula(p, 0x6a0c0c, 0.35, 0.4, 1.3, -0.6); }
+  // sangre: bruma roja, gotas que caen y dejan mancha, y charco bajo los caídos
+  const texMancha = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+    for (let i = 0; i < 26; i++) { const a = Math.random() * 6.28, r = Math.random() * (i < 8 ? 9 : 22), s = i < 8 ? 9 + Math.random() * 8 : 1.5 + Math.random() * 4.5; const gr = x.createRadialGradient(32 + Math.cos(a) * r, 32 + Math.sin(a) * r, 0, 32 + Math.cos(a) * r, 32 + Math.sin(a) * r, s); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.7, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); }
+    return new THREE.CanvasTexture(c);
+  })();
+  const geoMancha = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), geoGota = new THREE.SphereGeometry(0.022, 5, 4), matGota = new THREE.MeshBasicMaterial({ color: lin(0x5c0808) });
+  const gotas = [], manchas = [], charcos = [];
+  function mancha(x, z, tam, crece) {
+    const m = new THREE.Mesh(geoMancha, new THREE.MeshBasicMaterial({ map: texMancha, color: lin(0x4f0707), transparent: true, opacity: 0.88, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    const y = H(x, z); m.position.set(x, y + 0.03, z); m.rotation.y = Math.random() * 6.28;
+    m.rotation.x = (H(x, z + 0.6) - H(x, z - 0.6)) / 1.2; m.rotation.z = -(H(x + 0.6, z) - H(x - 0.6, z)) / 1.2;
+    m.scale.setScalar(crece ? 0.15 : tam); m.renderOrder = 2; scene.add(m); manchas.push(m);
+    if (crece) charcos.push({ m, tam, t: 0 });
+    if (manchas.length > 70) { const v = manchas.shift(); scene.remove(v); v.material.dispose(); }
+  }
+  function sangre(p, dir, fuerte) {
+    particula(p, 0x7a0d0d, fuerte ? 0.55 : 0.4, 0.38, 1.6, -0.5);
+    const n = fuerte ? 9 : 5;
+    for (let i = 0; i < n; i++) {
+      const m = new THREE.Mesh(geoGota, matGota); m.position.copy(p); m.scale.setScalar(rnd(0.6, 1.6)); scene.add(m);
+      const v = new V3(rnd(-1.6, 1.6), rnd(0.5, 3), rnd(-1.6, 1.6)); if (dir) v.addScaledVector(dir, rnd(1.5, 4.5));
+      gotas.push({ m, v });
+    }
+  }
+  function actualizaSangre(dt) {
+    for (let i = gotas.length - 1; i >= 0; i--) {
+      const g = gotas[i]; g.v.y -= 9.8 * dt; g.m.position.addScaledVector(g.v, dt);
+      if (g.m.position.y <= H(g.m.position.x, g.m.position.z) + 0.02) { scene.remove(g.m); gotas.splice(i, 1); if (Math.random() < 0.7) mancha(g.m.position.x, g.m.position.z, rnd(0.12, 0.38)); }
+    }
+    for (let i = charcos.length - 1; i >= 0; i--) { const c = charcos[i]; c.t += dt; const k = Math.min(1, c.t / 5); c.m.scale.setScalar(0.15 + (c.tam - 0.15) * (1 - (1 - k) * (1 - k))); if (k >= 1) charcos.splice(i, 1); }
+  }
   function explosionFx(p) {
     particula(p.clone().add(new V3(0, 1, 0)), 0xffd890, 6, 0.28, 2, 0, true);
     for (let i = 0; i < 12; i++) particula(p.clone().add(new V3(rnd(-2, 2), rnd(0, 2), rnd(-2, 2))), i < 4 ? 0x3a3128 : 0x9a8668, rnd(2, 4), rnd(1.8, 3.4), 2.2, rnd(0.5, 2.2));
@@ -268,6 +299,7 @@
   function herir(s, dmg, desde, porJugador, cabeza) {
     if (s.muerto || s.aire) return;
     if (s.esJugador) {
+      if (G.carro) dmg *= 0.3;
       P.vida -= dmg; G.minVida = Math.min(G.minVida, P.vida); Snd.impacto(); $('dano').style.opacity = clamp(dmg / 40, 0.35, 0.9);
       const rel = Math.atan2(-(desde.x - P.pos.x), -(desde.z - P.pos.z)) - P.yaw;
       const d = $('dir'); d.style.transform = 'rotate(' + (-rel) + 'rad)'; d.style.opacity = 1; G.dirT = 1.2;
@@ -276,7 +308,7 @@
     }
     s.vida -= dmg;
     if (s.vida <= 0) {
-      s.muerto = true; s.muertoT = 0; s.estado = 'muerto';
+      s.muerto = true; s.muertoT = 0; s.estado = 'muerto'; if (s.humano) { s.arma.position.set(0.35, 1.05, -0.25); s.arma.rotation.set(0, 0.9, 1.4); } if (!s.elev) setTimeout(() => G && s.g.parent && mancha(s.pos.x - Math.sin(s.yaw) * 0.5, s.pos.z - Math.cos(s.yaw) * 0.5, rnd(0.9, 1.5), true), 700);
       if (s.team === 'E') {
         G.bajas++; if (porJugador) { G.bajasJ++; if (cabeza) G.cabezas++; }
         if (Math.random() < 0.25 && gritoT <= 0) { gritoAliado(); gritoT = 4; }
@@ -314,7 +346,7 @@
     cam.updateMatrixWorld(); dirCamara(_d, sp); cam.getWorldPosition(_o);
     const r = trazar(_o, _d, 260, 'L');
     _hit.copy(_o).addScaledVector(_d, r.t);
-    if (r.s) { G.aciertos++; sangre(_hit); herir(r.s, a.dmg * (r.cabeza ? 2.5 : 1) * rnd(0.85, 1.1), P.pos, true, r.cabeza); }
+    if (r.s) { G.aciertos++; sangre(_hit, _d, r.cabeza); herir(r.s, a.dmg * (r.cabeza ? 2.5 : 1) * rnd(0.85, 1.1), P.pos, true, r.cabeza); }
     else if (r.t < 259) polvo(_hit, 2, 0.4);
     for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 130) s.alerta = true;
     if (a.mun === 0 && a.res > 0) setTimeout(() => G && !G.recT && ARMAS[P.arma] === a && a.mun === 0 && recargar(), 350);
@@ -406,7 +438,7 @@
     const dest = new V3(t.pos.x, t.pos.y + (t.agach ? 1 : 1.35), t.pos.z);
     if (!acierta) dest.add(new V3(rnd(-1.8, 1.8), rnd(-0.6, 1.2), rnd(-1.8, 1.8)));
     if (fao || Math.random() < 0.45) trazadora(mz, dest);
-    if (acierta) { herir(t, t === P ? Math.round(rnd(16, 28) * AJ.dif) : (s.team === 'L' ? rnd(45, 90) : rnd(30, 60)), s.pos, false, false); if (t !== P) sangre(dest); }
+    if (acierta) { herir(t, t === P ? Math.round(rnd(16, 28) * AJ.dif) : (s.team === 'L' ? rnd(45, 90) : rnd(30, 60)), s.pos, false, false); if (t !== P) sangre(dest, _d.copy(dest).sub(mz).normalize()); }
     else if (t === P) {
       if (Math.random() < 0.5) Snd.silbido(panDe(s.pos));
       if (Math.random() < 0.6) polvo(new V3(P.pos.x + rnd(-2.5, 2.5), H(P.pos.x, P.pos.z) + rnd(0, 0.6), P.pos.z + rnd(-2.5, 2.5)), 1);
@@ -414,6 +446,29 @@
     if (t.team === 'E') t.alerta = true;
   }
 
+  const _S = new V3(), _T = new V3(), _D = new V3(), _E = new V3(), _pl = new V3(), _u = new V3(), _v = new V3(), _a1 = new V3(), _qp = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+  function ikBrazo(brazo, obj, polo) {
+    const ante = brazo.children[0], mano = ante.children[0], L1 = ante.position.length(), L2 = mano.position.length();
+    brazo.parent.getWorldQuaternion(_qp); brazo.getWorldPosition(_S);
+    _D.copy(obj).sub(_S); const d = _D.length() || 1, dm = Math.min(d, L1 + L2 - 0.004); _D.divideScalar(d);
+    const ca = clamp((L1 * L1 + dm * dm - L2 * L2) / (2 * L1 * dm), -1, 1), sa = Math.sqrt(1 - ca * ca);
+    _pl.copy(polo).addScaledVector(_D, -polo.dot(_D)).normalize();
+    _u.copy(_D).multiplyScalar(ca).addScaledVector(_pl, sa);
+    _E.copy(_S).addScaledVector(_u, L1);
+    _qp.invert();
+    brazo.quaternion.setFromUnitVectors(_a1.copy(ante.position).normalize(), _v.copy(_u).applyQuaternion(_qp));
+    _v.copy(_S).addScaledVector(_D, dm).sub(_E).normalize();
+    _q2.copy(brazo.quaternion).invert().multiply(_qp);
+    ante.quaternion.setFromUnitVectors(_a1.copy(mano.position).normalize(), _v.applyQuaternion(_q2));
+  }
+  const _gD = new V3(), _gI = new V3(), _polo = new V3();
+  function manosAlFusil(s) {
+    s.g.updateMatrixWorld(true);
+    _gD.set(0.02, -0.075, 0.3).applyMatrix4(s.arma.matrixWorld); _gI.set(-0.015, -0.055, 0.02).applyMatrix4(s.arma.matrixWorld);
+    const cy = Math.cos(s.yaw), sy = Math.sin(s.yaw);
+    ikBrazo(s.armR, _gD, _polo.set(cy * 0.55, -1, -sy * 0.55));
+    ikBrazo(s.armL, _gI, _polo.set(-cy * 0.35, -1, sy * 0.35));
+  }
   // postura articulada: correr, rodilla en tierra, apuntar
   function pose(s, dt) {
     const k = Math.min(1, dt * 10), L = (o, ax, v) => { o.rotation[ax] += (v - o.rotation[ax]) * k; };
@@ -429,6 +484,15 @@
       bajada = 0.42;
     } else { L(s.legL, 'x', 0); L(s.legR, 'x', 0); L(s.rodL, 'x', 0); L(s.rodR, 'x', 0); L(s.torso, 'x', 0); }
     const apunta = s.obj && !s.mueve;
+    if (s.humano) {
+      // el fusil se encara o se lleva terciado, y las manos lo siguen
+      const P3 = s.arma.position, ty = (apunta ? 1.435 : s.mueve ? 1.14 : 1.1) - (s.agach && !s.mueve ? 0.0 : 0) + (s.mueve ? Math.sin(s.anim * 2) * 0.015 : 0);
+      P3.x += ((apunta ? 0.165 : 0.04) - P3.x) * k; P3.y += (ty - P3.y) * k; P3.z += ((apunta ? -0.43 : -0.2) - P3.z) * k;
+      L(s.arma, 'x', apunta ? 0 : 0.6); L(s.arma, 'y', apunta ? 0 : 0.75); L(s.arma, 'z', 0);
+      L(s.cabeza, 'x', apunta ? 0.1 : 0); L(s.cabeza, 'z', apunta ? -0.22 : 0);
+      if (!s.lejos) manosAlFusil(s);
+      return bajada;
+    }
     L(s.armR, 'x', apunta ? 1.25 : 0.55); L(s.codoR, 'x', apunta ? 0.55 : 0.9);
     L(s.armL, 'x', apunta ? 1.45 : 0.9); L(s.armL, 'z', apunta ? 0.5 : 0.35); L(s.armR, 'z', apunta ? -0.1 : -0.2); L(s.codoL, 'x', apunta ? 0.3 : 0.8);
     L(s.cabeza, 'x', apunta ? 0.12 : 0);
@@ -451,6 +515,7 @@
     s.mueve = false;
     if (s.team === 'E') iaEnemigo(s, dt); else iaAliado(s, dt);
     s.pos.y = H(s.pos.x, s.pos.z) + (s.elev || 0);
+    s.lejos = dist2D(s.pos, P.pos) > 110;
     const baj = pose(s, dt);
     s.g.position.set(s.pos.x, s.pos.y - baj, s.pos.z); s.g.rotation.y = s.yaw;
     if (s.mueve && dist2D(s.pos, P.pos) < 45) { s.polvoT -= dt; if (s.polvoT <= 0) { s.polvoT = 0.32; particula(new V3(s.pos.x, s.pos.y + 0.1, s.pos.z), 0xc9a982, 0.35, 0.7, 1.5, 0.3); } }
@@ -539,7 +604,7 @@
   }
 
   // ---------- misiones y fases ----------
-  function limpiarEscena() { scene.traverse(o => { if (o.geometry && o.geometry.dispose && o.parent === scene && !o.isInstancedMesh) o.geometry.dispose(); }); efectos.length = 0; trazas.length = 0; }
+  function limpiarEscena() { gotas.length = 0; manchas.length = 0; charcos.length = 0; scene.traverse(o => { if (o.geometry && o.geometry.dispose && o.parent === scene && !o.isInstancedMesh) o.geometry.dispose(); }); efectos.length = 0; trazas.length = 0; }
   function construir(m) {
     limpiarEscena(); scene = new THREE.Scene(); World.build(m, scene); scene.add(cam);
     const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.marca, depthTest: false, transparent: true, sizeAttenuation: false, fog: false }));
@@ -554,7 +619,13 @@
     equiparArmas();
     Object.assign(P, { yaw: 0, pitch: -0.02, vida: 100, curas: 2 + v.cura, agach: false, mira: false, arma: 0, granadas: 3 + v.gran, avion: (m.avion || 0) + (m.avion ? v.avion : 0), muerto: false, retroceso: 0 });
     P.pos.set(m.inicio[0], 0, m.inicio[1]); P.pos.y = H(P.pos.x, P.pos.z);
-    G.nido = null; G.salto = null; mg.g.visible = false;
+    G.nido = null; G.salto = null; mg.g.visible = false; G.carro = null;
+    if (m.carro) {
+      const c = World.carro(); scene.add(c.g);
+      G.carro = Object.assign(c, { yaw: 0, vel: 0, rec: 0, obuses: 48, mgT: 0, n: 0, polvoT: 0, cab: 0, bal: 0, retro: 0 });
+    }
+    $('bFuego').textContent = m.carro ? 'CAÑÓN' : 'FUEGO'; $('fuego2').textContent = m.carro ? 'AMETR.' : 'FUEGO';
+    ['bAgach', 'bArma', 'bGran', 'bRec'].forEach(id => $(id).style.visibility = m.carro ? 'hidden' : '');
     if (m.salto) {
       // el Junkers entra sobre la zona de salto; el jugador va en la puerta y la sección salta con él
       const av = World.avion(); av.position.set(m.inicio[0], H(m.inicio[0], m.inicio[1]) + m.salto.alt, m.inicio[1] + 60); scene.add(av);
@@ -575,6 +646,7 @@
     $('hud').hidden = $('mandos').hidden = false;
     siguienteFase();
     if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
+    if (m.carro) aviso('Carro M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
     setTimeout(() => G && G.m === m && (Snd.voz('coro_viva', 0.9), cartel('¡VIVA!')), 6200);
@@ -756,7 +828,63 @@
       }
     }
   }
+  function actualizaCarro(dt) {
+    const C = G.carro;
+    let mx = mov.x, my = mov.y;
+    if (teclas.KeyW) my -= 1; if (teclas.KeyS) my += 1; if (teclas.KeyA) mx -= 1; if (teclas.KeyD) mx += 1;
+    if (P.muerto) mx = my = 0;
+    C.vel += (clamp(-my, -0.5, 1) * 7.5 - C.vel) * Math.min(1, dt * 1.6);
+    C.yaw -= clamp(mx, -1, 1) * dt * (0.55 + 0.35 * Math.min(1, Math.abs(C.vel) / 4)) * (C.vel < -0.3 ? -1 : 1);
+    const px = P.pos.x, pz = P.pos.z;
+    P.pos.x -= Math.sin(C.yaw) * C.vel * dt; P.pos.z -= Math.cos(C.yaw) * C.vel * dt;
+    World.colisiona(P.pos, 2.1);
+    if (Math.hypot(P.pos.x - px, P.pos.z - pz) < Math.abs(C.vel) * dt * 0.4) C.vel *= 0.85;
+    P.pos.x = clamp(P.pos.x, -150, 150); P.pos.z = clamp(P.pos.z, -255, 262); P.pos.y = H(P.pos.x, P.pos.z);
+    P.mov = 0;
+    // la barcaza sigue el terreno; la torre sigue la mirada
+    const sy = Math.sin(C.yaw), cy = Math.cos(C.yaw), hA = H(P.pos.x - sy * 2.2, P.pos.z - cy * 2.2), hB = H(P.pos.x + sy * 2.2, P.pos.z + cy * 2.2), hI = H(P.pos.x - cy * 1.2, P.pos.z + sy * 1.2), hD = H(P.pos.x + cy * 1.2, P.pos.z - sy * 1.2);
+    C.cab += (Math.atan2(hA - hB, 4.4) - C.cab) * Math.min(1, dt * 5); C.bal += (Math.atan2(hD - hI, 2.4) - C.bal) * Math.min(1, dt * 5);
+    C.g.position.set(P.pos.x, (hA + hB + hI + hD) / 4, P.pos.z); C.g.rotation.set(C.cab, C.yaw, C.bal, 'YXZ');
+    let dy = P.yaw - C.yaw - C.torre.rotation.y; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283;
+    C.torre.rotation.y += clamp(dy, -dt * 1.6, dt * 1.6);
+    C.retro *= Math.pow(0.02, dt);
+    C.cuna.rotation.x += (clamp(P.pitch + 0.1, -0.17, 0.35) - C.cuna.rotation.x) * Math.min(1, dt * 6); C.cuna.position.z = -1.15 + C.retro;
+    // polvo de las cadenas y enemigos arrollados
+    if (Math.abs(C.vel) > 1) { C.polvoT -= dt; if (C.polvoT <= 0) { C.polvoT = 0.09; for (const l of [-1.2, 1.2]) particula(new V3(P.pos.x + cy * l + sy * 2.6, P.pos.y + 0.3, P.pos.z - sy * l + cy * 2.6), 0xc9a982, 1.1, rnd(1, 1.8), 2.4, 0.5); } }
+    if (Math.abs(C.vel) > 2) for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 2.3) { sangre(new V3(s.pos.x, s.pos.y + 0.8, s.pos.z), null, true); herir(s, 999, P.pos, true); }
+    if (C.rec > 0) { C.rec -= dt; if (C.rec <= 0) { C.rec = 0; Snd.cerrojo(); } }
+  }
+  function canonazo() {
+    const C = G.carro; if (!C || C.rec > 0 || P.muerto) return;
+    if (C.obuses <= 0) { aviso('No quedan proyectiles: usa la ametralladora', 2); return; }
+    C.obuses--; C.rec = 3.4; C.retro = 0.45; G.tiros++;
+    cam.updateMatrixWorld(); cam.getWorldPosition(_o); dirCamara(_d, 0.004);
+    const r = trazar(_o, _d, 380, 'L'), obj = _o.clone().addScaledVector(_d, r.t);
+    C.g.updateMatrixWorld(true); const b = C.boca.clone().applyMatrix4(C.cuna.matrixWorld), dir = obj.clone().sub(b), L = dir.length(); dir.divideScalar(L || 1);
+    Snd.explosion(0, 0); Snd.disparo('mauser', 0, 0); G.temblor = Math.max(G.temblor, 0.8);
+    particula(b, 0xffe2a0, 3.2, 0.14, 1.5, 0, true); for (let i = 0; i < 5; i++) particula(b.clone().addScaledVector(dir, rnd(0.5, 3)), 0xb9ab95, rnd(1.5, 3), rnd(1.2, 2.2), 2, 0.6);
+    const m = new THREE.Mesh(geoTraza, matTraza); m.scale.set(4, 4, 3); m.position.copy(b); m.lookAt(obj); scene.add(m);
+    G.proy.push({ tipo: 'obus', m, v: dir.multiplyScalar(260), t: L / 260, fin: obj, jug: true });
+    for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 200) s.alerta = true;
+  }
+  function armaCarro(dt) {
+    const C = G.carro; C.mgT -= dt;
+    cam.updateMatrixWorld(); cam.getWorldPosition(_o); _f.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    const r0 = trazar(_o, _f, 260, 'L'); G.apuntado = !!r0.s; $('mira').classList.toggle('blanco', G.apuntado);
+    if (G.pedido > 0) { G.pedido = 0; canonazo(); }
+    const auto = AJ.auto && tactil && G.apuntado && !app.classList.contains('raton');
+    if ((G.mgCarro || teclas.Space || auto) && C.mgT <= 0 && !P.muerto) {
+      C.mgT = 0.09; C.n++; G.tiros++;
+      dirCamara(_d, 0.012); const r = trazar(_o, _d, 280, 'L'); _hit.copy(_o).addScaledVector(_d, r.t);
+      C.g.updateMatrixWorld(true); const b = new V3(0.24, 0.02, -0.7).applyMatrix4(C.cuna.matrixWorld);
+      Snd.disparo('z45', 0, 0); particula(b, 0xffffff, 0.6, 0.06, 0.5, 0, true);
+      if (C.n % 2 === 0) trazadora(b, _hit.clone());
+      if (r.s) { G.aciertos++; sangre(_hit, _d, r.cabeza); herir(r.s, 60 * (r.cabeza ? 2 : 1), P.pos, true, r.cabeza); } else if (r.t < 279) polvo(_hit, 1, 0.45);
+      for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 140) s.alerta = true;
+    }
+  }
   function actualizaJugador(dt) {
+    if (G.carro) return actualizaCarro(dt);
     if (G.salto && G.salto.fase !== 'suelo') { actualizaSalto(dt); if (P.muerto) P.pitch = Math.max(P.pitch - dt * 0.6, -0.5); return; }
     if (G.nido) {
       const f = G.m.fases[0]; P.pos.set(f.x, H(f.x, f.z) + 5.0, f.z); P.mov = 0;
@@ -790,7 +918,7 @@
     const r = trazar(_o, _d, 300, 'L');
     _hit.copy(_o).addScaledVector(_d, r.t);
     if (N.n % 3 === 0) { const b = new V3(); fogonazo.getWorldPosition(b); trazadora(b, _hit.clone()); }
-    if (r.s) { G.aciertos++; sangre(_hit); herir(r.s, 75 * (r.cabeza ? 2 : 1), P.pos, true, r.cabeza); }
+    if (r.s) { G.aciertos++; sangre(_hit, _d, true); herir(r.s, 75 * (r.cabeza ? 2 : 1), P.pos, true, r.cabeza); }
     else if (r.t < 299) polvo(_hit, 2, 0.5);
     if (N.mun <= 0) recargaNido();
   }
@@ -805,6 +933,7 @@
     if (G.flashT > 0) { G.flashT -= dt; if (G.flashT <= 0) { fogonazo.visible = false; luzDisparo.intensity = 0; } }
   }
   function actualizaArma(dt) {
+    if (G.carro) return armaCarro(dt);
     if (G.nido) return armaNido(dt);
     if (G.salto && G.salto.fase !== 'suelo' && G.salto.fase !== 'campana') { if (disparando || G.pedido > 0) { G.pedido = 0; saltar(); } return; }
     const a = ARMAS[P.arma];
@@ -823,6 +952,7 @@
   function actualizaProyectiles(dt) {
     for (let i = G.proy.length - 1; i >= 0; i--) {
       const p = G.proy[i]; p.t -= dt;
+      if (p.tipo === 'obus') { p.m.position.addScaledVector(p.v, dt); if (p.t <= 0) { scene.remove(p.m); G.proy.splice(i, 1); explotar(p.fin, 11, 5, true); } continue; }
       p.v.y -= 9.8 * dt; p.m.position.addScaledVector(p.v, dt);
       const h = H(p.m.position.x, p.m.position.z);
       if (p.m.position.y < h + 0.07) { p.m.position.y = h + 0.07; p.v.y = Math.abs(p.v.y) * 0.3; p.v.x *= 0.5; p.v.z *= 0.5; if (p.tipo === 'bomba') p.t = 0; }
@@ -846,18 +976,24 @@
     const alt = P.muerto ? 0.35 : (P.agach ? 1.05 : 1.62);
     G.alt = G.alt == null ? alt : G.alt + (alt - G.alt) * Math.min(1, dt * 10);
     const bob = Math.sin(P.bob) * 0.035 * P.mov;
+    if (G.carro) {
+      const pt = clamp(P.pitch, -0.45, 0.4), cp = Math.cos(pt), d = P.mira ? -0.4 : 7.5;
+      cam.position.set(P.pos.x + Math.sin(P.yaw) * cp * d, P.pos.y + (P.mira ? 3.05 : 4.3 - Math.sin(pt) * d * 0.6), P.pos.z + Math.cos(P.yaw) * cp * d);
+      cam.position.y = Math.max(cam.position.y, H(cam.position.x, cam.position.z) + 1);
+    } else
     cam.position.set(P.pos.x, P.pos.y + G.alt + bob, P.pos.z);
     const tb = G.temblor * 0.03;
     const balanceo = G.salto && G.salto.fase === 'campana' ? Math.sin(G.t * 0.9) * 0.05 : G.salto && G.salto.fase === 'caida' ? Math.sin(G.t * 7) * 0.25 : 0;
     cam.rotation.set(clamp(P.pitch + P.retroceso, -1.35, 1.35) + rnd(-tb, tb), P.yaw + rnd(-tb, tb), P.muerto ? 0.6 : balanceo);
     const fov = P.mira ? 42 : 72; cam.fov += (fov - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix();
-    const enPuerta = G.salto && (G.salto.fase === 'puerta' || G.salto.fase === 'caida');
+    const enPuerta = (G.salto && (G.salto.fase === 'puerta' || G.salto.fase === 'caida')) || !!G.carro;
     modelos.forEach((m, i) => m.g.visible = i === P.arma && !P.muerto && !G.nido && !enPuerta); brazos.visible = !P.muerto && !G.nido && !enPuerta; mg.g.visible = !!G.nido && !P.muerto;
     const rec = G.recT > 0 ? Math.sin(Math.min(1, (a.rec - G.recT) / a.rec) * Math.PI) : 0;
     const cambio = G.cambioT > 0 ? (G.cambioT -= dt, G.cambioT / 0.4) : 0;
     const tx = G.nido ? 0 : P.mira ? 0 : 0.22, ty = (G.nido ? (P.mira ? -0.17 : -0.27) : P.mira ? -0.085 : -0.22) - rec * 0.25 - cambio * 0.3 + Math.sin(P.bob * 0.5) * 0.01 * P.mov, tz = G.nido ? -0.5 : P.mira ? -0.27 : -0.42;
     vm.position.x += (tx - vm.position.x) * Math.min(1, dt * 14); vm.position.y += (ty - vm.position.y) * Math.min(1, dt * 14); vm.position.z += (tz + P.retroceso * 0.8 - vm.position.z) * Math.min(1, dt * 20);
     vm.rotation.set(rec * 0.6 + P.retroceso * 2, P.mira ? 0 : 0.04, rec * 0.4);
+    if (G.carro) fogonazo.visible = false;
     if (G.nido) fogonazo.position.set(0, 0.01, mg.muzz); else fogonazo.position.set(0, 0.03, md.muzz);
     const R = World.refs; R.sun.position.copy(P.pos).addScaledVector(R.solDir, 120); R.sun.target.position.copy(P.pos);
     if (R.bandera) { const p = R.bandera.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) + 1.2; p.setZ(i, Math.sin(x * 2.4 - G.t * 6) * 0.12 * x); } p.needsUpdate = true; }
@@ -899,7 +1035,8 @@
     $('tVida').textContent = Math.ceil(P.vida); $('vida').firstElementChild.style.width = P.vida + '%';
     $('tCuras').textContent = P.curas; $('tBajas').textContent = G.bajas;
     $('tEsc').textContent = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
-    if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
+    if (G.carro) { const C = G.carro; $('tMun').textContent = C.rec > 0 ? '··' : 'LISTO'; $('tRes').textContent = C.obuses + ' proyectiles'; $('tArma').textContent = 'M-24 Chaffee · cañón de 75 mm'; $('tArma').style.color = ''; }
+    else if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
     else { $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tArma').style.color = ''; }
     $('tGran').textContent = P.granadas;
     $('bGran').disabled = P.granadas <= 0; $('bCura').disabled = P.curas <= 0; $('bAvion').disabled = P.avion <= 0; $('bAvion').hidden = !(G.m.avion > 0);
@@ -927,7 +1064,7 @@
       G.t += dt; gritoT -= dt; G.viva = Math.max(0, G.viva - dt); G.vivaCD = Math.max(0, G.vivaCD - dt);
       actualizaJugador(dt); actualizaArma(dt);
       for (const s of G.sold) actualizaSoldado(s, dt);
-      actualizaProyectiles(dt); actualizaFase(dt); actualizaEfectos(dt);
+      actualizaProyectiles(dt); actualizaFase(dt); actualizaEfectos(dt); actualizaSangre(dt);
       const combate = G.sold.some(s => s.team === 'E' && !s.muerto && s.alerta);
       G.gritoBat -= dt;
       if (combate && G.gritoBat <= 0) { G.gritoBat = rnd(11, 19); gritoAliado(); }
@@ -1032,7 +1169,7 @@
   }
   const pulsaFuego = () => { disparando = true; G.pedido = 0.3; };
   boton('bFuego', pulsaFuego, () => disparando = false);
-  boton('fuego2', pulsaFuego, () => disparando = false);
+  boton('fuego2', () => { if (G.carro) G.mgCarro = true; else pulsaFuego(); }, () => { disparando = false; if (G) G.mgCarro = false; });
   boton('bMira', () => P.mira = !P.mira);
   boton('bRec', recargar);
   boton('bAgach', () => P.agach = !P.agach);

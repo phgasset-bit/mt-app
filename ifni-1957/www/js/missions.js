@@ -90,7 +90,7 @@ const MISIONES = [
     ]
   },
   {
-    id: 'edchera', tit: 'Epílogo: Edchera', dato: 'Sáhara español, Saguia el Hamra · 13 de enero de 1958',
+    id: 'edchera', epilogo: true, tit: 'Epílogo: Edchera', dato: 'Sáhara español, Saguia el Hamra · 13 de enero de 1958',
     parte: ['Otro frente, otra bandera. Un reconocimiento de la Legión sale de El Aaiún hacia Edchera y cae en una emboscada en el cauce seco de la Saguia.',
       'Sal de la emboscada, resiste donde te pille y limpia el cauce.'],
     historia: 'El combate de Edchera, el 13 de enero de 1958, fue el más duro de la Legión en esta guerra, con decenas de muertos y heridos (XIII Bandera según la mayoría de las fuentes). El brigada Fadrique Castromonte y el legionario Maderal Oleaga recibieron a título póstumo las últimas Laureadas de San Fernando concedidas.',
@@ -100,6 +100,19 @@ const MISIONES = [
       { tipo: 'ambush', x: 0, z: 120, n: 11, nom: 'Sal de la emboscada' },
       { tipo: 'hold', x: -10, z: 30, t: 110, cada: 10, n: 4, nom: 'Resiste en las dunas' },
       { tipo: 'take', x: 0, z: -110, n: 13, nom: 'Limpia el cauce' }
+    ]
+  },
+  {
+    id: 'tafudart', epilogo: true, tit: 'Epílogo: los carros de Tafudart', dato: 'Sáhara español, Saguia el Hamra · febrero de 1958',
+    parte: ['Operación Teide: españoles y franceses barren el Sáhara. Con la Legión avanzan los carros ligeros M-24 del Regimiento de Caballería Pavía, desembarcados en Villa Bens.',
+      'Hoy vas de tirador en un M-24 que apoya a la II Bandera sobre Tafudart. Conduce con el joystick, bate los parapetos con el cañón y usa la ametralladora contra los que salgan a campo abierto. No dejes atrás a los legionarios.'],
+    historia: 'En la operación Teide-Écouvillon (10-25 de febrero de 1958) las tropas españolas y francesas expulsaron del Sáhara al Ejército de Liberación. Los carros M-24 del Regimiento Pavía, únicos carros de combate españoles de toda la campaña, apoyaron con su fuego a la Legión en el ataque a Tafudart. En el territorio de Ifni no llegó a combatir ningún carro.',
+    desierto: true, amp: 3, seed: 9.6, inicio: [0, 235], aliados: 7, carro: true,
+    bumps: [[-40, 110, 40, 5], [50, -10, 45, 6], [0, -150, 60, 7], [-110, -60, 60, -5], [110, 60, 60, -4]],
+    fases: [
+      { tipo: 'take', x: -40, z: 110, n: 12, nom: 'Bate el primer parapeto' },
+      { tipo: 'take', x: 50, z: -10, n: 14, nom: 'Abre paso a la Bandera' },
+      { tipo: 'take', x: 0, z: -150, n: 16, nom: 'Toma Tafudart' }
     ]
   }
 ];

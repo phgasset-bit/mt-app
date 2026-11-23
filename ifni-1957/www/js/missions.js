@@ -77,6 +77,20 @@ const MISIONES = [
     ]
   },
   {
+    id: 'convoy', tit: 'El convoy', dato: 'Pistas del interior de Ifni · diciembre de 1957',
+    parte: ['Los puestos del interior se evacúan uno a uno. Tres camiones con heridos, munición y agua vuelven a la capital por una pista de montaña.',
+      'Tu sección va a pie por delante. Los camiones solo avanzan cuando no hay fuego: limpia cada emboscada deprisa, porque mientras dure el tiroteo el convoy sufre.'],
+    historia: 'En diciembre de 1957 las columnas españolas socorrieron y evacuaron los puestos cercados del interior (Tiliuin, Telata, Tiugsa, Tenin...) y regresaron a Sidi Ifni por pistas batidas desde las alturas. Esta misión es una recreación libre de aquellas marchas.',
+    amp: 9, seed: 11.3, inicio: [0, 225], aliados: 6, convoy: true,
+    bumps: [[-70, 150, 45, 11], [75, 70, 50, 12], [-75, -20, 50, 11], [70, -110, 45, 12], [0, -200, 40, 5]],
+    fases: [
+      { tipo: 'ambush', x: 0, z: 140, n: 7, nom: 'Abre paso al convoy' },
+      { tipo: 'ambush', x: 0, z: 30, n: 9, nom: 'Cruza la vaguada' },
+      { tipo: 'ambush', x: 0, z: -90, n: 10, nom: 'Despeja el collado' },
+      { tipo: 'reach', x: 0, z: -205, nom: 'Lleva el convoy al llano' }
+    ]
+  },
+  {
     id: 'cotas', tit: 'Ampliar el perímetro', dato: 'Alrededores de Sidi Ifni · enero-febrero de 1958',
     parte: ['Con los puestos del interior evacuados, toca alejar al enemigo de la capital.',
       'Tres cotas fortificadas, muchas armas automáticas. Avanza de parapeto en parapeto y no malgastes munición.'],

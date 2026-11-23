@@ -90,18 +90,24 @@ const World = (() => {
     TEX.fogon = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,250,225,1)'); r.addColorStop(0.25, 'rgba(255,205,90,.95)'); r.addColorStop(1, 'rgba(255,120,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
     TEX.marca = canvasTex(64, 64, (g) => { g.fillStyle = '#f2b90f'; g.strokeStyle = '#1d1710'; g.lineWidth = 5; g.beginPath(); g.moveTo(8, 10); g.lineTo(56, 10); g.lineTo(32, 54); g.closePath(); g.stroke(); g.fill(); });
     TEX.bandera = canvasTex(96, 64, (g) => { g.fillStyle = '#c60b1e'; g.fillRect(0, 0, 96, 64); g.fillStyle = '#ffc400'; g.fillRect(0, 16, 96, 32); });
-    TEX.suelo = canvasTex(256, 256, (g, w, h) => {
-      g.fillStyle = 'rgb(236,236,236)'; g.fillRect(0, 0, w, h);
+    TEX.suelo = canvasTex(512, 512, (g, w, h) => {
+      g.fillStyle = 'rgb(232,232,232)'; g.fillRect(0, 0, w, h);
       const id = g.getImageData(0, 0, w, h), d = id.data;
-      for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 34; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+      for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 30; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
       g.putImageData(id, 0, 0);
-      for (let i = 0; i < 420; i++) {
-        const x = Math.random() * w, y = Math.random() * h, r = 0.6 + Math.random() * 2.4, c = 150 + Math.random() * 105 | 0;
-        g.fillStyle = 'rgba(' + c + ',' + (c - 6) + ',' + (c - 14) + ',.6)';
-        for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.beginPath(); g.ellipse(x + ox, y + oy, r, r * 0.7, Math.random() * 3, 0, 6.3); g.fill(); }
+      const rep = (fn) => { for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) fn(ox, oy); };
+      // manchas grandes de tierra más clara y más oscura
+      for (let i = 0; i < 26; i++) { const x = Math.random() * w, y = Math.random() * h, r = 30 + Math.random() * 60, osc = Math.random() < 0.5; rep((ox, oy) => { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); gr.addColorStop(0, osc ? 'rgba(150,140,125,.22)' : 'rgba(255,252,244,.22)'); gr.addColorStop(1, 'rgba(200,200,200,0)'); g.fillStyle = gr; g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2); }); }
+      // grietas de tierra seca
+      g.lineWidth = 1; g.strokeStyle = 'rgba(120,105,90,.35)';
+      for (let i = 0; i < 34; i++) { let x = Math.random() * w, y = Math.random() * h, a = Math.random() * 6.28; const pts = [[x, y]]; for (let k = 0; k < 7; k++) { a += (Math.random() - 0.5) * 1.3; x += Math.cos(a) * (6 + Math.random() * 12); y += Math.sin(a) * (6 + Math.random() * 12); pts.push([x, y]); } rep((ox, oy) => { g.beginPath(); pts.forEach((p, k) => k ? g.lineTo(p[0] + ox, p[1] + oy) : g.moveTo(p[0] + ox, p[1] + oy)); g.stroke(); }); }
+      // guijarros con su sombra
+      for (let i = 0; i < 900; i++) {
+        const x = Math.random() * w, y = Math.random() * h, r = 0.8 + Math.random() * (i < 60 ? 5 : 2.4), c = 150 + Math.random() * 100 | 0, an = Math.random() * 3;
+        rep((ox, oy) => { g.fillStyle = 'rgba(70,60,50,.35)'; g.beginPath(); g.ellipse(x + ox + r * 0.35, y + oy + r * 0.35, r, r * 0.7, an, 0, 6.3); g.fill(); g.fillStyle = 'rgba(' + c + ',' + (c - 6) + ',' + (c - 14) + ',.85)'; g.beginPath(); g.ellipse(x + ox, y + oy, r, r * 0.7, an, 0, 6.3); g.fill(); });
       }
     }, false);
-    TEX.suelo.wrapS = TEX.suelo.wrapT = C.RepeatWrapping; TEX.suelo.repeat.set(110, 110); TEX.suelo.anisotropy = 4;
+    TEX.suelo.wrapS = TEX.suelo.wrapT = C.RepeatWrapping; TEX.suelo.repeat.set(70, 70); TEX.suelo.anisotropy = 8;
     TEX.revoco = TEX.suelo.clone(); TEX.revoco.needsUpdate = true; TEX.revoco.repeat.set(2, 1);
     TEX.hierba = canvasTex(64, 64, (g) => {
       for (let i = 0; i < 26; i++) {
@@ -605,6 +611,16 @@ const World = (() => {
     return { g, barcaza, torre, cuna: cunaG, boca: new C.Vector3(0, 0, -2.95) };
   }
 
+  // camión militar de la columna: cabina, capó y caja con toldo
+  function camion() {
+    const g = new C.Group(), verde = mat(0x565b3e), lona = mat(0x7d7656), goma = mat(0x1c1c1a), cristal = mat(0x9fb3bb, 'phong', { shininess: 90 });
+    const cj = (w, h, d, m, x, y, z) => { const o = new C.Mesh(new C.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+    cj(2.1, 0.25, 6.2, verde, 0, 0.95, 0); cj(1.9, 0.75, 1.5, verde, 0, 1.45, -2.4); cj(2.0, 1.3, 1.3, verde, 0, 1.7, -1.05); cj(1.8, 0.5, 0.05, cristal, 0, 2.0, -1.72);
+    cj(2.2, 0.7, 3.5, verde, 0, 1.4, 1.35); const t = new C.Mesh(new C.CylinderGeometry(1.1, 1.1, 3.5, 10, 1, false, 0, Math.PI), lona); t.rotation.set(Math.PI / 2, Math.PI / 2, 0); t.position.set(0, 1.75, 1.35); t.scale.z = 1.25; t.castShadow = true; g.add(t);
+    for (const x of [-1, 1]) for (const z of [-2.3, 0.9, 2.2]) { const r = new C.Mesh(new C.CylinderGeometry(0.48, 0.48, 0.32, 12), goma); r.rotation.z = Math.PI / 2; r.position.set(x * 1.0, 0.48, z); r.castShadow = true; g.add(r); }
+    return { g };
+  }
+
   function avion() {
     const g = new C.Group(), gris = mat(0x667060, 'phong', { shininess: 30 }), oscuro = mat(0x2b2f28), cristal = mat(0x9fb3bb, 'phong', { shininess: 90 });
     const f = new C.Mesh(new C.CylinderGeometry(0.95, 0.4, 16, 12), gris); f.rotation.x = Math.PI / 2; g.add(f);
@@ -616,5 +632,5 @@ const World = (() => {
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, carro, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, carro, camion, tex, rng, lin, mat, get refs() { return refs; } };
 })();

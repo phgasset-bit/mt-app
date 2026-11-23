@@ -48,9 +48,28 @@ const Snd = (() => {
     if (!ctx) return;
     dist = dist || 0;
     const g = 1 / (1 + dist / 22), ret = Math.min(0.5, dist / 340), lejos = Math.max(0.25, 1 - dist / 160);
-    if (tipo === 'mauser') { ruido(0.34, 5200, 260, 1.1, 0, 0); tono('sine', 170, 45, 0.2, 0.9, 0, 0); ruido(0.7, 900, 120, 0.22, 0, 0.05); }
-    else if (tipo === 'z45') { ruido(0.11, 3600, 500, 0.75, 0, 0); tono('square', 140, 60, 0.07, 0.3, 0, 0); }
-    else { ruido(0.3, 4200 * lejos, 200, 0.9 * g, pan, ret); tono('sine', 150, 50, 0.16, 0.5 * g, pan, ret); ruido(0.6, 600, 100, 0.15 * g, pan, ret + 0.06); }
+    // chasquido seco + cuerpo grave + cola, y el eco que devuelven las lomas
+    const eco = (gan) => { ruido(0.5, 1100, 140, gan, -0.5, 0.26); ruido(0.7, 700, 90, gan * 0.6, 0.6, 0.47); };
+    if (tipo === 'mauser') { ruido(0.02, 9000, 3000, 0.9, 0, 0, 'highpass'); ruido(0.32, 5200, 240, 1.15, 0, 0); tono('sine', 180, 42, 0.22, 1.0, 0, 0); ruido(0.75, 900, 110, 0.24, 0, 0.05); eco(0.16); }
+    else if (tipo === 'z45') { ruido(0.015, 8000, 3000, 0.5, 0, 0, 'highpass'); ruido(0.11, 3600, 500, 0.75, 0, 0); tono('square', 140, 60, 0.07, 0.3, 0, 0); ruido(0.3, 800, 150, 0.08, 0, 0.2); }
+    else if (tipo === 'mg') { ruido(0.015, 9000, 3500, 0.7, 0, 0, 'highpass'); ruido(0.16, 4600, 320, 1.0, 0, 0); tono('sine', 160, 55, 0.11, 0.8, 0, 0); ruido(0.35, 900, 130, 0.1, 0, 0.22); }
+    else if (tipo === 'canon') { ruido(0.05, 7000, 1500, 1.2, 0, 0, 'highpass'); ruido(1.1, 2600, 60, 1.6, 0, 0); tono('sine', 110, 24, 0.9, 1.6, 0, 0); tono('triangle', 60, 22, 1.2, 0.9, 0, 0.02); ruido(1.6, 500, 60, 0.5, 0, 0.3); eco(0.4); }
+    else { ruido(0.3, 4200 * lejos, 200, 0.9 * g, pan, ret); tono('sine', 150, 50, 0.16, 0.5 * g, pan, ret); ruido(0.6, 600, 100, 0.15 * g, pan, ret + 0.06); if (dist > 40) ruido(0.5, 500, 90, 0.1 * g, -pan, ret + 0.35); }
+  }
+  // motor y cadenas del carro: bucle grave cuya fuerza y tono siguen a la velocidad (0..1); -1 lo apaga
+  let mot = null;
+  function motor(v) {
+    if (!ctx) return;
+    if (v < 0) { if (mot) { const m = mot; mot = null; m.g.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => { try { m.o.forEach(o => o.stop()); m.r.stop(); } catch (e) {} }, 900); } return; }
+    if (!mot) {
+      const g = ctx.createGain(); g.gain.value = 0; g.connect(master);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.connect(g);
+      const o = [41, 61.5, 82.4].map((f, i) => { const x = ctx.createOscillator(); x.type = i ? 'sawtooth' : 'square'; x.frequency.value = f; const a = ctx.createGain(); a.gain.value = i ? 0.25 : 0.4; x.connect(a); a.connect(lp); x.start(); x.base = f; return x; });
+      const r = ctx.createBufferSource(); r.buffer = nbuf; r.loop = true; const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.6; const rg = ctx.createGain(); rg.gain.value = 0; r.connect(bp); bp.connect(rg); rg.connect(g); r.start();
+      mot = { g, o, r, rg };
+    }
+    const t = ctx.currentTime; mot.g.gain.setTargetAtTime(0.16 + v * 0.16, t, 0.15); mot.rg.gain.setTargetAtTime(v * 0.5, t, 0.15);
+    mot.o.forEach(x => x.frequency.setTargetAtTime(x.base * (1 + v * 0.55), t, 0.2));
   }
   function cerrojo() { if (!ctx) return; ruido(0.035, 3200, 2400, 0.28, 0, 0.3, 'bandpass'); ruido(0.05, 2200, 1500, 0.3, 0, 0.62, 'bandpass'); }
   function clic() { if (ctx) ruido(0.03, 2800, 2000, 0.25, 0, 0, 'bandpass'); }
@@ -102,5 +121,5 @@ const Snd = (() => {
     s.connect(a); a.connect(salida(pan || 0)); s.start(ctx.currentTime + (t0 || 0));
     return true;
   }
-  return { init, setVol, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
+  return { init, setVol, motor, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
 })();

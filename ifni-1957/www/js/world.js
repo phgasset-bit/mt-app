@@ -621,16 +621,57 @@ const World = (() => {
     return { g };
   }
 
+  // bombardero Heinkel CASA 2.111: morro acristalado, ala elíptica, dos motores con hélices, escarapelas españolas
   function avion() {
-    const g = new C.Group(), gris = mat(0x667060, 'phong', { shininess: 30 }), oscuro = mat(0x2b2f28), cristal = mat(0x9fb3bb, 'phong', { shininess: 90 });
-    const f = new C.Mesh(new C.CylinderGeometry(0.95, 0.4, 16, 12), gris); f.rotation.x = Math.PI / 2; g.add(f);
-    const morro = new C.Mesh(new C.SphereGeometry(0.95, 12, 8), cristal); morro.position.z = -8; morro.scale.z = 1.4; g.add(morro);
-    const ala = new C.Mesh(new C.BoxGeometry(22, 0.3, 3.2), gris); ala.position.z = -1.5; g.add(ala);
-    const cola = new C.Mesh(new C.BoxGeometry(7, 0.2, 1.8), gris); cola.position.z = 7.2; g.add(cola);
-    const deriva = new C.Mesh(new C.BoxGeometry(0.2, 2.6, 2), gris); deriva.position.set(0, 1.2, 7.3); g.add(deriva);
-    [-4.5, 4.5].forEach(x => { const mo = new C.Mesh(new C.CylinderGeometry(0.6, 0.48, 3.8, 10), oscuro); mo.rotation.x = Math.PI / 2; mo.position.set(x, -0.2, -2.6); g.add(mo); const h = new C.Mesh(new C.CircleGeometry(1.5, 16), new C.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.25 })); h.position.set(x, -0.2, -4.6); g.add(h); });
+    const g = new C.Group(), gris = mat(0x6f7a78, 'phong', { shininess: 25 }), panza = mat(0x9fb6c4), oscuro = mat(0x24272a), cristal = new C.MeshPhongMaterial({ color: lin(0x9fc0cc), shininess: 120, transparent: true, opacity: 0.55 }), marco = mat(0x4a5254);
+    const som = o => { o.castShadow = true; return o; };
+    // fuselaje: sección delantera, cuerpo y cola afilada
+    const f1 = som(new C.Mesh(new C.CylinderGeometry(0.98, 0.98, 6.2, 16), gris)); f1.rotation.x = Math.PI / 2; f1.position.z = -3.2; g.add(f1);
+    const f2 = som(new C.Mesh(new C.CylinderGeometry(0.98, 0.3, 8.4, 16), gris)); f2.rotation.x = -Math.PI / 2; f2.position.z = 4.1; g.add(f2);
+    // morro acristalado con su armazón
+    const morro = new C.Mesh(new C.SphereGeometry(0.98, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), cristal); morro.rotation.x = -Math.PI / 2; morro.scale.y = 1.9; morro.position.z = -6.3; g.add(morro);
+    const arm = new C.Mesh(new C.SphereGeometry(0.99, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), new C.MeshBasicMaterial({ color: lin(0x3a4244), wireframe: true })); arm.rotation.x = -Math.PI / 2; arm.scale.y = 1.9; arm.position.z = -6.3; g.add(arm);
+    const cab = new C.Mesh(new C.CylinderGeometry(0.99, 0.99, 2.2, 16, 1, true, -Math.PI / 2 - 0.9, 1.8), cristal); cab.rotation.x = Math.PI / 2; cab.position.z = -5.2; g.add(cab);
+    // puesto dorsal y góndola ventral
+    const dor = new C.Mesh(new C.SphereGeometry(0.5, 10, 8), cristal); dor.scale.set(1, 0.7, 2); dor.position.set(0, 0.95, -0.6); g.add(dor);
+    const gon = som(new C.Mesh(new C.SphereGeometry(0.55, 10, 8), gris)); gon.scale.set(1, 0.8, 3.4); gon.position.set(0, -1.0, 0.4); g.add(gon);
+    const bodega = new C.Mesh(new C.BoxGeometry(1.1, 0.1, 3.2), oscuro); bodega.position.set(0, -0.98, -2.6); g.add(bodega);
+    // planos con forma elíptica
+    const plano = (env, cuerda, grosor) => { const sh = new C.Shape(), n = 14; for (let k = 0; k <= n; k++) { const t = k / n, x = env * t, c = cuerda * Math.sqrt(1 - t * t * 0.92) * (1 - t * 0.25); k ? sh.lineTo(x, -c * 0.38) : sh.moveTo(x, -c * 0.38); } for (let k = n; k >= 0; k--) { const t = k / n, x = env * t, c = cuerda * Math.sqrt(1 - t * t * 0.92) * (1 - t * 0.25); sh.lineTo(x, c * 0.62); } const ge = new C.ExtrudeGeometry(sh, { depth: grosor, bevelEnabled: true, bevelThickness: grosor * 0.4, bevelSize: 0.12, bevelSegments: 2 }); ge.translate(0, 0, -grosor / 2); ge.rotateX(Math.PI / 2); return ge; };
+    const gAla = plano(11.3, 4.6, 0.28), gEst = plano(4.2, 2.3, 0.14);
+    for (const l of [-1, 1]) {
+      const ala = som(new C.Mesh(gAla, gris)); ala.scale.x = l; ala.position.set(l * 0.6, -0.35, -2.2); ala.rotation.z = l * 0.07; g.add(ala);
+      const est = som(new C.Mesh(gEst, gris)); est.scale.x = l; est.position.set(l * 0.15, 0.35, 7.2); g.add(est);
+      // motor, capó, buje y hélice
+      const mo = som(new C.Mesh(new C.CylinderGeometry(0.62, 0.5, 4.2, 12), gris)); mo.rotation.x = Math.PI / 2; mo.position.set(l * 3.3, -0.45, -3.6); g.add(mo);
+      const rad = new C.Mesh(new C.BoxGeometry(0.7, 0.4, 1.4), oscuro); rad.position.set(l * 3.3, -1.05, -3.8); g.add(rad);
+      const buje = new C.Mesh(new C.ConeGeometry(0.34, 0.9, 10), oscuro); buje.rotation.x = -Math.PI / 2; buje.position.set(l * 3.3, -0.45, -6.1); g.add(buje);
+      const hel = new C.Group(); hel.position.set(l * 3.3, -0.45, -5.9); g.add(hel);
+      for (let k = 0; k < 3; k++) { const pala = new C.Mesh(new C.BoxGeometry(0.2, 1.75, 0.05), oscuro); pala.position.y = 0.9; const br = new C.Group(); br.rotation.z = k * 2.094; br.add(pala); hel.add(br); }
+      const disco = new C.Mesh(new C.CircleGeometry(1.8, 20), new C.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.16, side: C.DoubleSide, depthWrite: false })); hel.add(disco);
+      (g.userData.helices = g.userData.helices || []).push(hel);
+      // tren replegado: sin dibujar. Escarapelas en el extradós y en el costado
+      const esc = (r, col, x, y, z, rx, ry) => { const c = new C.Mesh(new C.CircleGeometry(r, 20), new C.MeshBasicMaterial({ color: lin(col), side: C.DoubleSide })); c.position.set(x, y, z); c.rotation.set(rx, ry, 0); g.add(c); };
+      esc(1.05, 0xc60b1e, l * 7.4, 0.66, -2.3, -Math.PI / 2, 0); esc(0.7, 0xffc400, l * 7.4, 0.67, -2.3, -Math.PI / 2, 0); esc(0.33, 0xc60b1e, l * 7.4, 0.68, -2.3, -Math.PI / 2, 0);
+      esc(0.6, 0xc60b1e, l * 0.99, 0.05, 2.6, 0, l * Math.PI / 2); esc(0.4, 0xffc400, l * 1.0, 0.05, 2.6, 0, l * Math.PI / 2); esc(0.19, 0xc60b1e, l * 1.01, 0.05, 2.6, 0, l * Math.PI / 2);
+    }
+    // deriva redondeada con el timón blanco y el aspa negra
+    const sd = new C.Shape(); sd.moveTo(-1.6, 0); sd.quadraticCurveTo(-0.9, 2.5, 0.3, 2.6); sd.quadraticCurveTo(1.3, 2.5, 1.2, 0); sd.lineTo(-1.6, 0);
+    const der = som(new C.Mesh(new C.ExtrudeGeometry(sd, { depth: 0.14, bevelEnabled: false }), gris)); der.rotation.y = -Math.PI / 2; der.position.set(0.07, 0.4, 7.3); g.add(der);
+    for (const l of [-1, 1]) { const tm = new C.Mesh(new C.PlaneGeometry(1.0, 1.9), new C.MeshBasicMaterial({ color: lin(0xeeeeea), side: C.DoubleSide })); tm.rotation.y = Math.PI / 2; tm.position.set(l * 0.085, 1.45, 8.0); g.add(tm);
+      for (const a of [0.6, -0.6]) { const as = new C.Mesh(new C.PlaneGeometry(0.16, 1.5), new C.MeshBasicMaterial({ color: 0x111111, side: C.DoubleSide })); as.rotation.set(a, Math.PI / 2, 0, 'YXZ'); as.position.set(l * 0.09, 1.45, 8.0); g.add(as); } }
+    return g;
+  }
+  // bomba de aviación con aletas (la punta mira a +z, para orientarla con lookAt)
+  function bomba() {
+    const g = new C.Group(), m = mat(0x3b4034, 'phong', { shininess: 30 }), a = mat(0xb8a23a);
+    const c = new C.Mesh(new C.CylinderGeometry(0.26, 0.26, 1.3, 10), m); c.rotation.x = Math.PI / 2; g.add(c);
+    const p = new C.Mesh(new C.SphereGeometry(0.26, 10, 8), m); p.scale.z = 1.7; p.position.z = 0.65; g.add(p);
+    const cl = new C.Mesh(new C.ConeGeometry(0.26, 0.8, 10), m); cl.rotation.x = -Math.PI / 2; cl.position.z = -1.05; g.add(cl);
+    for (let k = 0; k < 4; k++) { const al = new C.Mesh(new C.BoxGeometry(0.03, 0.62, 0.5), m); al.rotation.z = k * Math.PI / 4; al.position.z = -1.2; g.add(al); }
+    const an = new C.Mesh(new C.CylinderGeometry(0.265, 0.265, 0.12, 10), a); an.rotation.x = Math.PI / 2; an.position.z = 0.35; g.add(an);
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, carro, camion, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, bomba, carro, camion, tex, rng, lin, mat, get refs() { return refs; } };
 })();

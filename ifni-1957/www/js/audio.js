@@ -71,6 +71,8 @@ const Snd = (() => {
     const t = ctx.currentTime; mot.g.gain.setTargetAtTime(0.16 + v * 0.16, t, 0.15); mot.rg.gain.setTargetAtTime(v * 0.5, t, 0.15);
     mot.o.forEach(x => x.frequency.setTargetAtTime(x.base * (1 + v * 0.55), t, 0.2));
   }
+  // silbido de la bomba al caer
+  function caida(dur) { if (!ctx) return; tono('sine', 1900, 520, dur || 3.2, 0.16, 0, 0); tono('triangle', 2400, 640, dur || 3.2, 0.06, 0, 0.05); }
   function cerrojo() { if (!ctx) return; ruido(0.035, 3200, 2400, 0.28, 0, 0.3, 'bandpass'); ruido(0.05, 2200, 1500, 0.3, 0, 0.62, 'bandpass'); }
   function clic() { if (ctx) ruido(0.03, 2800, 2000, 0.25, 0, 0, 'bandpass'); }
   function recarga() { if (!ctx) return; ruido(0.05, 1800, 1200, 0.3, 0, 0.2, 'bandpass'); ruido(0.08, 2600, 1500, 0.3, 0, 1.2, 'bandpass'); ruido(0.05, 3000, 2000, 0.3, 0, 2.0, 'bandpass'); }
@@ -121,5 +123,5 @@ const Snd = (() => {
     s.connect(a); a.connect(salida(pan || 0)); s.start(ctx.currentTime + (t0 || 0));
     return true;
   }
-  return { init, setVol, motor, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
+  return { init, setVol, motor, caida, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
 })();

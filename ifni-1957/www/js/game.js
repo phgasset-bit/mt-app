@@ -260,9 +260,18 @@
   function actualizaSangre(dt) {
     for (let i = gotas.length - 1; i >= 0; i--) {
       const g = gotas[i]; g.v.y -= 9.8 * dt; g.m.position.addScaledVector(g.v, dt);
-      if (g.m.position.y <= H(g.m.position.x, g.m.position.z) + 0.02) { scene.remove(g.m); gotas.splice(i, 1); if (Math.random() < 0.7) mancha(g.m.position.x, g.m.position.z, rnd(0.12, 0.38)); }
+      if (g.m.position.y <= H(g.m.position.x, g.m.position.z) + 0.02) { scene.remove(g.m); gotas.splice(i, 1); if (!g.seco && Math.random() < 0.7) mancha(g.m.position.x, g.m.position.z, rnd(0.12, 0.38)); }
     }
     for (let i = charcos.length - 1; i >= 0; i--) { const c = charcos[i]; c.t += dt; const k = Math.min(1, c.t / 5); c.m.scale.setScalar(0.15 + (c.tam - 0.15) * (1 - (1 - k) * (1 - k))); if (k >= 1) charcos.splice(i, 1); }
+  }
+  function explosionGrande(p) {
+    particula(p.clone().add(new V3(0, 2, 0)), 0xfff0b0, 16, 0.35, 1.6, 0, true);
+    for (let i = 0; i < 6; i++) particula(p.clone().add(new V3(rnd(-4, 4), rnd(1, 5), rnd(-4, 4))), 0xff9a30, rnd(5, 9), rnd(0.35, 0.7), 1.5, 3, true);
+    for (let i = 0; i < 16; i++) particula(p.clone().add(new V3(rnd(-5, 5), rnd(0, 3), rnd(-5, 5))), i % 3 ? 0x8f7a5c : 0x2e2822, rnd(4, 8), rnd(2.5, 5), 2.4, rnd(1, 3.5));
+    for (let i = 0; i < 9; i++) particula(p.clone().add(new V3(rnd(-2, 2), 3 + i * 2.6, rnd(-2, 2))), 0x3a332c, rnd(5, 8), rnd(4, 7), 1.8, rnd(2.5, 4.5));
+    for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(geoGota, World.mat(0x6b5a44)); m.scale.setScalar(rnd(4, 11)); m.position.copy(p).add(new V3(0, 0.5, 0)); scene.add(m); gotas.push({ m, v: new V3(rnd(-11, 11), rnd(8, 20), rnd(-11, 11)), seco: true }); }
+    const c = new THREE.Mesh(geoMancha, new THREE.MeshBasicMaterial({ map: texMancha, color: lin(0x241d17), transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    c.position.set(p.x, H(p.x, p.z) + 0.04, p.z); c.scale.setScalar(13); c.rotation.y = Math.random() * 6; scene.add(c);
   }
   function explosionFx(p) {
     particula(p.clone().add(new V3(0, 1, 0)), 0xffd890, 6, 0.28, 2, 0, true);
@@ -399,7 +408,7 @@
     G.proy.push({ tipo: 'granada', m, v: _d.clone().multiplyScalar(17).add(new V3(0, 4.5, 0)), t: 3.2, jug: true });
   }
   function explotar(p, radio, letal, jug) {
-    explosionFx(p); const d = dist2D(p, P.pos); Snd.explosion(d, panDe(p)); G.temblor = Math.max(G.temblor, clamp(1.2 - d / 40, 0, 1));
+    explosionFx(p); if (radio >= 12) explosionGrande(p); const d = dist2D(p, P.pos); Snd.explosion(d, panDe(p)); G.temblor = Math.max(G.temblor, clamp(1.2 - d / 40, 0, 1));
     for (const s of G.sold) {
       if (s.muerto) continue; const ds = s.pos.distanceTo(p);
       if (ds < radio) herir(s, ds < letal ? 999 : 80 * (1 - ds / radio), p, jug);
@@ -442,15 +451,16 @@
     V.alabeo += (clamp(dy * 1.6, -0.6, 0.6) - V.alabeo) * Math.min(1, dt * 3);
     V.pos.x -= Math.sin(V.rumbo) * 62 * dt; V.pos.z -= Math.cos(V.rumbo) * 62 * dt;
     const suelo = H(V.pos.x, V.pos.z); V.pos.y += (Math.max(V.pos.y, suelo + 55) - V.pos.y) * Math.min(1, dt * 2);
-    V.m.position.copy(V.pos); V.m.rotation.set(0, V.rumbo, V.alabeo, 'YXZ');
+    V.m.position.copy(V.pos); V.m.rotation.set(0, V.rumbo, V.alabeo, 'YXZ'); (V.m.userData.helices || []).forEach(h => h.rotation.z += dt * 38);
+    V.son = (V.son || 7.5) - dt; if (V.son <= 0) { V.son = 7.5; Snd.avion(); }
     impactoBomba(V, _imp); V.mira.position.copy(_imp); V.mira.material.opacity = 0.6 + Math.sin(G.t * 10) * 0.3;
     if (G.pedido > 0) {
       G.pedido = 0;
       if (V.bombas > 0) {
         V.bombas--; G.tiros++;
-        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 8), World.mat(0x333333)); b.rotation.x = Math.PI / 2; b.position.copy(V.pos).add(new V3(0, -1.2, 0)); scene.add(b);
-        G.proy.push({ tipo: 'bomba', m: b, v: new V3(-Math.sin(V.rumbo) * 56, -2, -Math.cos(V.rumbo) * 56), t: 12, jug: true });
-        Snd.clic(); if (V.bombas === 0) V.finT = 4.5;
+        const b = World.bomba(); b.scale.setScalar(2.6); b.position.copy(V.pos).add(new V3(0, -1.6, 0)); scene.add(b);
+        G.proy.push({ tipo: 'bomba', m: b, v: new V3(-Math.sin(V.rumbo) * 56, -3, -Math.cos(V.rumbo) * 56), t: 12, jug: true, estela: 0 });
+        Snd.clic(); Snd.caida(3.6); aviso('¡Bomba fuera!', 1.5); if (V.bombas === 0) { V.finT = 6.5; V.ultima = G.proy[G.proy.length - 1]; }
       }
     }
     V.mgT -= dt;
@@ -910,6 +920,7 @@
   }
   function actualizaSalto(dt) {
     const S = G.salto, av = S.avion; S.t += dt;
+    (av.userData.helices || []).forEach(h => h.rotation.z += dt * 38);
     if (av.parent) { av.position.z -= 44 * dt; if (av.position.z < -430) scene.remove(av); }
     if (S.fase === 'puerta') {
       P.pos.set(av.position.x + 0.75, av.position.y - 1.75, av.position.z + 2.2);
@@ -1114,6 +1125,7 @@
       if (p.tipo === 'mortero') { if (p.t <= 0) { G.proy.splice(i, 1); explotar(p.fin, 7.5, 3, false); } continue; }
       if (p.tipo === 'obus') { p.m.position.addScaledVector(p.v, dt); if (p.t <= 0) { scene.remove(p.m); G.proy.splice(i, 1); explotar(p.fin, 11, 5, true); } continue; }
       p.v.y -= 9.8 * dt; p.m.position.addScaledVector(p.v, dt);
+      if (p.tipo === 'bomba' && p.estela != null) { p.m.lookAt(_v.copy(p.m.position).add(p.v)); p.estela -= dt; if (p.estela <= 0) { p.estela = 0.05; particula(p.m.position.clone(), 0xffffff, 0.9, 0.5, 1.2, 0); } }
       const h = H(p.m.position.x, p.m.position.z);
       if (p.m.position.y < h + 0.07) { p.m.position.y = h + 0.07; p.v.y = Math.abs(p.v.y) * 0.3; p.v.x *= 0.5; p.v.z *= 0.5; if (p.tipo === 'bomba') p.t = 0; }
       if (p.t <= 0) { scene.remove(p.m); G.proy.splice(i, 1); explotar(p.m.position.clone(), p.tipo === 'bomba' ? 13 : 8, p.tipo === 'bomba' ? 6 : 3.5, p.jug); }
@@ -1132,9 +1144,15 @@
     }
   }
   function actualizaCamara(dt) {
-    if (G.vuelo) { // cámara de persecución tras el bombardero, mirando al punto de caída
+    if (G.vuelo) { $('visor').hidden = true; // cámara de persecución tras el bombardero, mirando al punto de caída
       const V = G.vuelo, sy = Math.sin(V.rumbo), cy = Math.cos(V.rumbo);
-      cam.position.set(V.pos.x + sy * 34, V.pos.y + 22, V.pos.z + cy * 34); cam.rotation.set(-0.5, V.rumbo, V.alabeo * 0.35);
+      const cayendo = G.proy.some(p => p.tipo === 'bomba'); V.picado = (V.picado || 0) + ((cayendo ? 1 : 0) - (V.picado || 0)) * Math.min(1, dt * 2.5);
+      if (V.ultima && G.proy.includes(V.ultima)) { // la última bomba se sigue con la cámara hasta el impacto
+        const bp = V.ultima.m.position, vn = _v.copy(V.ultima.v).normalize();
+        cam.position.set(bp.x - vn.x * 16, bp.y - vn.y * 16 + 5, bp.z - vn.z * 16); cam.lookAt(bp.x + vn.x * 20, bp.y + vn.y * 20, bp.z + vn.z * 20); V.camFija = true;
+      } else if (!V.camFija) {
+        cam.position.set(V.pos.x + sy * (26 - V.picado * 8), V.pos.y + 16 + V.picado * 10, V.pos.z + cy * (26 - V.picado * 8)); cam.rotation.set(-0.5 - V.picado * 0.3, V.rumbo, V.alabeo * 0.35);
+      }
       cam.fov += (62 - cam.fov) * Math.min(1, dt * 8); cam.updateProjectionMatrix();
       modelos.forEach(m => m.g.visible = false); brazos.visible = false; mg.g.visible = false; fogonazo.visible = false;
       const R = World.refs; R.sun.position.copy(V.pos).addScaledVector(R.solDir, 120); R.sun.target.position.copy(V.pos);
@@ -1146,15 +1164,18 @@
     G.alt = G.alt == null ? alt : G.alt + (alt - G.alt) * Math.min(1, dt * 10);
     const bob = Math.sin(P.bob) * 0.035 * P.mov;
     if (G.carro) {
-      const pt = clamp(P.pitch, -0.45, 0.4), cp = Math.cos(pt), d = P.mira ? -0.4 : 7.5;
-      cam.position.set(P.pos.x + Math.sin(P.yaw) * cp * d, P.pos.y + (P.mira ? 3.05 : 4.3 - Math.sin(pt) * d * 0.6), P.pos.z + Math.cos(P.yaw) * cp * d);
-      cam.position.y = Math.max(cam.position.y, H(cam.position.x, cam.position.z) + 1);
+      C_visor: if (P.mira) { const C = G.carro; C.g.visible = false; C.g.updateMatrixWorld(true); cam.position.set(0, 0.42, -0.9).applyMatrix4(C.cuna.matrixWorld); } else G.carro.g.visible = true;
+      const pt = clamp(P.pitch, -0.45, 0.4), cp = Math.cos(pt), d = 7.5;
+      if (!P.mira) {
+      cam.position.set(P.pos.x + Math.sin(P.yaw) * cp * d, P.pos.y + 4.3 - Math.sin(pt) * d * 0.6, P.pos.z + Math.cos(P.yaw) * cp * d);
+      cam.position.y = Math.max(cam.position.y, H(cam.position.x, cam.position.z) + 1); }
     } else
     cam.position.set(P.pos.x, P.pos.y + G.alt + bob, P.pos.z);
     const tb = G.temblor * 0.03;
     const balanceo = G.salto && G.salto.fase === 'campana' ? Math.sin(G.t * 0.9) * 0.05 : G.salto && G.salto.fase === 'caida' ? Math.sin(G.t * 7) * 0.25 : 0;
     cam.rotation.set(clamp(P.pitch + P.retroceso, -1.35, 1.35) + rnd(-tb, tb), P.yaw + rnd(-tb, tb), P.muerto ? 0.6 : balanceo);
-    const fov = P.mira ? 42 : 72; cam.fov += (fov - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix();
+    const visor = !!(G.carro && P.mira && !P.muerto); $('visor').hidden = !visor; $('mira').style.visibility = visor ? 'hidden' : '';
+    const fov = visor ? 15 : P.mira ? 42 : 72; cam.fov += (fov - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix();
     const enPuerta = (G.salto && (G.salto.fase === 'puerta' || G.salto.fase === 'caida')) || !!G.carro;
     modelos.forEach((m, i) => m.g.visible = i === P.arma && !P.muerto && !G.nido && !enPuerta); brazos.visible = !P.muerto && !G.nido && !enPuerta; mg.g.visible = !!G.nido && !P.muerto;
     const rec = G.recT > 0 ? Math.sin(Math.min(1, (a.rec - G.recT) / a.rec) * Math.PI) : 0;

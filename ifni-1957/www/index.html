@@ -197,6 +197,12 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 .alistamiento span{display:flex;flex-direction:column;min-width:0;flex:1 1 300px}
 .alistamiento b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--gualda)}
 .alistamiento small{color:var(--hueso);font-size:15px}
+#marcas{position:absolute;inset:0;overflow:hidden}
+.marca{position:absolute;width:0;height:0}
+.marca i{position:absolute;left:-8px;top:-14px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #e3342f;filter:drop-shadow(0 0 2px #000)}
+.marca small{position:absolute;left:-30px;top:-32px;width:60px;text-align:center;color:#ffd6d3;font-size:12px;font-weight:700;text-shadow:0 0 3px #000}
+.marca.tira i{border-top-color:#ffd23f}
+.marca.borde i{left:-9px;top:-9px;border:9px solid transparent;border-left:16px solid #e3342f;border-right:0}
 #parche{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.25) 12%,rgba(0,0,0,0) 24%)}
 </style>
 </head>
@@ -206,7 +212,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
   <canvas id="c"></canvas>
 
   <div id="hud" class="capa" hidden>
-    <div id="vineta"></div><div id="parche" hidden></div><div id="dano"></div><div id="dir"><i></i></div>
+    <div id="vineta"></div><div id="marcas"></div><div id="parche" hidden></div><div id="dano"></div><div id="dir"><i></i></div>
     <div id="mira"><i></i><i></i><i></i><i></i></div>
     <div id="estado"><b id="tVida">100</b> salud · curas <span id="tCuras">2</span><div id="vida"><i></i></div>Escuadra: <span id="tEsc">5</span> · Bajas enemigas: <span id="tBajas">0</span></div>
     <div id="objetivo"><span id="flecha">▲</span><span id="tObj"></span><small id="tObj2"></small></div>

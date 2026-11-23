@@ -167,28 +167,61 @@ def cuerpo_legionario(m):
         return d, mat, mez
     return f
 
-def cuerpo_moro(P, con_mat=False):
-    t, br, ma, pi = grupos_cuerpo(P, 0.3)
-    cuerpo = smin(t, np.minimum(br[0], br[1]), 0.025)
-    cuerpo = smin(cuerpo, np.minimum(ma[0], ma[1]), 0.012)
-    cuerpo = smin(cuerpo, np.minimum(pi[0], pi[1]), 0.03)
-    tunica = cap(P, V(0, 1.42, 0.005), V(0, 0.13, 0.0), 0.19, 0.33)
-    tunica = smax(tunica, -(P[:, 1] - 0.12), 0.01)
-    mangas = np.minimum(cap(P, J['hombroI'], J['munecaI'] + V(0.01, 0.04, 0), 0.07, 0.072), cap(P, J['hombroD'], J['munecaD'] + V(-0.01, 0.04, 0), 0.07, 0.072))
-    capucha = eli(P, V(0, 1.5, 0.095), (0.12, 0.075, 0.06))
-    canana = cap(P, V(-0.16, 1.46, -0.1), V(0.15, 1.02, -0.17), 0.013)
-    pliegues = 0.003 * np.sin(14 * np.arctan2(P[:, 0], P[:, 2] + 1e-6)) * banda(P[:, 1], 0.1, 1.3, 0.05)
-    ropa_ = smin(smin(tunica - pliegues, mangas, 0.015), capucha, 0.03)
-    d = np.minimum(cuerpo, ropa_); d = np.minimum(d, canana)
-    if not con_mat: return d
-    mat = np.full(len(P), 15, dtype=np.uint8)
-    mat[(ma[0] < 0.004) | (ma[1] < 0.004)] = 0
-    mat[(P[:, 1] < 0.12)] = 4; mat[(P[:, 1] > 1.5) & (cuerpo < 0.003)] = 0
-    mat[canana < 0.003] = 3
-    return d, mat, np.ones(len(P))
+def cuerpo_moro(variante):
+    """Combatiente marroquí: 'chilaba' (chilaba larga con canana) o 'faja' (túnica corta, chaleco, faja y zaragüelles)."""
+    def f(P, con_mat=False):
+        y = P[:, 1]
+        t, br, ma, pi = grupos_cuerpo(P, 0.4)
+        cuerpo = smin(t, np.minimum(br[0], br[1]), 0.025)
+        cuerpo = smin(cuerpo, np.minimum(ma[0], ma[1]), 0.012)
+        cuerpo = smin(cuerpo, np.minimum(pi[0], pi[1]), 0.03)
+        PE = P * np.array([1.0, 1.0, 1.3])          # túnicas algo planas, siguen la forma del cuerpo
+        ang = np.arctan2(P[:, 0], P[:, 2] + 1e-6)
+        pli = 0.004 * np.sin(11 * ang + 4 * y) + 0.002 * np.sin(23 * ang - 7 * y)
+        mangas = np.minimum(cap(P, J['hombroI'], J['munecaI'] + V(0.012, 0.045, 0), 0.068, 0.078), cap(P, J['hombroD'], J['munecaD'] + V(-0.012, 0.045, 0), 0.068, 0.078))
+        canana = np.minimum(cap(P, V(-0.15, 1.47, -0.1), V(0.14, 1.03, -0.17), 0.014), cap(P, V(-0.15, 1.47, 0.09), V(0.14, 1.03, 0.12), 0.014))
+        bolsa = caja(P, V(0.16, 0.98, -0.05), (0.035, 0.045, 0.02), 0.01)
+        cuello = cap(P, V(0, 1.47, 0.01), V(0, 1.57, 0.005), 0.052)
+        if variante == 'chilaba':
+            tunica = cap(PE, V(0, 1.42, 0.006), V(0, 0.11, 0.0), 0.2, 0.32)
+            tunica = smax(tunica, -(y - 0.1), 0.01)
+            ropa = smin(tunica - pli * banda(y, 0.1, 1.35, 0.05), mangas, 0.015)
+            faja = None; zaraguelles = None; chaleco = None
+        else:
+            tunica = cap(PE, V(0, 1.42, 0.006), V(0, 0.5, 0.0), 0.2, 0.26)
+            tunica = smax(tunica, -(y - 0.48), 0.008)
+            ropa = smin(tunica - pli * banda(y, 0.48, 1.35, 0.04), mangas, 0.015)
+            zaraguelles = np.minimum(pi[0], pi[1]) - (0.028 + 0.012 * np.exp(-((y - 0.32) / 0.12) ** 2) + 0.003 * np.sin(30 * y + 9 * P[:, 0]))
+            zaraguelles = smax(zaraguelles, -(y - 0.14), 0.006)
+            ropa = np.minimum(ropa, zaraguelles)
+            # faja y chaleco: capas que siguen la túnica, algo más gruesas para que se vean por encima
+            faja = smax(tunica - 0.013, np.abs(y - 1.02) - 0.04, 0.004)
+            ropa = np.minimum(ropa, faja)
+            chaleco = tunica - 0.011
+            chaleco = smax(chaleco, -(y - 1.07), 0.006)
+            chaleco = smax(chaleco, (y - 1.47), 0.006)
+            chaleco = smax(chaleco, -caja(P, V(0, 1.3, -0.2), (0.045, 0.3, 0.1), 0.01), 0.004)   # abierto por delante
+            chaleco = smax(chaleco, -np.minimum(esf(P, V(-0.22, 1.36, 0.0), 0.085), esf(P, V(0.22, 1.36, 0.0), 0.085)), 0.006)  # sisas para los brazos
+            ropa = np.minimum(ropa, chaleco)
+        d = np.minimum(np.minimum(cuerpo, ropa), np.minimum(canana, bolsa))
+        d = np.minimum(d, cuello)
+        if not con_mat: return d
+        mat = np.full(len(P), 15, dtype=np.uint8)
+        mat[(ma[0] < 0.004) | (ma[1] < 0.004)] = 0
+        mat[(cuello < 0.003) & (y > 1.47)] = 0
+        if zaraguelles is not None:
+            mat[(zaraguelles < 0.004) & (y < 0.5)] = 17
+            mat[(chaleco < 0.004) & (y > 1.06)] = 18
+            mat[faja < 0.004] = 19
+        mat[(y < 0.13) & (np.minimum(pi[0], pi[1]) < 0.02)] = 4          # babuchas / sandalias
+        mat[(y >= 0.13) & (y < 0.16) & (np.minimum(pi[0], pi[1]) < 0.012)] = 0  # tobillo
+        mat[(canana < 0.004) | (bolsa < 0.004)] = 3
+        return d, mat, np.ones(len(P))
+    return f
 
 # ---------------- cabeza ----------------
-def cabeza(barba, turbante=False, m=1.0):
+def cabeza(barba, turbante=False, m=1.0, tocado=None, escala_nariz=1.0):
+    if tocado: turbante = True
     E = [H + V(s * 0.032, 0.006, -0.082) for s in (-1, 1)]
     def labios(P): return smin(cap(P, H + V(-0.021, -0.048, -0.096), H + V(0.021, -0.048, -0.096), 0.0062), cap(P, H + V(-0.018, -0.0555, -0.0945), H + V(0.018, -0.0555, -0.0945), 0.0072), 0.003)
     def cejas(P): return np.minimum(cap(P, H + V(-0.052, 0.03, -0.088), H + V(-0.016, 0.034, -0.097), 0.0048), cap(P, H + V(0.052, 0.03, -0.088), H + V(0.016, 0.034, -0.097), 0.0048))
@@ -204,7 +237,8 @@ def cabeza(barba, turbante=False, m=1.0):
             oreja = smax(eli(P, H + V(s * 0.078, 0.0, 0.012), (0.012, 0.03, 0.02)), -esf(P, H + V(s * 0.088, 0.0, 0.01), 0.009), 0.003)
             d = smin(d, oreja, 0.006)
         d = smin(d, cap(P, H + V(-0.04, 0.03, -0.086), H + V(0.04, 0.03, -0.086), 0.013), 0.012)
-        nariz = smin(cap(P, H + V(0, 0.02, -0.094), H + V(0, -0.025, -0.114), 0.009, 0.012), np.minimum(esf(P, H + V(-0.013, -0.028, -0.1), 0.011), esf(P, H + V(0.013, -0.028, -0.1), 0.011)), 0.006)
+        k = escala_nariz
+        nariz = smin(cap(P, H + V(0, 0.02, -0.094), H + V(0, -0.025 * k, -0.112 - 0.006 * (k - 1)), 0.009, 0.012 * k), np.minimum(esf(P, H + V(-0.013, -0.028, -0.1), 0.011), esf(P, H + V(0.013, -0.028, -0.1), 0.011)), 0.006)
         d = smin(d, nariz, 0.008)
         for e in E: d = smax(d, -esf(P, e + V(0, 0.002, -0.012), 0.0152), 0.005)
         for e in E:  # párpados: dejan el ojo en forma de almendra
@@ -235,11 +269,27 @@ def cabeza(barba, turbante=False, m=1.0):
         if barba in ('bigote', 'gastador', 'corta'): d = np.minimum(d, bigote(P))
         d = np.minimum(d, cejas(P))
         tur = None
-        if turbante:
-            tur = toro(P, H + V(0, 0.05, 0.005), 0.088, 0.024, 0.15)
-            tur = smin(tur, toro(P, H + V(0, 0.085, 0.0), 0.075, 0.026, -0.1), 0.01)
-            tur = smin(tur, eli(P, H + V(0, 0.105, 0.0), (0.075, 0.04, 0.085)), 0.015)
+        tur = None; capu = None
+        if turbante and tocado in (None, 'turbante'):
+            # turbante de varias vueltas con la cola colgando a un lado
+            tur = toro(P, H + V(0, 0.048, 0.006), 0.09, 0.022, 0.18)
+            tur = smin(tur, toro(P, H + V(0.004, 0.075, 0.0), 0.084, 0.023, -0.14), 0.008)
+            tur = smin(tur, toro(P, H + V(-0.003, 0.1, 0.004), 0.07, 0.022, 0.1), 0.008)
+            tur = smin(tur, eli(P, H + V(0, 0.112, 0.004), (0.068, 0.035, 0.078)), 0.012)
+            tur = smin(tur, cap(P, H + V(0.085, 0.05, 0.04), H + V(0.1, -0.12, 0.07), 0.016, 0.012), 0.01)
+            tur = tur - 0.0015 * np.sin(160 * (P[:, 1] + 0.3 * P[:, 0]))
             d = np.minimum(d, tur)
+        if tocado == 'gorro':
+            tur = smax(eli(P, H + V(0, 0.07, 0.008), (0.084, 0.06, 0.1)), -(P[:, 1] - (H[1] + 0.05)), 0.006)
+            d = np.minimum(d, tur)
+        if tocado == 'capucha':
+            # capucha de la chilaba alzada: cubre cabeza y cuello, cara descubierta, punta atrás
+            ext = smin(eli(P, H + V(0, 0.02, 0.012), (0.118, 0.13, 0.122)), cap(P, H + V(0, 0.09, 0.07), H + V(0, 0.16, 0.13), 0.04, 0.008), 0.03)
+            ext = smin(ext, cap(P, H + V(0, -0.06, 0.02), H + V(0, -0.2, 0.03), 0.11, 0.13), 0.04)
+            hueco = eli(P, H + V(0, -0.012, -0.12), (0.078, 0.1, 0.07))
+            capu = smax(ext, -hueco, 0.008)
+            capu = smax(capu, -(P[:, 1] - (H[1] - 0.205)), 0.004)
+            d = np.minimum(d, capu)
         if not con_mat: return d
         mat = np.zeros(len(P), dtype=np.uint8); mez = np.ones(len(P))
         # pesos de color con transiciones más anchas que los triángulos (pelo y barba se difuminan en la piel)
@@ -258,6 +308,7 @@ def cabeza(barba, turbante=False, m=1.0):
         mat[pw > 0.02] = 6; mez[pw > 0.02] = pw[pw > 0.02]
         sel = (lw > 0.02) & (pw <= 0.02); mat[sel] = 7; mez[sel] = lw[sel] * 0.75
         if tur is not None: mat[tur < 0.003] = 14; mez[tur < 0.003] = 1
+        if capu is not None: mat[capu < 0.003] = 15; mez[capu < 0.003] = 1
         return d, mat, mez
     return f
 
@@ -359,15 +410,17 @@ for nombre, m in (('atletico', 0.0), ('cachas', 1.0), ('muycachas', 2.0)):
                 dom = jnt[:, 0]; sel = np.isin(dom, [IDX['antebrazo' + l], IDX['mano' + l]]) | ((dom == IDX['brazo' + l]) & (np.linalg.norm(v - J['codo' + l], axis=1) < 0.07))
                 usados = sel[c].all(1); cc = c[usados]; mapa = -np.ones(len(v), dtype=np.int64); idx = np.unique(cc); mapa[idx] = np.arange(len(idx))
                 guarda(f'antebrazo{l}', v[idx], n[idx], mat[idx], mez[idx], mapa[cc].astype(np.uint32), jnt[idx], wgt[idx])
-print('cuerpo moro'); v, n, mat, mez, c = extraer(cuerpo_moro, *CAJA_CUERPO, 0.011, 3600); jnt, wgt = pesos(v); guarda('cuerpo_moro_baja', v, n, mat, mez, c, jnt, wgt)
+for var in ('chilaba', 'faja'):
+    print('cuerpo moro', var); v, n, mat, mez, c = extraer(cuerpo_moro(var), *CAJA_CUERPO, 0.0085, 6500); jnt, wgt = pesos(v); guarda(f'moro_{var}', v, n, mat, mez, c, jnt, wgt)
 for barba in ('ninguna', 'bigote', 'corta', 'gastador'):
     f = cabeza(barba)
     for nivel, paso, obj in (('alta', 0.0021, 30000), ('baja', 0.0045, 1500)):
         print('cabeza', barba, nivel); v, n, mat, mez, c = extraer(f, *CAJA_CABEZA, paso, obj)
         jnt, wgt = pesos(v, permitidos=['pecho', 'cuello', 'cabeza']); guarda(f'cabeza_{barba}_{nivel}', v, n, mat, mez, c, jnt, wgt)
-for barba in ('corta', 'ninguna'):
-    print('cabeza turbante', barba); v, n, mat, mez, c = extraer(cabeza(barba, turbante=True), (-0.14, 1.43, -0.18), (0.14, 1.86, 0.16), 0.0045, 1800)
-    jnt, wgt = pesos(v, permitidos=['pecho', 'cuello', 'cabeza']); guarda(f'turbante_{barba}_baja', v, n, mat, mez, c, jnt, wgt)
+for tocado in ('turbante', 'gorro', 'capucha'):
+    for barba, nar in (('corta', 1.15), ('gastador', 1.05), ('bigote', 1.25)):
+        print('cabeza moro', tocado, barba); v, n, mat, mez, c = extraer(cabeza(barba, tocado=tocado, m=0.6, escala_nariz=nar), (-0.15, 1.43, -0.19), (0.15, 1.87, 0.2), 0.0032, 4200)
+        jnt, wgt = pesos(v, permitidos=['pecho', 'cuello', 'cabeza']); guarda(f'moro_{tocado}_{barba}', v, n, mat, mez, c, jnt, wgt)
 for nombre, f in (('gorrillo', gorrillo), ('casco', casco)):
     for nivel, paso, obj in (('alta', 0.0024, 5000), ('baja', 0.005, 500)):
         print(nombre, nivel); v, n, mat, mez, c = extraer(f, (-0.13, 1.69 if nombre == 'gorrillo' else 1.66, -0.16), (0.13, 1.86, 0.16), paso, obj)

@@ -77,7 +77,7 @@ const Progreso = (() => {
     nadie: { nom: 'Mención: nadie se queda atrás', req: 'Cumple una misión sin perder a ningún legionario', pts: 400, oro: 5, color: '#3c4a33' },
     militar: { nom: 'Medalla Militar Individual', req: '20 o más bajas propias en Veterano', pts: 1000, oro: 20, color: '#c9a227' },
     laureada: { nom: 'Cruz Laureada de San Fernando', req: 'Veterano, sin bajas en la escuadra y con más de 50 de salud', pts: 3000, oro: 50, color: '#e8b923' },
-    campana: { nom: 'Medalla de la Campaña de Ifni-Sáhara', req: 'Cumple las seis misiones', pts: 2000, oro: 30, color: '#c60b1e', unica: true }
+    campana: { nom: 'Medalla de la Campaña de Ifni-Sáhara', req: 'Cumple todas las misiones', pts: 2000, oro: 30, color: '#c60b1e', unica: true }
   };
   function medallaSVG(id, t) {
     const m = MEDALLAS[id];

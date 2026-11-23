@@ -5,7 +5,7 @@ const Humanos = (() => {
   const geos = {};
   // materiales del generador: 0 piel 1 camisa 2 pantalón 3 cuero 4 bota 5 polaina 6 pelo 7 labio 8 ojo 9 iris 10 metal
   // 11 tela del gorrillo 12 borla 13 casco 14 turbante 15 chilaba 16 pupila
-  const BASE = [0xc8956c, 0x8a8058, 0x766e4c, 0x5a3f25, 0x1e1914, 0xa59c78, 0x1c1612, 0xa86a5c, 0xe8e2d6, 0x4a2e1a, 0xb8962e, 0x3c4a33, 0xb3261e, 0x535a3e, 0xe8e0cc, 0x8d7b62, 0x0a0806];
+  const BASE = [0xc8956c, 0x8a8058, 0x766e4c, 0x5a3f25, 0x1e1914, 0xa59c78, 0x1c1612, 0xa86a5c, 0xe8e2d6, 0x4a2e1a, 0xb8962e, 0x3c4a33, 0xb3261e, 0x535a3e, 0xe8e0cc, 0x8d7b62, 0x0a0806, 0xd8ccb0, 0x3a2e24, 0xa32020];
   const PIEL = [0xe0b08a, 0xc8956c, 0xa87650, 0x7a5232];
   const PELO = [0x1c1612, 0x4a3324, 0x8a6a3a, 0x9c9a94];
   const UNIFORME = { caqui: [0x8a8058, 0x766e4c, 0x5a3f25], verde: [0x4f5c3c, 0x434f33, 0x3a2a1a], gala: [0x4f5c3c, 0x434f33, 0xf2f0e8] };
@@ -73,7 +73,7 @@ const Humanos = (() => {
       m.castShadow = true; m.receiveShadow = true; g.add(m); m.updateMatrixWorld(true); m.bind(sk); mallas.push(m);
     }
     const B = {}; huesos.forEach(b => B[b.name] = b);
-    if (piezas.some(p => /^(cabeza|turbante)_/.test(p))) ponerOjos(B.cabeza, paleta && paleta.iris);
+    if (piezas.some(p => /^(cabeza_|turbante_|moro_(turbante|gorro|capucha))/.test(p))) ponerOjos(B.cabeza, paleta && paleta.iris);
     return { g, B, mallas, sk };
   }
   let geoOjo = null, matOjo = null, geoIris = null, geoPupila = null, matPupila = null; const matIris = {};
@@ -101,11 +101,21 @@ const Humanos = (() => {
     const piezas = [k % 3 === 2 ? 'cuerpo_muycachas_baja' : 'cuerpo_cachas_baja', 'cabeza_' + BARBAS[(k * 5 + 1) % 4] + '_baja', k % 3 === 2 ? 'casco_baja' : 'gorrillo_baja'];
     return crear(piezas, paleta);
   }
-  const TUNICAS = [0x8d7b62, 0x6e6352, 0xbcae90, 0x5a5046, 0x9c8a6c, 0x7a6a50];
-  const TURBANTES = [0xece4d0, 0xd2c6a8, 0x6b5c45, 0x3d4a5a];
+  // combatientes marroquíes: atuendo, tocado, barba y colores variados en cada uno
+  const PIEL_MORO = [0x9c6c4a, 0x875a3a, 0xa87754, 0x7a4e30, 0xb08060];
+  const TUNICAS = [0x8d7b62, 0x6e6352, 0xbcae90, 0x5a5046, 0x9c8a6c, 0x7a6a50, 0xd6cbb0, 0x4a4238];
+  const TURBANTES = [0xece4d0, 0xd2c6a8, 0x6b5c45, 0x3d4a5a, 0xf2efe6, 0x8a7a5a];
+  const ZARAGUELLES = [0xd8ccb0, 0x5a5048, 0x8a7a60, 0xc8bc9a];
+  const CHALECOS = [0x3a2e24, 0x5a3a28, 0x2e3440, 0x4a3a2a];
+  const FAJAS = [0xa32020, 0x2a4a7a, 0xe0d8c0, 0x6a2a50, 0x7a5a20];
+  const TOCADOS = ['turbante', 'turbante', 'gorro', 'capucha'], BARBAS_MORO = ['corta', 'gastador', 'bigote'];
   function enemigo(k) {
-    const paleta = { 0: [0x9c6c4a, 0x875a3a, 0xa87754][k % 3], 15: TUNICAS[k % TUNICAS.length], 14: TURBANTES[(k * 3) % TURBANTES.length], 6: 0x1a120c, 4: 0x6a5236 };
-    return crear(['cuerpo_moro_baja', k % 3 ? 'turbante_corta_baja' : 'turbante_ninguna_baja'], paleta);
+    const r = (n, s) => (k * s + 7) % n;
+    const paleta = { 0: PIEL_MORO[r(5, 3)], 15: TUNICAS[r(8, 5)], 14: TURBANTES[r(6, 7)], 6: [0x1a120c, 0x2a1c12, 0x6a6a66][r(3, 11) === 2 && k % 4 === 0 ? 2 : r(2, 1)],
+      4: 0x6a5236, 17: ZARAGUELLES[r(4, 3)], 18: CHALECOS[r(4, 5)], 19: FAJAS[r(5, 2)], 3: 0x4b3a24 };
+    const cuerpo = k % 2 ? 'moro_faja' : 'moro_chilaba', tocado = TOCADOS[r(4, 3)], barba = BARBAS_MORO[r(3, 5)];
+    if (!man.mallas[cuerpo]) return crear(['cuerpo_moro_baja', 'turbante_corta_baja'], paleta);
+    return crear([cuerpo, 'moro_' + tocado + '_' + barba], paleta);
   }
   // paleta del avatar del jugador
   function paletaAvatar(av) {

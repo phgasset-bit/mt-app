@@ -157,7 +157,7 @@ const World = (() => {
     const T = tex(), R = rng(seed), noche = !!m.noche, des = !!m.desierto;
     const skyCol = noche ? 0x111a2c : des ? 0xe2d3b6 : 0xd3d6cc;
     scn.background = lin(skyCol);
-    scn.fog = new C.Fog(lin(skyCol), noche ? 25 : 70, noche ? 210 : 520);
+    scn.fog = new C.Fog(lin(skyCol), noche ? 25 : 70, noche ? 210 : m.salto ? 400 : 520);
 
     // bóveda celeste
     const sg = new C.SphereGeometry(800, 32, 16), sc = [], top = new C.Color(noche ? 0x02040c : des ? 0x7fa3c2 : 0x5f8fbd), hor = new C.Color(skyCol), tc = new C.Color();
@@ -214,6 +214,10 @@ const World = (() => {
     }
     g.setAttribute('color', new C.BufferAttribute(col, 3)); g.computeVertexNormals();
     const terr = new C.Mesh(g, new C.MeshLambertMaterial({ vertexColors: true, map: T.suelo })); terr.receiveShadow = true; scn.add(terr);
+    { // llanura lejana bajo el borde del terreno, para que desde el aire no se vea el final del mapa
+      const ll = new C.Mesh(new C.PlaneGeometry(1500, 1500), new C.MeshLambertMaterial({ color: lin(noche ? 0x3a3a3c : des ? 0xcdb58a : 0xa89474), map: T.suelo }));
+      ll.rotation.x = -Math.PI / 2; ll.position.y = -2.6; scn.add(ll);
+    }
     if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(900, 200), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 330); scn.add(w); }
 
     // zonas libres
@@ -398,6 +402,11 @@ const World = (() => {
     lado(fx - h, fz + h, fx + h, fz + h, true); lado(fx - h, fz - h, fx + h, fz - h); lado(fx - h, fz - h, fx - h, fz + h); lado(fx + h, fz - h, fx + h, fz + h);
     instancias(scn, new C.BoxGeometry(1, 1, 1), cal, almenas, true, false);
     [[-h, -h], [h, -h], [-h, h], [h, h]].forEach(([dx, dz]) => { const y = height(fx + dx, fz + dz); caja(4.5, 8, 4.5, cal, fx + dx, y + 3, fz + dz, 0, scn, true); caja(4.9, 0.4, 4.9, zocalo, fx + dx, y + 7.1, fz + dz, 0, scn, false); addCircle(fx + dx, fz + dz, 3); });
+    if (M.nido) { // adarve de madera tras la muralla norte para la ametralladora y los tiradores
+      const ya = height(fx, fz - h + 1.7);
+      caja(L - 2, 0.3, 2.4, mat(0x6b5236), fx, ya + 4.25, fz - h + 1.7, 0, scn, false);
+      for (let i = -3; i <= 3; i++) caja(0.25, 4.2, 0.25, mat(0x4f3f2c), fx + i * 4, ya + 2.1, fz - h + 2.7, 0, scn, false);
+    }
     const y = height(fx, fz);
     caja(10, 5, 7, cal, fx, y + 1.8, fz - 4, 0, scn, true); addCircle(fx, fz - 4, 5);
     const asta = new C.Mesh(new C.CylinderGeometry(0.06, 0.06, 9, 6), mat(0x444444)); asta.position.set(fx + h, height(fx + h, fz + h) + 11, fz + h); scn.add(asta);

@@ -53,7 +53,7 @@ const UI = (() => {
     const P = Progreso.P;
     MISIONES.forEach((m, i) => {
       const b = document.createElement('button'); b.className = 'mis'; b.type = 'button'; b.id = 'mis-' + m.id;
-      b.innerHTML = '<span class="mis-n">' + (i < 5 ? 'Misión ' + (i + 1) : 'Epílogo') + (P.hechas[m.id] ? ' · cumplida' : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
+      b.innerHTML = '<span class="mis-n">' + (m.id !== 'edchera' ? 'Misión ' + (i + 1) : 'Epílogo') + (P.hechas[m.id] ? ' · cumplida' : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
       b.onclick = () => alJugar(i); l.appendChild(b);
     });
   }

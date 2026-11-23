@@ -1,5 +1,5 @@
 // Campaña. Las misiones son una recreación libre: lugares, fechas y unidades son históricos; el detalle táctico es inventado.
-// Coordenadas en metros. El jugador avanza hacia -z. Tipos de fase: take (tomar posición), hold (resistir), ambush (emboscada), reach (llegar).
+// Coordenadas en metros. El jugador avanza hacia -z. Tipos de fase: take (tomar posición), hold (resistir), ambush (emboscada), reach (llegar), nido (defender el fuerte con la ametralladora).
 const MISIONES = [
   {
     id: 'perimetro', tit: 'Sidi Ifni: el perímetro', dato: 'Sidi Ifni · noche del 23 de noviembre de 1957',
@@ -14,8 +14,32 @@ const MISIONES = [
     ]
   },
   {
+    id: 'salto', tit: 'Salto sobre Tiliuin', dato: 'Tiliuin · 29 de noviembre de 1957',
+    parte: ['Tiliuin lleva días cercado y por tierra no se llega a tiempo. Saltas con la 7.ª Compañía de la Agrupación de Banderas Paracaidistas desde un Junkers a muy poca altura.',
+      'Luz verde sobre la zona de salto: pulsa FUEGO para saltar. La campana se abre sola; guíala con el joystick y dispara desde el aire. En tierra, limpia la zona y entra en el fuerte.'],
+    historia: 'El 29 de noviembre de 1957 unos 75 paracaidistas saltaron sobre Tiliuin en la operación Pañuelo, el primer salto de guerra del Ejército español, y reforzaron la guarnición cercada hasta que llegó la columna de socorro.',
+    amp: 6, seed: 5.3, inicio: [0, 250], aliados: 6, fuerte: [0, -150],
+    salto: { alt: 125, zVerde: 140, zMin: -20 },
+    bumps: [[30, -20, 40, 6], [-80, 60, 50, 9], [90, 120, 50, 8], [0, -150, 50, 4]],
+    fases: [
+      { tipo: 'take', x: 30, z: -20, n: 9, nom: 'Limpia la zona de salto' },
+      { tipo: 'reach', x: 0, z: -141, nom: 'Entra en el fuerte' }
+    ]
+  },
+  {
+    id: 'asedio', tit: 'Tiliuin: el asedio', dato: 'Tiliuin · 30 de noviembre - 2 de diciembre de 1957',
+    parte: ['El fuerte aguanta con los tiradores de la guarnición y los paracaidistas recién llegados. Las bandas atacan a oleadas desde las lomas.',
+      'Te toca la ametralladora ALFA de la muralla norte. Tira en ráfagas cortas para que no se caliente el cañón y que nadie llegue al pie del muro hasta que asome la columna.'],
+    historia: 'La guarnición de Tiliuin resistió el cerco desde el 23 de noviembre. El 3 de diciembre llegó por tierra la VI Bandera de la Legión, que rompió el cerco y evacuó el puesto.',
+    amp: 6, seed: 7.7, inicio: [0, -74.2], aliados: 4, fuerte: [0, -60], nido: true,
+    bumps: [[0, -60, 45, 3], [-80, -200, 60, 10], [70, -230, 60, 9]],
+    fases: [
+      { tipo: 'nido', x: 0, z: -74.2, t: 150, cada: 9, n: 4, nom: 'Defiende la muralla' }
+    ]
+  },
+  {
     id: 'marcha', tit: 'La marcha hacia Tiliuin', dato: 'Territorio de Ifni · 1-3 de diciembre de 1957',
-    parte: ['El puesto de Tiliuin lleva días cercado. Los paracaidistas han saltado para reforzarlo y ahora hay que llegar por tierra.',
+    parte: ['El puesto de Tiliuin sigue cercado, ahora con los paracaidistas dentro. Hay que llegar por tierra y romper el cerco.',
       'La columna avanza por pistas de montaña. Vigila las crestas: cada barranco es una emboscada posible.'],
     historia: 'El 29 de noviembre los paracaidistas saltaron sobre Tiliuin (operación Pañuelo), el primer salto de guerra del Ejército español. La columna de socorro de la VI Bandera tuvo que abrirse paso por tierra.',
     amp: 9, seed: 4.2, inicio: [0, 230], aliados: 5,

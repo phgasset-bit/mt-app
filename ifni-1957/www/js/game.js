@@ -94,6 +94,36 @@
     }
     return { g, muzz, izq };
   }
+  // ametralladora ALFA mod. 44 sobre trípode, con la cinta entrando por la izquierda
+  const mLaton = new THREE.MeshPhongMaterial({ color: lin(0xb8913a), shininess: 60, specular: lin(0x886633), fog: false });
+  const mOliva = new THREE.MeshLambertMaterial({ color: lin(0x4b4f38), fog: false });
+  function modeloMG() {
+    const g = new THREE.Group();
+    pieza(B(0.09, 0.11, 0.42), mMetal, 0, 0, 0.05, g);
+    pieza(B(0.1, 0.03, 0.22), mMetal2, 0, 0.07, 0.04, g);
+    pieza(Cy(0.026, 0.62, 10), mMetal, 0, 0.01, -0.45, g);
+    for (let i = 0; i < 11; i++) pieza(Cy(0.042, 0.012, 12), mMetal2, 0, 0.01, -0.2 - i * 0.045, g);
+    pieza(Cy(0.034, 0.1, 10), mMetal, 0, 0.01, -0.8, g);
+    pieza(B(0.006, 0.04, 0.012), mMetal, 0, 0.06, -0.62, g);
+    pieza(B(0.035, 0.12, 0.05), mMadera, 0, -0.1, 0.17, g, 0.25);
+    pieza(B(0.05, 0.09, 0.26), mMadera, 0, -0.03, 0.39, g);
+    for (let i = 0; i < 9; i++) { const c = pieza(B(0.07, 0.013, 0.013), mLaton, -0.08 - i * 0.028, -0.01 - i * i * 0.0035, -0.02, g); c.rotation.z = -i * 0.07; }
+    pieza(B(0.12, 0.16, 0.26), mOliva, -0.33, -0.25, -0.05, g);
+    tubo(0.016, 0.016, new V3(0, -0.06, -0.12), new V3(-0.3, -0.75, -0.45), mMetal, g);
+    tubo(0.016, 0.016, new V3(0, -0.06, -0.12), new V3(0.3, -0.75, -0.45), mMetal, g);
+    tubo(0.016, 0.016, new V3(0, -0.06, -0.05), new V3(0, -0.8, 0.35), mMetal, g);
+    g.visible = false; return { g, muzz: -0.86 };
+  }
+  const mg = modeloMG(); vm.add(mg.g);
+  function paracaidas(color) {
+    const g = new THREE.Group(), a0 = Math.PI * 0.42, R = 3.6, rim = R * Math.sin(a0), yTop = 6.2;
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(R, 18, 7, 0, Math.PI * 2, 0, a0), new THREE.MeshLambertMaterial({ color: lin(color), emissive: lin(color).multiplyScalar(0.45), side: THREE.DoubleSide }));
+    cup.scale.y = 0.55; cup.position.y = yTop - R * 0.55; cup.castShadow = true; g.add(cup);
+    const yRim = cup.position.y + R * 0.55 * Math.cos(a0), pts = [];
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; pts.push(new V3(0, 1.75, 0), new V3(Math.cos(a) * rim, yRim, Math.sin(a) * rim)); }
+    g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x3a3a32 })));
+    return g;
+  }
   const brazos = new THREE.Group(); vm.add(brazos);
   let texTat = null;
   // antebrazo esculpido colocado de la muñeca (en el arma) hacia el codo (fuera de pantalla)
@@ -236,7 +266,7 @@
   function boca(s) { return new V3(s.pos.x - Math.sin(s.yaw) * 0.85, s.pos.y + (s.agach ? 1.0 : 1.42), s.pos.z - Math.cos(s.yaw) * 0.85); }
 
   function herir(s, dmg, desde, porJugador, cabeza) {
-    if (s.muerto) return;
+    if (s.muerto || s.aire) return;
     if (s.esJugador) {
       P.vida -= dmg; G.minVida = Math.min(G.minVida, P.vida); Snd.impacto(); $('dano').style.opacity = clamp(dmg / 40, 0.35, 0.9);
       const rel = Math.atan2(-(desde.x - P.pos.x), -(desde.z - P.pos.z)) - P.yaw;
@@ -290,6 +320,7 @@
     if (a.mun === 0 && a.res > 0) setTimeout(() => G && !G.recT && ARMAS[P.arma] === a && a.mun === 0 && recargar(), 350);
   }
   function recargar() {
+    if (G.nido) return recargaNido();
     const a = ARMAS[P.arma];
     if (G.recT > 0 || a.mun >= a.carg || a.res <= 0) return;
     G.recT = a.rec; Snd.recarga(); P.mira = false;
@@ -297,6 +328,7 @@
   }
   function terminaRecarga() { const a = ARMAS[P.arma], n = Math.min(a.carg - a.mun, a.res); a.mun += n; a.res -= n; }
   function cambiarArma() {
+    if (G.nido) { aviso('Estás a la ametralladora', 2); return; }
     if (ARMAS.length < 2) { aviso('Compra una segunda arma en la armería', 2); return; }
     if (G.recT > 0) return;
     P.arma = (P.arma + 1) % ARMAS.length; G.cool = 0.5; P.mira = false; G.cambioT = 0.4; construyeBrazos(modelos[P.arma].izq, Progreso.P.equipo.tat);
@@ -364,10 +396,11 @@
     if (fao) { if (s.rafaga <= 0) s.rafaga = 4; s.rafaga--; s.tirT = s.rafaga > 0 ? 0.12 : rnd(1.8, 2.8); }
     else s.tirT = s.cad * rnd(0.8, 1.25);
     const t = s.obj, d = dist2D(s.pos, t.pos), mz = boca(s), dj = dist2D(s.pos, P.pos);
+    s.ultimoTiro = G.t;
     particula(mz, 0xffffff, 0.55, 0.07, 0.5, 0, true);
     if (s.team === 'E') Snd.disparo('enemigo', dj, panDe(s.pos)); else Snd.disparo(fao ? 'z45' : 'enemigo', Math.max(dj, 8), panDe(s.pos));
     let p;
-    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif; if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; }
+    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif; if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; if (t === P && G.salto && G.salto.fase !== 'suelo') p = G.salto.fase === 'campana' ? p * 0.3 : 0; if (t === P && G.nido) p *= 0.7; }
     else { p = (0.26 * Math.exp(-d / 60) + 0.05) * (G.viva > 0 ? 1.7 : 1); if (t.agach) p *= 0.6; if (fao) p *= 0.55; }
     const acierta = Math.random() < p;
     const dest = new V3(t.pos.x, t.pos.y + (t.agach ? 1 : 1.35), t.pos.z);
@@ -405,12 +438,19 @@
   }
 
   function actualizaSoldado(s, dt) {
-    if (s.muerto) { if (s.muertoT < 1) { s.muertoT += dt * 2.2; s.g.rotation.x = Math.min(1, s.muertoT) * 1.5; s.g.position.y = s.pos.y + 0.12 * Math.min(1, s.muertoT); } return; }
+    if (s.aire) {
+      const A = s.aire; s.pos.x += A.vx * dt; s.pos.z += A.vz * dt; s.pos.y += A.vy * dt;
+      const h = H(s.pos.x, s.pos.z);
+      if (s.pos.y <= h) { s.pos.y = h; s.g.remove(A.campana); s.aire = null; polvo(s.pos, 3, 0.6); }
+      s.legL.rotation.x = 0.25; s.legR.rotation.x = 0.1; s.rodL.rotation.x = -0.3; s.rodR.rotation.x = -0.2; s.armL.rotation.x = 2.6; s.armR.rotation.x = 2.6; s.armL.rotation.z = 0.3; s.armR.rotation.z = -0.3;
+      s.g.position.copy(s.pos); s.g.rotation.y = s.yaw; return;
+    }
+    if (s.muerto) { if (s.muertoT < 1) { s.muertoT += dt * 2.2; s.g.rotation.x = Math.min(1, s.muertoT) * 1.5; s.g.position.y = s.pos.y + 0.12 * Math.min(1, s.muertoT); } else if ((s.muertoT += dt) > 30 && s.g.parent) scene.remove(s.g); return; }
     s.visT -= dt;
     if (s.visT <= 0) { s.visT = rnd(0.45, 0.85); s.obj = elegirObjetivo(s); if (s.obj && s.team === 'E' && !s.alerta) { s.alerta = true; s.apunta = rnd(0.6, 1.2); } }
     s.mueve = false;
     if (s.team === 'E') iaEnemigo(s, dt); else iaAliado(s, dt);
-    s.pos.y = H(s.pos.x, s.pos.z);
+    s.pos.y = H(s.pos.x, s.pos.z) + (s.elev || 0);
     const baj = pose(s, dt);
     s.g.position.set(s.pos.x, s.pos.y - baj, s.pos.z); s.g.rotation.y = s.yaw;
     if (s.mueve && dist2D(s.pos, P.pos) < 45) { s.polvoT -= dt; if (s.polvoT <= 0) { s.polvoT = 0.32; particula(new V3(s.pos.x, s.pos.y + 0.1, s.pos.z), 0xc9a982, 0.35, 0.7, 1.5, 0.3); } }
@@ -446,6 +486,7 @@
   }
   function enemigosVivos() { return G.sold.filter(e => e.team === 'E' && !e.muerto && e.fase === G.faseI); }
   function iaAliado(s, dt) {
+    if (s.muralla) { tiroteoCubierto(s, dt, { x: s.pos.x, z: s.pos.z - 60 }); return; }
     const f = G.fase, enem = f ? enemigosVivos() : [];
     let modo = 'formacion';
     if (f && f.tipo === 'take' && enem.length) modo = 'asalto';
@@ -513,7 +554,18 @@
     equiparArmas();
     Object.assign(P, { yaw: 0, pitch: -0.02, vida: 100, curas: 2 + v.cura, agach: false, mira: false, arma: 0, granadas: 3 + v.gran, avion: (m.avion || 0) + (m.avion ? v.avion : 0), muerto: false, retroceso: 0 });
     P.pos.set(m.inicio[0], 0, m.inicio[1]); P.pos.y = H(P.pos.x, P.pos.z);
-    for (let k = 0; k < nAli; k++) {
+    G.nido = null; G.salto = null; mg.g.visible = false;
+    if (m.salto) {
+      // el Junkers entra sobre la zona de salto; el jugador va en la puerta y la sección salta con él
+      const av = World.avion(); av.position.set(m.inicio[0], H(m.inicio[0], m.inicio[1]) + m.salto.alt, m.inicio[1] + 60); scene.add(av);
+      G.salto = { fase: 'puerta', t: 0, avion: av, vel: new V3(), nAli, campana: null };
+      P.yaw = -Math.PI / 2; P.pitch = -0.25; Snd.avion();
+    } else if (m.nido) {
+      for (let k = 0; k < Math.min(nAli, 6); k++) {
+        const x = m.inicio[0] + (k % 2 ? 1 : -1) * (4 + Math.floor(k / 2) * 3.6);
+        crearSoldado('L', x, m.inicio[1], k, { hueco: k, muralla: true, elev: 4.4, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
+      }
+    } else for (let k = 0; k < nAli; k++) {
       const h = huecos[k % huecos.length], s = crearSoldado('L', P.pos.x + h[0], P.pos.z + h[1], k, { hueco: k, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
       if (k === 1) s.tipoArma = 'fao';
     }
@@ -522,6 +574,7 @@
     $('parche').hidden = !(Progreso.P.heridas.ojo && Progreso.P.mostrarHeridas);
     $('hud').hidden = $('mandos').hidden = false;
     siguienteFase();
+    if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
     setTimeout(() => G && G.m === m && (Snd.voz('coro_viva', 0.9), cartel('¡VIVA!')), 6200);
@@ -541,6 +594,10 @@
       aviso(f.nom, 3);
       if (G.faseI > 0) { Snd.corneta('ataque'); setTimeout(() => G && voz('adelante', '¡ADELANTE, LEGIONARIOS!'), 1700); }
     } else if (f.tipo === 'hold') { G.holdT = f.t; G.oleada = 3; aviso(f.nom + ': ponte tras los sacos', 3.5); }
+    else if (f.tipo === 'nido') {
+      G.nido = { calor: 0, mun: 100, cintas: 9, rec: 0, bloqueo: false, n: 0 }; G.holdT = f.t; G.oleada = 4; G.muro = 100; P.yaw = 0; P.pitch = -0.08;
+      aviso('Ametralladora en la muralla: que nadie llegue al pie del muro', 4);
+    }
     else aviso(f.nom, 3);
   }
   function faseCumplida(txt) {
@@ -589,6 +646,29 @@
       const n = G.disparada ? enemigosVivos().length : -1;
       G.obj2 = n < 0 ? 'Avanza con cuidado' : 'Enemigos: ' + n;
       if (G.disparada && n === 0) faseCumplida('Emboscada rechazada');
+    } else if (f.tipo === 'nido') {
+      G.holdT -= dt; G.oleada -= dt;
+      if (G.oleada <= 0 && G.holdT > 12) {
+        G.oleada = f.cada * rnd(0.8, 1.2);
+        const n = f.n + Math.floor(G.faseT / 45), cx = rnd(-75, 75);
+        for (let k = 0; k < n; k++) {
+          const x = clamp(cx + rnd(-16, 16), -140, 140), z = f.z - rnd(130, 185);
+          const s = crearSoldado('E', x, z, k + G.sold.length, { fase: G.faseI, estado: 'avanza', alerta: true, dest: { x: f.x + rnd(-13, 13), z: f.z - 4.5 - rnd(0, 5) }, vel: rnd(2.8, 3.9), t: rnd(3, 6) });
+          s.yaw = 0; if (Math.random() < 0.12) s.tipoArma = 'fao';
+        }
+        if (Math.random() < 0.5) voz('enemigo', null, 0.9);
+        aviso('¡Oleada por ' + (cx < -25 ? 'la izquierda' : cx > 25 ? 'la derecha' : 'el frente') + '!', 2);
+      }
+      for (const s of enemigosVivos()) {
+        if (Math.abs(s.pos.z - (f.z - 2)) < 9 && Math.abs(s.pos.x - f.x) < 19) {
+          s.enMuro = (s.enMuro || 0) + dt;
+          if (s.enMuro > 4) { s.muerto = true; s.estado = 'muerto'; scene.remove(s.g); G.muro = Math.max(0, G.muro - 20); G.temblor = 0.4; aviso('¡Están escalando la muralla! Muralla al ' + G.muro + ' %', 2.5); voz('cubridme', null, 0.9); }
+        }
+      }
+      if (G.muro <= 0 && !P.muerto) { P.muerto = true; P.vida = 0; G.finT = 2.5; aviso('El enemigo ha entrado en el fuerte', 4); }
+      const mm = Math.max(0, Math.ceil(G.holdT));
+      G.obj2 = 'Resiste ' + Math.floor(mm / 60) + ':' + String(mm % 60).padStart(2, '0') + ' · muralla ' + G.muro + ' %';
+      if (G.holdT <= 0) { for (const s of enemigosVivos()) { s.estado = 'huye'; s.dest = { x: s.pos.x + rnd(-20, 20), z: s.pos.z - 160 }; s.fase = -1; } faseCumplida('¡Llega la VI Bandera y se rompe el cerco!'); }
     } else if (f.tipo === 'reach') { G.obj2 = 'Sin enemigos a la vista'; if (dObj < 12) faseCumplida('Has alcanzado la columna'); }
   }
   function resultado(ok) {
@@ -618,7 +698,7 @@
     pausado = true; $('mandos').hidden = true; $('revivir').hidden = false;
     $('bRevivir').onclick = async () => {
       $('revivir').hidden = true;
-      if (await Progreso.Anuncios.recompensado()) { G.revivido = true; P.muerto = false; P.vida = 60; P.pitch = 0; G.finT = 0; pausado = false; $('mandos').hidden = false; aviso('¡Arriba, legionario!', 2); voz('a_mi', '¡A MÍ LA LEGIÓN!'); }
+      if (await Progreso.Anuncios.recompensado()) { G.revivido = true; P.muerto = false; P.vida = 60; if (G.nido && G.muro <= 0) G.muro = 40; P.pitch = 0; G.finT = 0; pausado = false; $('mandos').hidden = false; aviso('¡Arriba, legionario!', 2); voz('a_mi', '¡A MÍ LA LEGIÓN!'); }
       else finPantalla(false);
     };
     $('bRendirse').onclick = () => { $('revivir').hidden = true; finPantalla(false); };
@@ -626,7 +706,64 @@
 
   // ---------- bucle ----------
   const _f = new V3();
+  function saltar() {
+    const S = G.salto; if (!S || S.fase !== 'puerta') return;
+    if (S.avion.position.z > G.m.salto.zVerde) { aviso('Luz roja: todavía no estamos sobre la zona', 1.5); return; }
+    S.fase = 'caida'; S.t = 0; S.vel.set(0, -1, -32);
+    voz('viva_espana', '¡VIVA ESPAÑA!', 1); setTimeout(() => G && Snd.voz('coro_viva', 0.8), 1100);
+    // la sección salta en la misma pasada: unos delante y otros detrás, ya con la campana abierta
+    const av = S.avion.position;
+    for (let k = 0; k < S.nAli; k++) {
+      const z = av.z + (k % 2 ? 1 : -1) * (12 + Math.floor(k / 2) * 11), x = av.x + rnd(-6, 6);
+      const s = crearSoldado('L', x, z, k, { hueco: k, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
+      if (k === 1) s.tipoArma = 'fao';
+      s.pos.y = av.y - 12 - rnd(0, 14) + (k % 2 ? -8 : 6); s.yaw = rnd(-0.5, 0.5);
+      const c = paracaidas(k % 3 ? 0xd9d2b8 : 0x8c8a62); s.g.add(c);
+      s.aire = { vx: rnd(-0.8, 0.8), vz: -rnd(0.5, 2), vy: -rnd(5.2, 6.2), campana: c };
+    }
+  }
+  function actualizaSalto(dt) {
+    const S = G.salto, av = S.avion; S.t += dt;
+    if (av.parent) { av.position.z -= 44 * dt; if (av.position.z < -430) scene.remove(av); }
+    if (S.fase === 'puerta') {
+      P.pos.set(av.position.x + 0.75, av.position.y - 1.75, av.position.z + 2.2);
+      if (!S.verde && av.position.z < G.m.salto.zVerde) { S.verde = true; aviso('¡LUZ VERDE! Pulsa FUEGO para saltar', 4); voz('adelante', '¡ADELANTE!', 0.9); }
+      if (av.position.z < G.m.salto.zMin) { aviso('¡Fuera!', 1.5); saltar(); }
+      return;
+    }
+    if (S.fase === 'caida') {
+      S.vel.y -= 9.8 * dt; S.vel.z *= 1 - Math.min(1, dt * 1.4);
+      P.pos.addScaledVector(S.vel, dt); G.temblor = Math.max(G.temblor, 0.35);
+      if (S.t > 1.7) {
+        S.fase = 'campana'; S.campana = paracaidas(0xd9d2b8); scene.add(S.campana); G.temblor = 0.9; S.vel.y = -9;
+        aviso('¡Campana abierta! Guía con el joystick y dispara desde el aire', 3.5);
+      }
+    } else {
+      let mx = mov.x, my = mov.y;
+      if (teclas.KeyW) my -= 1; if (teclas.KeyS) my += 1; if (teclas.KeyA) mx -= 1; if (teclas.KeyD) mx += 1;
+      const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw), vh = 4.5;
+      S.vel.x += ((mx * cy + my * sy) * vh - S.vel.x) * Math.min(1, dt * 1.5);
+      S.vel.z += ((-mx * sy + my * cy) * vh - S.vel.z) * Math.min(1, dt * 1.5);
+      S.vel.y += (-5.8 - S.vel.y) * Math.min(1, dt * 2);
+      P.pos.addScaledVector(S.vel, dt);
+      P.pos.x = clamp(P.pos.x, -150, 150); P.pos.z = clamp(P.pos.z, -255, 262);
+      S.campana.position.copy(P.pos); S.campana.rotation.z = Math.sin(G.t * 0.9) * 0.06 - S.vel.x * 0.02; S.campana.rotation.x = S.vel.z * 0.02;
+      const h = H(P.pos.x, P.pos.z);
+      if (P.pos.y <= h) {
+        P.pos.y = h; S.fase = 'suelo'; scene.remove(S.campana); G.temblor = 0.7; polvo(P.pos, 4, 0.8);
+        aviso('¡En tierra! Reúnete con la sección', 3); voz('a_mi', '¡A MÍ LA LEGIÓN!', 1);
+        setTimeout(() => G && Snd.corneta('ataque'), 1200);
+      }
+    }
+  }
   function actualizaJugador(dt) {
+    if (G.salto && G.salto.fase !== 'suelo') { actualizaSalto(dt); if (P.muerto) P.pitch = Math.max(P.pitch - dt * 0.6, -0.5); return; }
+    if (G.nido) {
+      const f = G.m.fases[0]; P.pos.set(f.x, H(f.x, f.z) + 5.0, f.z); P.mov = 0;
+      P.yaw = clamp(P.yaw, -1.25, 1.25); P.pitch = clamp(P.pitch, -0.6, 0.3);
+      if (P.muerto) P.pitch = Math.max(P.pitch - dt * 0.6, -0.5);
+      return;
+    }
     if (P.muerto) { P.pitch = Math.max(P.pitch - dt * 0.6, -0.5); return; }
     let mx = mov.x, my = mov.y;
     if (teclas.KeyW) my -= 1; if (teclas.KeyS) my += 1; if (teclas.KeyA) mx -= 1; if (teclas.KeyD) mx += 1;
@@ -637,7 +774,39 @@
     P.pos.x = clamp(P.pos.x, -150, 150); P.pos.z = clamp(P.pos.z, -255, 262); P.pos.y = H(P.pos.x, P.pos.z);
     P.mov = Math.min(1, ml); if (P.mov > 0.1) P.bob += dt * vel * 2.2;
   }
+  function recargaNido() {
+    const N = G.nido; if (N.rec > 0 || N.mun >= 100) return;
+    if (N.cintas <= 0) { aviso('No quedan cintas', 2); return; }
+    N.rec = 3.2; Snd.recarga(); if (Math.random() < 0.5) voz('recargando', null, 0.9);
+  }
+  function tiroNido() {
+    const N = G.nido;
+    N.mun--; N.n++; G.cool = 0.08; N.calor += 1.7; G.tiros++;
+    if (N.calor >= 100) { N.calor = 100; N.bloqueo = true; aviso('¡Cañón al rojo! Espera a que se enfríe', 2.5); }
+    Snd.disparo('mauser', 0, 0);
+    fogonazo.visible = true; fogonazo.material.rotation = Math.random() * 6; luzDisparo.intensity = 2.4; G.flashT = 0.04;
+    P.retroceso += 0.007; G.temblor = Math.max(G.temblor, 0.12);
+    cam.updateMatrixWorld(); dirCamara(_d, P.mira ? 0.006 : 0.014); cam.getWorldPosition(_o);
+    const r = trazar(_o, _d, 300, 'L');
+    _hit.copy(_o).addScaledVector(_d, r.t);
+    if (N.n % 3 === 0) { const b = new V3(); fogonazo.getWorldPosition(b); trazadora(b, _hit.clone()); }
+    if (r.s) { G.aciertos++; sangre(_hit); herir(r.s, 75 * (r.cabeza ? 2 : 1), P.pos, true, r.cabeza); }
+    else if (r.t < 299) polvo(_hit, 2, 0.5);
+    if (N.mun <= 0) recargaNido();
+  }
+  function armaNido(dt) {
+    const N = G.nido;
+    G.cool -= dt;
+    if (N.rec > 0) { N.rec -= dt; if (N.rec <= 0) { N.rec = 0; N.cintas--; N.mun = 100; } }
+    if (N.bloqueo && N.calor < 35) { N.bloqueo = false; aviso('Cañón frío: ¡fuego!', 1.5); }
+    N.calor = Math.max(0, N.calor - dt * (disparando ? 5 : 15));
+    if (G.pedido > 0) G.pedido -= dt;
+    if ((disparando || G.pedido > 0) && G.cool <= 0 && N.rec <= 0 && !N.bloqueo && !P.muerto) { if (N.mun > 0) tiroNido(); G.pedido = 0; }
+    if (G.flashT > 0) { G.flashT -= dt; if (G.flashT <= 0) { fogonazo.visible = false; luzDisparo.intensity = 0; } }
+  }
   function actualizaArma(dt) {
+    if (G.nido) return armaNido(dt);
+    if (G.salto && G.salto.fase !== 'suelo' && G.salto.fase !== 'campana') { if (disparando || G.pedido > 0) { G.pedido = 0; saltar(); } return; }
     const a = ARMAS[P.arma];
     G.cool -= dt;
     if (G.recT > 0) { G.recT -= dt; if (G.recT <= 0) { G.recT = 0; terminaRecarga(); } }
@@ -679,15 +848,17 @@
     const bob = Math.sin(P.bob) * 0.035 * P.mov;
     cam.position.set(P.pos.x, P.pos.y + G.alt + bob, P.pos.z);
     const tb = G.temblor * 0.03;
-    cam.rotation.set(clamp(P.pitch + P.retroceso, -1.35, 1.35) + rnd(-tb, tb), P.yaw + rnd(-tb, tb), P.muerto ? 0.6 : 0);
+    const balanceo = G.salto && G.salto.fase === 'campana' ? Math.sin(G.t * 0.9) * 0.05 : G.salto && G.salto.fase === 'caida' ? Math.sin(G.t * 7) * 0.25 : 0;
+    cam.rotation.set(clamp(P.pitch + P.retroceso, -1.35, 1.35) + rnd(-tb, tb), P.yaw + rnd(-tb, tb), P.muerto ? 0.6 : balanceo);
     const fov = P.mira ? 42 : 72; cam.fov += (fov - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix();
-    modelos.forEach((m, i) => m.g.visible = i === P.arma && !P.muerto); brazos.visible = !P.muerto;
+    const enPuerta = G.salto && (G.salto.fase === 'puerta' || G.salto.fase === 'caida');
+    modelos.forEach((m, i) => m.g.visible = i === P.arma && !P.muerto && !G.nido && !enPuerta); brazos.visible = !P.muerto && !G.nido && !enPuerta; mg.g.visible = !!G.nido && !P.muerto;
     const rec = G.recT > 0 ? Math.sin(Math.min(1, (a.rec - G.recT) / a.rec) * Math.PI) : 0;
     const cambio = G.cambioT > 0 ? (G.cambioT -= dt, G.cambioT / 0.4) : 0;
-    const tx = P.mira ? 0 : 0.22, ty = (P.mira ? -0.085 : -0.22) - rec * 0.25 - cambio * 0.3 + Math.sin(P.bob * 0.5) * 0.01 * P.mov, tz = P.mira ? -0.27 : -0.42;
+    const tx = G.nido ? 0 : P.mira ? 0 : 0.22, ty = (G.nido ? (P.mira ? -0.17 : -0.27) : P.mira ? -0.085 : -0.22) - rec * 0.25 - cambio * 0.3 + Math.sin(P.bob * 0.5) * 0.01 * P.mov, tz = G.nido ? -0.5 : P.mira ? -0.27 : -0.42;
     vm.position.x += (tx - vm.position.x) * Math.min(1, dt * 14); vm.position.y += (ty - vm.position.y) * Math.min(1, dt * 14); vm.position.z += (tz + P.retroceso * 0.8 - vm.position.z) * Math.min(1, dt * 20);
     vm.rotation.set(rec * 0.6 + P.retroceso * 2, P.mira ? 0 : 0.04, rec * 0.4);
-    fogonazo.position.set(0, 0.03, md.muzz);
+    if (G.nido) fogonazo.position.set(0, 0.01, mg.muzz); else fogonazo.position.set(0, 0.03, md.muzz);
     const R = World.refs; R.sun.position.copy(P.pos).addScaledVector(R.solDir, 120); R.sun.target.position.copy(P.pos);
     if (R.bandera) { const p = R.bandera.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) + 1.2; p.setZ(i, Math.sin(x * 2.4 - G.t * 6) * 0.12 * x); } p.needsUpdate = true; }
     if (G.m.noche) {
@@ -696,19 +867,48 @@
       if (G.flareVida > 0) { G.flareVida -= dt; R.flare.position.y -= dt * 3.2; R.flare.intensity = (G.flareVida > 1 ? 2.2 : G.flareVida * 2.2) * (0.85 + Math.random() * 0.15); } else R.flare.intensity = 0;
     }
   }
+  // marcas de enemigos: flecha roja sobre los que combaten y flechas en el borde para los que están fuera de la vista
+  const capaMarcas = $('marcas'), marcas = [], _m = new V3();
+  function marcaN(i) {
+    while (marcas.length <= i) { const e = document.createElement('div'); e.className = 'marca'; e.innerHTML = '<i></i><small></small>'; capaMarcas.appendChild(e); marcas.push(e); }
+    return marcas[i];
+  }
+  function actualizaMarcas() {
+    const w = capaMarcas.clientWidth || innerWidth, h = capaMarcas.clientHeight || innerHeight;
+    const lista = G.sold.filter(s => s.team === 'E' && !s.muerto && s.estado !== 'huye' && (s.alerta || (s.ultimoTiro && G.t - s.ultimoTiro < 4)))
+      .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < 170).sort((a, b) => a.d - b.d).slice(0, 10);
+    let i = 0;
+    for (const { s, d } of lista) {
+      _m.set(s.pos.x, s.pos.y + (s.agach ? 1.5 : 2.05), s.pos.z).project(cam);
+      const detras = _m.z > 1; let x = _m.x, y = _m.y; if (detras) { x = -x; y = -y; }
+      const dentro = !detras && Math.abs(x) < 0.94 && Math.abs(y) < 0.9;
+      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4));
+      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = Math.round(d) + ' m'; }
+      else {
+        const a = Math.atan2(y, x), k = Math.min(0.9 / Math.abs(Math.cos(a) || 1e-6), 0.82 / Math.abs(Math.sin(a) || 1e-6));
+        e.style.left = ((Math.cos(a) * k + 1) / 2 * w) + 'px'; e.style.top = ((1 - Math.sin(a) * k) / 2 * h) + 'px';
+        e.style.transform = 'rotate(' + (-a) + 'rad)'; e.lastChild.textContent = '';
+      }
+    }
+    for (; i < marcas.length; i++) marcas[i].hidden = true;
+  }
+
   function actualizaHUD(dt) {
+    actualizaMarcas();
     const a = ARMAS[P.arma];
     $('tVida').textContent = Math.ceil(P.vida); $('vida').firstElementChild.style.width = P.vida + '%';
     $('tCuras').textContent = P.curas; $('tBajas').textContent = G.bajas;
     $('tEsc').textContent = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
-    $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tGran').textContent = P.granadas;
+    if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
+    else { $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tArma').style.color = ''; }
+    $('tGran').textContent = P.granadas;
     $('bGran').disabled = P.granadas <= 0; $('bCura').disabled = P.curas <= 0; $('bAvion').disabled = P.avion <= 0; $('bAvion').hidden = !(G.m.avion > 0);
     $('bViva').disabled = G.vivaCD > 0; $('bViva').textContent = G.vivaCD > 0 ? Math.ceil(G.vivaCD) + 's' : '¡VIVA!';
     $('bAgach').classList.toggle('on', P.agach); $('bMira').classList.toggle('on', P.mira);
     const f = G.fase;
     if (f) {
       const dx = f.x - P.pos.x, dz = f.z - P.pos.z, d = Math.hypot(dx, dz);
-      $('tObj').textContent = f.nom + ' · ' + Math.round(d) + ' m'; $('tObj2').textContent = G.obj2 || '';
+      $('tObj').textContent = f.tipo === 'nido' ? f.nom : f.nom + ' · ' + Math.round(d) + ' m'; $('tObj2').textContent = G.obj2 || '';
       $('flecha').style.transform = 'rotate(' + (-(Math.atan2(-dx, -dz) - P.yaw)) + 'rad)';
       G.marca.visible = d > 12; G.marca.position.set(f.x, H(f.x, f.z) + 7, f.z);
     } else G.marca.visible = false;
@@ -754,7 +954,7 @@
   function alMenu() {
     jugando = false; pausado = true; G = null;
     ['hud', 'mandos', 'parte', 'fin', 'pausa', 'ajustes', 'revivir'].forEach(id => $(id).hidden = true);
-    construir(MISIONES[2]); UI.tab('campana'); $('menu').hidden = false;
+    construir(MISIONES.find(m => m.id === 'tiliuin')); UI.tab('campana'); $('menu').hidden = false;
     if (document.pointerLockElement) document.exitPointerLock();
   }
   function pausar(v) {

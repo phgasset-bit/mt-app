@@ -29,7 +29,7 @@
   - No consumibles: `sin_anuncios` (3,99 €), `veterano` (2,99 €)
 - Cuestionario de clasificación (IARC): violencia realista → previsiblemente PEGI 16.
 - Formulario de seguridad de los datos: anuncios (ID de publicidad), compras; sin datos personales propios.
-- Política de privacidad: hace falta una URL pública. La redacto yo cuando quieras.
+- Política de privacidad: https://mnm-solar.com/ifni-privacidad · Sitio web del desarrollador: https://mnm-solar.com (ahí va también `app-ads.txt`).
 - Ficha: icono 512×512, gráfico destacado 1024×500, al menos 2 capturas, descripciones. Los preparo yo.
 
 ### 4. Clave de subida (firma de la app)

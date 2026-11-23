@@ -432,7 +432,14 @@
     G.proy.push({ tipo: 'granada', m, v: _d.clone().multiplyScalar(17).add(new V3(0, 4.5, 0)), t: 3.2, jug: true });
   }
   function explotar(p, radio, letal, jug) {
-    explosionFx(p); if (radio >= 12) explosionGrande(p); const d = dist2D(p, P.pos); Snd.explosion(d, panDe(p)); G.temblor = Math.max(G.temblor, clamp(1.2 - d / 40, 0, 1));
+    explosionFx(p); if (radio >= 12) explosionGrande(p);
+    if (radio >= 10) for (const c of World.danar(p, radio >= 12 ? 2 : 1, radio)) { // el edificio alcanzado se viene abajo
+      const q = new V3(c.x, c.y, c.z);
+      for (let i = 0; i < 12; i++) particula(q.clone().add(new V3(rnd(-c.r, c.r), rnd(0, c.alto * 0.7), rnd(-c.r, c.r))), i % 3 ? 0xb39a78 : 0x5a4c3c, rnd(3, 6.5), rnd(2.5, 5), 2.2, rnd(0.6, 2.4));
+      for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(geoGota, World.mat(0x8f7350)); m.scale.set(rnd(8, 22), rnd(6, 14), rnd(8, 22)); m.position.copy(q).add(new V3(rnd(-c.r, c.r) * 0.6, rnd(0.5, c.alto * 0.6), rnd(-c.r, c.r) * 0.6)); scene.add(m); gotas.push({ m, v: new V3(rnd(-7, 7), rnd(3, 12), rnd(-7, 7)), seco: true }); }
+      G.temblor = Math.max(G.temblor, 0.6); Snd.explosion(dist2D(q, P.pos) * 0.8, panDe(q)); aviso('¡Edificio derribado!', 2);
+    }
+    const d = dist2D(p, P.pos); Snd.explosion(d, panDe(p)); G.temblor = Math.max(G.temblor, clamp(1.2 - d / 40, 0, 1));
     for (const s of G.sold) {
       if (s.muerto) continue; const ds = s.pos.distanceTo(p);
       if (ds < radio) herir(s, ds < letal ? 999 : 80 * (1 - ds / radio), p, jug);

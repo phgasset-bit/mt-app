@@ -116,7 +116,7 @@ const Snd = (() => {
     if (!ctx) return;
     if (!on) { if (mus) { const m = mus; mus = null; clearInterval(m.iv); m.g.gain.setTargetAtTime(0, ctx.currentTime, 0.25); setTimeout(() => { try { m.src && m.src.stop(); m.g.disconnect(); } catch (e) {} }, 1200); } return; }
     if (mus) return;
-    const g = ctx.createGain(); g.gain.value = 0; g.connect(master); g.gain.setTargetAtTime(0.5, ctx.currentTime, 0.4);
+    const g = ctx.createGain(); g.gain.value = 0; g.connect(master); g.gain.setTargetAtTime(0.85, ctx.currentTime, 0.4);
     mus = { g, iv: 0, src: null };
     if (buf.himno) { const src = ctx.createBufferSource(); src.buffer = buf.himno; src.loop = true; src.connect(g); src.start(); mus.src = src; return; }
     const N = { g: 392, c: 523.25, e: 659.25, G: 783.99, C: 1046.5 }, paso = 0.375; // 160 pasos por minuto, el paso legionario

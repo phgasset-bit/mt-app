@@ -148,8 +148,26 @@ const World = (() => {
   function caja(w, h, d, material, x, y, z, ry, scn, bloquea) {
     const m = new C.Mesh(new C.BoxGeometry(w, h, d), material);
     m.position.set(x, y, z); m.rotation.y = ry || 0; m.castShadow = true; m.receiveShadow = true;
-    scn.add(m); if (bloquea) blockers.push(m);
+    scn.add(m); if (bloquea) blockers.push(m); if (grupoEd) grupoEd.push(m);
     return m;
+  }
+  // edificios que el cañón y las bombas pueden echar abajo: la primera pieza es el cuerpo, las demás (tejado, puerta...) caen con él
+  let grupoEd = null; const edificios = [];
+  function edificio(x, z, r, vida) { if (grupoEd && grupoEd.length) edificios.push({ p: grupoEd, x, z, r, vida, v0: vida }); grupoEd = null; }
+  function danar(p, fuerza, radio) {
+    const caidos = [];
+    for (const e of edificios) {
+      if (e.vida <= 0 || Math.hypot(e.x - p.x, e.z - p.z) > e.r + radio * 0.45) continue;
+      e.vida -= fuerza; const c = e.p[0];
+      if (!c.userData.propio) { c.material = c.material.clone(); c.userData.propio = true; }
+      if (e.vida > 0) { c.material.color.multiplyScalar(0.72); continue; }
+      // ruina: el cuerpo queda en un muñón renegrido y lo demás desaparece
+      const alto = c.geometry.parameters.height, base = c.position.y - alto / 2;
+      c.scale.y = 0.22; c.position.y = base + alto * 0.11 + 0.5; c.material.color.multiplyScalar(0.5); c.rotation.z = 0.06; c.updateMatrixWorld();
+      for (let i = 1; i < e.p.length; i++) { e.p[i].visible = false; const k = blockers.indexOf(e.p[i]); if (k >= 0) blockers.splice(k, 1); }
+      caidos.push({ x: e.x, y: base + 1, z: e.z, r: e.r, alto });
+    }
+    return caidos;
   }
   function bloqueInvisible(scn, w, h, d, x, y, z, ry) {
     const m = new C.Mesh(new C.BoxGeometry(w, h, d), mat(0x000000)); m.visible = false;
@@ -160,7 +178,7 @@ const World = (() => {
   let refs = {};
   const piedras = [], sacosL = [];
   function build(m, scn) {
-    M = m; seed = m.seed; grid.clear(); blockers.length = 0; circulos.length = 0; piedras.length = 0; sacosL.length = 0;
+    M = m; seed = m.seed; edificios.length = 0; grupoEd = null; grid.clear(); blockers.length = 0; circulos.length = 0; piedras.length = 0; sacosL.length = 0;
     const T = tex(), R = rng(seed), noche = !!m.noche, des = !!m.desierto;
     const siroco = m.clima === 'siroco', tarde = m.clima === 'atardecer';
     const skyCol = noche ? 0x111a2c : siroco ? 0xd6b488 : tarde ? 0xf0b888 : des ? 0xe2d3b6 : 0xd3d6cc;
@@ -394,9 +412,11 @@ const World = (() => {
     }
     // casamata de piedra con techo de vigas
     const y = height(f.x, f.z), cx = f.x - Math.sin(face) * 2, cz = f.z - Math.cos(face) * 2;
+    grupoEd = [];
     caja(4.2, 3, 3.2, new C.MeshLambertMaterial({ color: lin(0x8a7660), map: tex().revoco }), cx, y + 0.9, cz, face, scn, true);
     caja(4.8, 0.22, 3.8, mat(0x4f3f2c), cx, y + 2.45, cz, face, scn, false);
     caja(1, 1.6, 0.1, mat(0x1d1710), cx + Math.sin(face) * 1.62, y + 0.8, cz + Math.cos(face) * 1.62, face, scn, false);
+    edificio(cx, cz, 2.6, 2);
     addCircle(cx, cz, 2.2);
     for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.6; spots.push({ x: f.x + Math.sin(a) * 5.5, z: f.z + Math.cos(a) * 5.5, yaw: a + Math.PI, muro: false }); }
     return spots;
@@ -408,14 +428,16 @@ const World = (() => {
     for (let k = 0; k < N; k++) {
       const a = face + (k + 0.5) / N * Math.PI * 2, brecha = k === 0 || k === N - 1, cx = f.x + Math.sin(a) * Rr, cz = f.z + Math.cos(a) * Rr, y = height(cx, cz);
       if (!brecha) {
-        caja(9.6, 2.4, 0.7, k % 2 ? adobe : adobe2, cx, y + 0.1, cz, a, scn, true);
+        grupoEd = []; caja(9.6, 2.4, 0.7, k % 2 ? adobe : adobe2, cx, y + 0.1, cz, a, scn, true); edificio(cx, cz, 4, 1);
         for (let i = -2; i <= 2; i++) addCircle(cx + Math.cos(a) * i * 2.1, cz - Math.sin(a) * i * 2.1, 1.1);
         spots.push({ x: f.x + Math.sin(a) * (Rr - 1.4), z: f.z + Math.cos(a) * (Rr - 1.4), yaw: a + Math.PI, muro: true });
       }
       if (k % 4 === 2) { // torre de vigía
         const b = face + k / N * Math.PI * 2, tx = f.x + Math.sin(b) * Rr, tz = f.z + Math.cos(b) * Rr, ty = height(tx, tz);
+        grupoEd = [];
         caja(3.4, 8, 3.4, adobe2, tx, ty + 3, tz, b, scn, true); caja(3.9, 0.5, 3.9, adobe, tx, ty + 7.2, tz, b, scn, false);
         for (const [ox, oz] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) caja(0.7, 0.8, 0.7, adobe, tx + ox, ty + 7.8, tz + oz, b, scn, false);
+        edificio(tx, tz, 2.4, 2);
         addCircle(tx, tz, 2.4);
       }
     }
@@ -426,18 +448,19 @@ const World = (() => {
     const cs = Math.cos(face), sn = Math.sin(face);
     casas.forEach(([lx, lz, wd, dp], i) => {
       const x = f.x + lx * cs + lz * sn, z = f.z - lx * sn + lz * cs, y = height(x, z), h = 2.8 + R() * 1.2;
+      grupoEd = [];
       caja(wd, h + 1.5, dp, i % 2 ? adobe : adobe2, x, y + h / 2 - 0.75, z, face, scn, true);
       caja(wd + 0.4, 0.25, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
       caja(0.9, 1.7, 0.1, oscuro, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
       caja(0.5, 0.5, 0.1, oscuro, x + sn * (dp / 2 + 0.02) + cs * wd * 0.3, y + h * 0.65, z + cs * (dp / 2 + 0.02) - sn * wd * 0.3, face, scn, false);
+      edificio(x, z, Math.max(wd, dp) * 0.6, 2);
       addCircle(x, z, Math.max(wd, dp) * 0.6);
       spots.push({ x: x + cs * (wd / 2 + 1), z: z - sn * (wd / 2 + 1), yaw: face + Math.PI, muro: false });
     });
     // alcazaba al fondo, con dos torres
     const ax = f.x - sn * 14, az = f.z - cs * 14, ay = height(ax, az);
-    caja(13, 6.5, 8, adobe, ax, ay + 2.2, az, face, scn, true); caja(13.6, 0.5, 8.6, adobe2, ax, ay + 5.6, az, face, scn, false);
-    for (const s of [-1, 1]) { const tx = ax + cs * s * 6.5, tz = az - sn * s * 6.5; caja(3.6, 10, 3.6, adobe2, tx, ay + 4, tz, face, scn, true); caja(4.1, 0.5, 4.1, adobe, tx, ay + 9.2, tz, face, scn, false); addCircle(tx, tz, 2.5); }
-    caja(1.6, 2.6, 0.1, oscuro, ax + sn * 4.03, ay + 1.3, az + cs * 4.03, face, scn, false);
+    grupoEd = []; caja(13, 6.5, 8, adobe, ax, ay + 2.2, az, face, scn, true); caja(13.6, 0.5, 8.6, adobe2, ax, ay + 5.6, az, face, scn, false); caja(1.6, 2.6, 0.1, oscuro, ax + sn * 4.03, ay + 1.3, az + cs * 4.03, face, scn, false); edificio(ax, az, 6, 4);
+    for (const s of [-1, 1]) { const tx = ax + cs * s * 6.5, tz = az - sn * s * 6.5; grupoEd = []; caja(3.6, 10, 3.6, adobe2, tx, ay + 4, tz, face, scn, true); caja(4.1, 0.5, 4.1, adobe, tx, ay + 9.2, tz, face, scn, false); edificio(tx, tz, 2.5, 2); addCircle(tx, tz, 2.5); }
     addCircle(ax, az, 6);
     for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.5; spots.push({ x: f.x + Math.sin(a) * 7, z: f.z + Math.cos(a) * 7, yaw: a + Math.PI, muro: false }); }
     return spots;
@@ -457,10 +480,12 @@ const World = (() => {
   // morabito: santuario encalado con cúpula, rodeado de una cerca de piedra
   function morabito(scn, f, face, R) {
     const spots = [], cal = new C.MeshLambertMaterial({ color: lin(0xefe9da), map: tex().revoco }), y = height(f.x, f.z);
+    grupoEd = [];
     caja(4.6, 4.2, 4.6, cal, f.x, y + 1.3, f.z, face, scn, true);
-    const cup = new C.Mesh(new C.SphereGeometry(2.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), cal); cup.position.set(f.x, y + 3.4, f.z); cup.castShadow = true; scn.add(cup);
+    const cup = new C.Mesh(new C.SphereGeometry(2.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), cal); cup.position.set(f.x, y + 3.4, f.z); cup.castShadow = true; scn.add(cup); grupoEd.push(cup);
     caja(1, 1.9, 0.1, mat(0x2f4f3a), f.x + Math.sin(face) * 2.33, y + 0.95, f.z + Math.cos(face) * 2.33, face, scn, false);
     for (const [ox, oz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) caja(0.5, 0.7, 0.5, cal, f.x + ox, y + 3.6, f.z + oz, 0, scn, false);
+    edificio(f.x, f.z, 3.3, 3);
     addCircle(f.x, f.z, 3.3);
     let k = 0;
     for (let a = face - 2.2; a <= face + 2.21; a += 0.31, k++) {
@@ -477,8 +502,10 @@ const World = (() => {
     const cs = Math.cos(face), sn = Math.sin(face), P2 = (lx, lz) => [f.x + lx * cs + lz * sn, f.z - lx * sn + lz * cs];
     [[-9, 5, 5, 4.5], [8, 6, 5.5, 4], [-6, -6, 4.5, 5], [7, -5, 5, 5]].forEach(([lx, lz, wd, dp], i) => {
       const [x, z] = P2(lx, lz), y = height(x, z), h = 2.7 + R();
+      grupoEd = [];
       caja(wd, h + 1.5, dp, i % 2 ? ad : ad2, x, y + h / 2 - 0.75, z, face, scn, true); caja(wd + 0.4, 0.22, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
       caja(0.9, 1.7, 0.1, osc, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
+      edificio(x, z, Math.max(wd, dp) * 0.6, 2);
       addCircle(x, z, Math.max(wd, dp) * 0.6);
       spots.push({ x: x + cs * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), z: z - sn * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), yaw: face + Math.PI, muro: false });
     });
@@ -735,5 +762,5 @@ const World = (() => {
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, bomba, carro, camion, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, bomba, carro, camion, danar, tex, rng, lin, mat, get refs() { return refs; } };
 })();

@@ -105,14 +105,13 @@ const MISIONES = [
   {
     id: 'tafudart', epilogo: true, tit: 'Epílogo: los carros de Tafudart', dato: 'Sáhara español, Saguia el Hamra · febrero de 1958',
     parte: ['Operación Teide: españoles y franceses barren el Sáhara. Con la Legión avanzan los carros ligeros M-24 del Regimiento de Caballería Pavía, desembarcados en Villa Bens.',
-      'Hoy vas de tirador en un M-24 que apoya a la II Bandera sobre Tafudart. Conduce con el joystick, bate los parapetos con el cañón y usa la ametralladora contra los que salgan a campo abierto. No dejes atrás a los legionarios.'],
+      'Mandas una sección de tres M-24 que apoya a la II Bandera. Primero los puestos avanzados; después, cruzando el cauce seco, el poblado fortificado de Tafudart: tapias de adobe, torres y una alcazaba. Bate los muros con el cañón, usa la ametralladora contra los que salgan a campo abierto y no dejes atrás a los legionarios.'],
     historia: 'En la operación Teide-Écouvillon (10-25 de febrero de 1958) las tropas españolas y francesas expulsaron del Sáhara al Ejército de Liberación. Los carros M-24 del Regimiento Pavía, únicos carros de combate españoles de toda la campaña, apoyaron con su fuego a la Legión en el ataque a Tafudart. En el territorio de Ifni no llegó a combatir ningún carro.',
-    desierto: true, amp: 3, seed: 9.6, inicio: [0, 235], aliados: 7, carro: true,
-    bumps: [[-40, 110, 40, 5], [50, -10, 45, 6], [0, -150, 60, 7], [-110, -60, 60, -5], [110, 60, 60, -4]],
+    desierto: true, amp: 3, seed: 9.6, inicio: [0, 235], aliados: 8, carro: true,
+    bumps: [[-45, 120, 36, 5], [0, 20, 200, -3], [0, -150, 70, 5], [-120, -40, 60, 7], [120, 30, 60, 6], [60, 150, 40, 4]],
     fases: [
-      { tipo: 'take', x: -40, z: 110, n: 12, nom: 'Bate el primer parapeto' },
-      { tipo: 'take', x: 50, z: -10, n: 14, nom: 'Abre paso a la Bandera' },
-      { tipo: 'take', x: 0, z: -150, n: 16, nom: 'Toma Tafudart' }
+      { tipo: 'take', x: -45, z: 120, n: 10, nom: 'Bate los puestos avanzados' },
+      { tipo: 'take', x: 0, z: -150, n: 26, poblado: true, nom: 'Asalta el poblado de Tafudart' }
     ]
   }
 ];

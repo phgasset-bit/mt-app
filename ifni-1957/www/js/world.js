@@ -222,7 +222,7 @@ const World = (() => {
     if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(900, 200), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 330); scn.add(w); }
 
     // zonas libres
-    const libres = m.fases.map(f => [f.x, f.z, 16]).concat([[m.inicio[0], m.inicio[1], 10]]);
+    const libres = m.fases.map(f => [f.x, f.z, f.poblado ? 36 : 16]).concat([[m.inicio[0], m.inicio[1], 10]]);
     if (m.fuerte) libres.push([m.fuerte[0], m.fuerte[1], 26]);
     const libre = (x, z, r) => libres.every(l => (x - l[0]) ** 2 + (z - l[1]) ** 2 > (l[2] - (r || 0)) ** 2) && Math.abs(x - pathX(z)) > 4.5;
     const punto = (r) => { for (let t = 0; t < 20; t++) { const x = (R() - 0.5) * 300, z = 268 - R() * 540; if (libre(x, z, r)) return [x, z]; } return null; };
@@ -296,6 +296,7 @@ const World = (() => {
       const troncos = [], hojas = [], sitios = [];
       if (m.fuerte) for (let i = 0; i < 9; i++) { const a = R() * 6.28, r = 30 + R() * 16; sitios.push([m.fuerte[0] + Math.cos(a) * r, m.fuerte[1] + Math.sin(a) * r]); }
       for (let i = 0; i < (des ? 14 : 22); i++) { const p = punto(3); if (p) sitios.push(p); }
+      m.fases.forEach(f => { if (f.poblado) for (let i = 0; i < 26; i++) { const a = R() * 6.28, r = 38 + R() * 22; sitios.push([f.x + Math.cos(a) * r, f.z + Math.sin(a) * r]); } });
       for (const [x, z] of sitios) {
         if (!libre(x, z, 2)) continue;
         const y0 = height(x, z), alto = 4.5 + R() * 3.5, inc = (R() - 0.5) * 0.25, ay = R() * 6.28;
@@ -326,7 +327,7 @@ const World = (() => {
     // posiciones: parapetos de piedra seca, sacos terreros, cobertura de emboscadas
     m.fases.forEach((f, i) => {
       const prev = i === 0 ? { x: m.inicio[0], z: m.inicio[1] } : m.fases[i - 1];
-      if (f.tipo === 'take') f._spots = parapeto(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
+      if (f.tipo === 'take') f._spots = (f.poblado ? poblado : parapeto)(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
       else if (f.tipo === 'hold') sacos(scn, f, R);
       else if (f.tipo === 'ambush') {
         f._spots = [];
@@ -391,6 +392,47 @@ const World = (() => {
     caja(1, 1.6, 0.1, mat(0x1d1710), cx + Math.sin(face) * 1.62, y + 0.8, cz + Math.cos(face) * 1.62, face, scn, false);
     addCircle(cx, cz, 2.2);
     for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.6; spots.push({ x: f.x + Math.sin(a) * 5.5, z: f.z + Math.cos(a) * 5.5, yaw: a + Math.PI, muro: false }); }
+    return spots;
+  }
+  // poblado fortificado de adobe: tapia exterior con brecha, torres, casas y una alcazaba al fondo
+  function poblado(scn, f, face, R) {
+    const spots = [], adobe = new C.MeshLambertMaterial({ color: lin(0xb48a5e), map: tex().revoco }), adobe2 = new C.MeshLambertMaterial({ color: lin(0xa67c52), map: tex().revoco }), oscuro = mat(0x1d1710), viga = mat(0x4f3f2c);
+    const Rr = 25, N = 16;
+    for (let k = 0; k < N; k++) {
+      const a = face + (k + 0.5) / N * Math.PI * 2, brecha = k === 0 || k === N - 1, cx = f.x + Math.sin(a) * Rr, cz = f.z + Math.cos(a) * Rr, y = height(cx, cz);
+      if (!brecha) {
+        caja(9.6, 2.4, 0.7, k % 2 ? adobe : adobe2, cx, y + 0.1, cz, a, scn, true);
+        for (let i = -2; i <= 2; i++) addCircle(cx + Math.cos(a) * i * 2.1, cz - Math.sin(a) * i * 2.1, 1.1);
+        spots.push({ x: f.x + Math.sin(a) * (Rr - 1.4), z: f.z + Math.cos(a) * (Rr - 1.4), yaw: a + Math.PI, muro: true });
+      }
+      if (k % 4 === 2) { // torre de vigía
+        const b = face + k / N * Math.PI * 2, tx = f.x + Math.sin(b) * Rr, tz = f.z + Math.cos(b) * Rr, ty = height(tx, tz);
+        caja(3.4, 8, 3.4, adobe2, tx, ty + 3, tz, b, scn, true); caja(3.9, 0.5, 3.9, adobe, tx, ty + 7.2, tz, b, scn, false);
+        for (const [ox, oz] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) caja(0.7, 0.8, 0.7, adobe, tx + ox, ty + 7.8, tz + oz, b, scn, false);
+        addCircle(tx, tz, 2.4);
+      }
+    }
+    // sacos a los lados de la brecha
+    for (const s of [-1, 1]) { const a = face + s * 0.42, x = f.x + Math.sin(a) * (Rr - 5), z = f.z + Math.cos(a) * (Rr - 5); muroPiedra(scn, x, z, 3.4, 1.15, 0.8, a, R); spots.push({ x: x - Math.sin(a) * 1.3, z: z - Math.cos(a) * 1.3, yaw: a + Math.PI, muro: true }); }
+    // casas
+    const casas = [[-13, 4, 6, 5], [12, 6, 7, 5], [-11, -9, 5, 6], [10, -8, 6, 6], [-3, 12, 5, 4], [16, -1, 4, 5]];
+    const cs = Math.cos(face), sn = Math.sin(face);
+    casas.forEach(([lx, lz, wd, dp], i) => {
+      const x = f.x + lx * cs + lz * sn, z = f.z - lx * sn + lz * cs, y = height(x, z), h = 2.8 + R() * 1.2;
+      caja(wd, h + 1.5, dp, i % 2 ? adobe : adobe2, x, y + h / 2 - 0.75, z, face, scn, true);
+      caja(wd + 0.4, 0.25, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
+      caja(0.9, 1.7, 0.1, oscuro, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
+      caja(0.5, 0.5, 0.1, oscuro, x + sn * (dp / 2 + 0.02) + cs * wd * 0.3, y + h * 0.65, z + cs * (dp / 2 + 0.02) - sn * wd * 0.3, face, scn, false);
+      addCircle(x, z, Math.max(wd, dp) * 0.6);
+      spots.push({ x: x + cs * (wd / 2 + 1), z: z - sn * (wd / 2 + 1), yaw: face + Math.PI, muro: false });
+    });
+    // alcazaba al fondo, con dos torres
+    const ax = f.x - sn * 14, az = f.z - cs * 14, ay = height(ax, az);
+    caja(13, 6.5, 8, adobe, ax, ay + 2.2, az, face, scn, true); caja(13.6, 0.5, 8.6, adobe2, ax, ay + 5.6, az, face, scn, false);
+    for (const s of [-1, 1]) { const tx = ax + cs * s * 6.5, tz = az - sn * s * 6.5; caja(3.6, 10, 3.6, adobe2, tx, ay + 4, tz, face, scn, true); caja(4.1, 0.5, 4.1, adobe, tx, ay + 9.2, tz, face, scn, false); addCircle(tx, tz, 2.5); }
+    caja(1.6, 2.6, 0.1, oscuro, ax + sn * 4.03, ay + 1.3, az + cs * 4.03, face, scn, false);
+    addCircle(ax, az, 6);
+    for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.5; spots.push({ x: f.x + Math.sin(a) * 7, z: f.z + Math.cos(a) * 7, yaw: a + Math.PI, muro: false }); }
     return spots;
   }
   function sacos(scn, f, R) {

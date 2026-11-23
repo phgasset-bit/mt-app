@@ -623,6 +623,8 @@
     if (m.carro) {
       const c = World.carro(); scene.add(c.g);
       G.carro = Object.assign(c, { yaw: 0, vel: 0, rec: 0, obuses: 48, mgT: 0, n: 0, polvoT: 0, cab: 0, bal: 0, retro: 0 });
+      // el resto de la sección: dos carros más que avanzan a los flancos y baten la posición
+      G.carros = [-1, 1].map(lado => { const a = World.carro(); scene.add(a.g); return Object.assign(a, { pos: new V3(m.inicio[0] + lado * 16, 0, m.inicio[1] + 4), yaw: 0, lado, t: rnd(4, 7), polvoT: 0, vel: 0 }); });
     }
     $('bFuego').textContent = m.carro ? 'CAÑÓN' : 'FUEGO'; $('fuego2').textContent = m.carro ? 'AMETR.' : 'FUEGO';
     ['bAgach', 'bArma', 'bGran', 'bRec'].forEach(id => $(id).style.visibility = m.carro ? 'hidden' : '');
@@ -646,7 +648,7 @@
     $('hud').hidden = $('mandos').hidden = false;
     siguienteFase();
     if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
-    if (m.carro) aviso('Carro M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
+    if (m.carro) aviso('Mandas una sección de tres M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
     setTimeout(() => G && G.m === m && (Snd.voz('coro_viva', 0.9), cartel('¡VIVA!')), 6200);
@@ -853,6 +855,50 @@
     if (Math.abs(C.vel) > 1) { C.polvoT -= dt; if (C.polvoT <= 0) { C.polvoT = 0.09; for (const l of [-1.2, 1.2]) particula(new V3(P.pos.x + cy * l + sy * 2.6, P.pos.y + 0.3, P.pos.z - sy * l + cy * 2.6), 0xc9a982, 1.1, rnd(1, 1.8), 2.4, 0.5); } }
     if (Math.abs(C.vel) > 2) for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 2.3) { sangre(new V3(s.pos.x, s.pos.y + 0.8, s.pos.z), null, true); herir(s, 999, P.pos, true); }
     if (C.rec > 0) { C.rec -= dt; if (C.rec <= 0) { C.rec = 0; Snd.cerrojo(); } }
+    actualizaCarrosAliados(dt);
+  }
+  function actualizaCarrosAliados(dt) {
+    const f = G.fase, enem = f ? enemigosVivos() : [];
+    for (const c of G.carros) {
+      let dest = null;
+      if (f) {
+        const dx = G.m.inicio[0] - f.x, dz = G.m.inicio[1] - f.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d, dist = enem.length ? 62 : 26;
+        dest = { x: f.x + ux * dist - uz * c.lado * 24, z: f.z + uz * dist + ux * c.lado * 24 };
+        if (Math.hypot(c.pos.x - f.x, c.pos.z - f.z) < Math.hypot(P.pos.x - f.x, P.pos.z - f.z) - 30) dest = null; // no se adelanta al jefe de sección
+      }
+      let v = 0;
+      if (dest) {
+        const dx = dest.x - c.pos.x, dz = dest.z - c.pos.z, d = Math.hypot(dx, dz);
+        if (d > 5) {
+          let dy = Math.atan2(-dx, -dz) - c.yaw; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283;
+          c.yaw += clamp(dy, -dt * 0.7, dt * 0.7); v = Math.abs(dy) < 0.6 ? 5.5 : 1.5;
+        }
+      }
+      c.vel += (v - c.vel) * Math.min(1, dt * 1.5);
+      c.pos.x -= Math.sin(c.yaw) * c.vel * dt; c.pos.z -= Math.cos(c.yaw) * c.vel * dt; World.colisiona(c.pos, 2.1);
+      const dj = dist2D(c.pos, P.pos); if (dj < 7) { c.pos.x += (c.pos.x - P.pos.x) / (dj || 1) * dt * 6; c.pos.z += (c.pos.z - P.pos.z) / (dj || 1) * dt * 6; }
+      const sy = Math.sin(c.yaw), cy = Math.cos(c.yaw), hA = H(c.pos.x - sy * 2.2, c.pos.z - cy * 2.2), hB = H(c.pos.x + sy * 2.2, c.pos.z + cy * 2.2);
+      c.pos.y = (hA + hB) / 2; c.g.position.copy(c.pos); c.g.rotation.set(Math.atan2(hA - hB, 4.4), c.yaw, 0, 'YXZ');
+      if (c.vel > 1) { c.polvoT -= dt; if (c.polvoT <= 0) { c.polvoT = 0.14; particula(new V3(c.pos.x + sy * 2.6, c.pos.y + 0.3, c.pos.z + cy * 2.6), 0xc9a982, 1.3, rnd(1, 1.8), 2.4, 0.5); } }
+      // fuego: gira la torre hacia un enemigo y dispara
+      c.t -= dt;
+      if (!c.obj || c.obj.muerto) c.obj = enem.length ? enem[Math.floor(Math.random() * enem.length)] : null;
+      if (c.obj) {
+        let dy = Math.atan2(-(c.obj.pos.x - c.pos.x), -(c.obj.pos.z - c.pos.z)) - c.yaw - c.torre.rotation.y; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283;
+        c.torre.rotation.y += clamp(dy, -dt * 1.2, dt * 1.2);
+        const d = dist2D(c.obj.pos, c.pos);
+        if (c.t <= 0 && Math.abs(dy) < 0.08 && d < 230 && d > 18 && dist2D(c.obj.pos, P.pos) > 18 && !G.sold.some(s => s.team === 'L' && !s.muerto && dist2D(s.pos, c.obj.pos) < 14)) {
+          c.t = rnd(5, 8);
+          c.g.updateMatrixWorld(true); const b = c.boca.clone().applyMatrix4(c.cuna.matrixWorld);
+          const fin = new V3(c.obj.pos.x + rnd(-5, 5), 0, c.obj.pos.z + rnd(-5, 5)); fin.y = H(fin.x, fin.z) + 0.3;
+          const dir = fin.clone().sub(b), L = dir.length(); dir.divideScalar(L);
+          Snd.explosion(dist2D(c.pos, P.pos) * 0.6, panDe(c.pos)); particula(b, 0xffe2a0, 3, 0.14, 1.5, 0, true); for (let i = 0; i < 4; i++) particula(b.clone().addScaledVector(dir, rnd(0.5, 3)), 0xb9ab95, rnd(1.5, 3), rnd(1.2, 2), 2, 0.6);
+          const m = new THREE.Mesh(geoTraza, matTraza); m.scale.set(4, 4, 3); m.position.copy(b); m.lookAt(fin); scene.add(m);
+          G.proy.push({ tipo: 'obus', m, v: dir.multiplyScalar(260), t: L / 260, fin, jug: false });
+          c.obj = null;
+        } else if (c.t < -6) c.obj = null;
+      }
+    }
   }
   function canonazo() {
     const C = G.carro; if (!C || C.rec > 0 || P.muerto) return;
@@ -1006,7 +1052,7 @@
   // marcas de enemigos: flecha roja sobre los que combaten y flechas en el borde para los que están fuera de la vista
   const capaMarcas = $('marcas'), marcas = [], _m = new V3();
   function marcaN(i) {
-    while (marcas.length <= i) { const e = document.createElement('div'); e.className = 'marca'; e.innerHTML = '<i></i><small></small>'; capaMarcas.appendChild(e); marcas.push(e); }
+    while (marcas.length <= i) { const e = document.createElement('div'); e.className = 'mken'; e.innerHTML = '<i></i><small></small>'; capaMarcas.appendChild(e); marcas.push(e); }
     return marcas[i];
   }
   function actualizaMarcas() {

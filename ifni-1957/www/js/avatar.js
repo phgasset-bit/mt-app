@@ -153,7 +153,10 @@ const Avatar = (() => {
 
   // ---------- visor ----------
   let rend = null, escena, camara, modelo, angulo = 0.4, arrastre = null, activo = false;
+  let enBucle = false;
   function montar(canvas) {
+    // si la pestaña se ha vuelto a dibujar, el lienzo es otro: se rehace el visor sobre el nuevo
+    if (rend && rend.domElement !== canvas) { try { rend.dispose(); rend.forceContextLoss(); } catch (e) {} rend = null; }
     if (!rend) {
       rend = new C.WebGLRenderer({ canvas, antialias: true, alpha: true });
       rend.outputEncoding = C.sRGBEncoding; rend.toneMapping = C.ACESFilmicToneMapping; rend.shadowMap.enabled = true;
@@ -165,8 +168,8 @@ const Avatar = (() => {
       canvas.addEventListener('pointerdown', e => { arrastre = e.clientX; canvas.setPointerCapture(e.pointerId); });
       canvas.addEventListener('pointermove', e => { if (arrastre != null) { angulo += (e.clientX - arrastre) * 0.012; arrastre = e.clientX; } });
       canvas.addEventListener('pointerup', () => arrastre = null);
-      requestAnimationFrame(bucle);
-    } else if (rend.domElement !== canvas) return;
+      if (!enBucle) { enBucle = true; requestAnimationFrame(bucle); }
+    }
     actualizar();
   }
   function actualizar() {

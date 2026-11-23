@@ -457,11 +457,11 @@
     const pos = new V3(P.pos.x - dx / d * 330, 0, P.pos.z - dz / d * 330); pos.y = Math.max(H(f.x, f.z), H(P.pos.x, P.pos.z)) + 75;
     av.position.copy(pos); scene.add(av);
     const mira = new THREE.Mesh(new THREE.RingGeometry(8, 10.5, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.9, depthTest: false, fog: false })); mira.renderOrder = 9; scene.add(mira); { const haz = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 46, 6), mira.material); haz.position.y = 23; haz.renderOrder = 9; mira.add(haz); }
-    G.vuelo = { m: av, pos, rumbo: Math.atan2(-dx, -dz), yaw0: P.yaw, pitch0: P.pitch, bombas: 4, t: 0, mgT: 0, n: 0, mira, alabeo: 0, finT: 0 };
+    G.vuelo = { m: av, pos, rumbo: Math.atan2(-dx, -dz), rumbo0: Math.atan2(-dx, -dz), yaw0: P.yaw, pitch0: P.pitch, bombas: 4, t: 0, mgT: 0, n: 0, mira, alabeo: 0, finT: 0 };
     P.yaw = G.vuelo.rumbo; P.pitch = 0; P.mira = false; disparando = false; G.pedido = 0;
     $('bFuego').textContent = 'BOMBA'; $('fuego2').textContent = 'AMETR.';
     Snd.avion(); voz('aviacion', '¡AVIACIÓN!', 1);
-    aviso('Pilotas el Heinkel: gira arrastrando, BOMBA suelta sobre el círculo rojo, AMETR. ametralla', 5);
+    aviso('Pilotas el Heinkel: la cruz del centro marca dónde caerá la bomba. Gira arrastrando y pulsa BOMBA', 6);
   }
   const _imp = new V3();
   function impactoBomba(V, out) { // dónde caería una bomba soltada ahora
@@ -476,7 +476,7 @@
     aviso('El Heinkel se retira. ¡Adelante!', 2.5);
   }
   function actualizaVuelo(dt) {
-    const V = G.vuelo; V.t += dt;
+    const V = G.vuelo; const mirando = (V.sigue && G.proy.includes(V.sigue)) || V.impT > 0; if (!mirando) V.t += dt;
     let dy = P.yaw - V.rumbo; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283;
     const giro = clamp(dy, -0.55 * dt, 0.55 * dt); V.rumbo += giro; P.yaw = V.rumbo + clamp(dy - giro, -0.5, 0.5);
     V.alabeo += (clamp(dy * 1.6, -0.6, 0.6) - V.alabeo) * Math.min(1, dt * 3);
@@ -491,7 +491,7 @@
         V.bombas--; G.tiros++;
         const b = World.bomba(); b.scale.setScalar(2.6); b.position.copy(V.pos).add(new V3(0, -1.6, 0)); scene.add(b);
         G.proy.push({ tipo: 'bomba', m: b, v: new V3(-Math.sin(V.rumbo) * 56, -3, -Math.cos(V.rumbo) * 56), t: 12, jug: true, estela: 0 });
-        Snd.clic(); Snd.caida(3.6); aviso('¡Bomba fuera!', 1.5); V.sigue = G.proy[G.proy.length - 1]; if (V.bombas === 0) V.finT = 8.5;
+        Snd.clic(); Snd.caida(3.6); aviso('¡Bomba fuera!', 1.5); V.sigue = G.proy[G.proy.length - 1]; V.finT = 0;
       }
     }
     V.mgT -= dt;
@@ -503,7 +503,7 @@
     }
     for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, V.pos) < 160) s.alerta = true;
     if (V.finT > 0) { V.finT -= dt; if (V.finT <= 0) return finVuelo(); }
-    if (V.t > 24 || Math.hypot(V.pos.x, V.pos.z) > 720) finVuelo();
+    if (!mirando && !V.vista && (V.t > 20 || Math.hypot(V.pos.x, V.pos.z) > 760)) { if (V.bombas > 0 && (V.pasadas || 0) < 3) { V.pasadas = (V.pasadas || 0) + 1; V.vista = true; } else finVuelo(); }
   }
 
   // ---------- IA común ----------
@@ -1184,10 +1184,18 @@
         cam.position.set(bp.x - vn.x * 18, bp.y - vn.y * 18 + 6, bp.z - vn.z * 18); cam.lookAt(bp.x + vn.x * 20, bp.y + vn.y * 20, bp.z + vn.z * 20);
         (V.imp = V.imp || new V3()).copy(bp); V.impT = 2.6; V.impDir = Math.atan2(-vn.x, -vn.z);
       } else if (V.impT > 0) { // y se queda viendo el destrozo, apartándose despacio
-        V.impT -= dt; const k = 2.6 - V.impT, d = 26 + k * 5, sy2 = Math.sin(V.impDir), cy2 = Math.cos(V.impDir);
+        V.impT -= dt; V.vista = true; const k = 2.6 - V.impT, d = 26 + k * 5, sy2 = Math.sin(V.impDir), cy2 = Math.cos(V.impDir);
         cam.position.set(V.imp.x + sy2 * d, H(V.imp.x, V.imp.z) + 13 + k * 2.5, V.imp.z + cy2 * d); cam.lookAt(V.imp.x, H(V.imp.x, V.imp.z) + 3, V.imp.z);
       } else {
-        cam.position.set(V.pos.x + sy * (26 - V.picado * 8), V.pos.y + 16 + V.picado * 10, V.pos.z + cy * (26 - V.picado * 8)); cam.rotation.set(-0.5 - V.picado * 0.3, V.rumbo, V.alabeo * 0.35);
+        if (V.vista) { // acabado de ver el impacto: nueva pasada si quedan bombas, o se acabó
+          V.vista = false;
+          if (V.bombas <= 0) { finVuelo(); return actualizaCamara(dt); }
+          const f = G.fase || G.m.fases[G.m.fases.length - 1], r = V.rumbo0;
+          V.pos.set(f.x + Math.sin(r) * 420, V.pos.y, f.z + Math.cos(r) * 420); V.rumbo = r; P.yaw = r; V.t = 0; V.alabeo = 0;
+          aviso('Nueva pasada: quedan ' + V.bombas + ' bombas', 2.5);
+        }
+        // la cruz del centro de la pantalla es el punto donde caerá la bomba (parábola de caída)
+        cam.position.set(V.pos.x + sy * 30, V.pos.y + 20, V.pos.z + cy * 30); cam.lookAt(_imp.x, _imp.y, _imp.z); cam.rotateZ(V.alabeo * 0.3);
       }
       cam.fov += (62 - cam.fov) * Math.min(1, dt * 8); cam.updateProjectionMatrix();
       modelos.forEach(m => m.g.visible = false); brazos.visible = false; mg.g.visible = false; fogonazo.visible = false;

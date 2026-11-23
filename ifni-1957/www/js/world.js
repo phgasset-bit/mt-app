@@ -162,16 +162,17 @@ const World = (() => {
   function build(m, scn) {
     M = m; seed = m.seed; grid.clear(); blockers.length = 0; circulos.length = 0; piedras.length = 0; sacosL.length = 0;
     const T = tex(), R = rng(seed), noche = !!m.noche, des = !!m.desierto;
-    const skyCol = noche ? 0x111a2c : des ? 0xe2d3b6 : 0xd3d6cc;
+    const siroco = m.clima === 'siroco', tarde = m.clima === 'atardecer';
+    const skyCol = noche ? 0x111a2c : siroco ? 0xd6b488 : tarde ? 0xf0b888 : des ? 0xe2d3b6 : 0xd3d6cc;
     scn.background = lin(skyCol);
-    scn.fog = new C.Fog(lin(skyCol), noche ? 25 : 70, noche ? 210 : m.salto ? 400 : 520);
+    scn.fog = new C.Fog(lin(skyCol), noche ? 25 : siroco ? 14 : 70, noche ? 210 : siroco ? 150 : m.salto ? 400 : 520);
 
     // bóveda celeste
-    const sg = new C.SphereGeometry(800, 32, 16), sc = [], top = new C.Color(noche ? 0x02040c : des ? 0x7fa3c2 : 0x5f8fbd), hor = new C.Color(skyCol), tc = new C.Color();
+    const sg = new C.SphereGeometry(800, 32, 16), sc = [], top = new C.Color(noche ? 0x02040c : siroco ? 0xcaa878 : tarde ? 0x4f6596 : des ? 0x7fa3c2 : 0x5f8fbd), hor = new C.Color(skyCol), tc = new C.Color();
     for (let i = 0; i < sg.attributes.position.count; i++) { const y = sg.attributes.position.getY(i) / 800; tc.copy(hor).lerp(top, Math.min(1, Math.max(0, y * 2.4)) ** 0.8).convertSRGBToLinear(); sc.push(tc.r, tc.g, tc.b); }
     sg.setAttribute('color', new C.Float32BufferAttribute(sc, 3));
     scn.add(new C.Mesh(sg, new C.MeshBasicMaterial({ vertexColors: true, side: C.BackSide, fog: false, depthWrite: false })));
-    const solDir = new C.Vector3(noche ? -0.4 : 0.55, noche ? 0.55 : 0.62, noche ? -0.7 : 0.4).normalize();
+    const solDir = new C.Vector3(noche ? -0.4 : tarde ? 0.85 : 0.55, noche ? 0.55 : tarde ? 0.2 : 0.62, noche ? -0.7 : tarde ? -0.35 : 0.4).normalize();
     const astro = new C.Sprite(new C.SpriteMaterial({ map: noche ? T.humo : T.fogon, color: noche ? lin(0xdfe6ff) : lin(0xfff6e0), fog: false, depthWrite: false, transparent: true, blending: C.AdditiveBlending }));
     astro.scale.setScalar(noche ? 40 : 160); astro.position.copy(solDir).multiplyScalar(700); scn.add(astro);
     if (noche) {
@@ -191,7 +192,7 @@ const World = (() => {
     // luces
     const hemi = new C.HemisphereLight(lin(noche ? 0x6a7fae : 0xfff1dc), lin(noche ? 0x1a1820 : 0x7a5838), noche ? 0.75 : 1.05);
     scn.add(hemi);
-    const sun = new C.DirectionalLight(lin(noche ? 0xb0c4ee : 0xffeccc), noche ? 0.55 : 2.4);
+    const sun = new C.DirectionalLight(lin(noche ? 0xb0c4ee : tarde ? 0xffa868 : siroco ? 0xffd9a8 : 0xffeccc), noche ? 0.55 : siroco ? 1.5 : tarde ? 2.0 : 2.4);
     sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
     const sh = sun.shadow.camera; sh.left = -50; sh.right = 50; sh.top = 50; sh.bottom = -50; sh.near = 1; sh.far = 300; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     scn.add(sun); scn.add(sun.target);
@@ -333,7 +334,7 @@ const World = (() => {
     // posiciones: parapetos de piedra seca, sacos terreros, cobertura de emboscadas
     m.fases.forEach((f, i) => {
       const prev = i === 0 ? { x: m.inicio[0], z: m.inicio[1] } : m.fases[i - 1];
-      if (f.tipo === 'take') f._spots = (f.poblado ? poblado : parapeto)(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
+      if (f.tipo === 'take') f._spots = (f.poblado ? poblado : ({ rocas, morabito, aldea, trinchera })[f.pos] || parapeto)(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
       else if (f.tipo === 'hold') sacos(scn, f, R);
       else if (f.tipo === 'ambush') {
         f._spots = [];
@@ -439,6 +440,67 @@ const World = (() => {
     caja(1.6, 2.6, 0.1, oscuro, ax + sn * 4.03, ay + 1.3, az + cs * 4.03, face, scn, false);
     addCircle(ax, az, 6);
     for (let i = 0; i < 4; i++) { const a = face + (i - 1.5) * 0.5; spots.push({ x: f.x + Math.sin(a) * 7, z: f.z + Math.cos(a) * 7, yaw: a + Math.PI, muro: false }); }
+    return spots;
+  }
+  // --- otras posiciones enemigas, para que cada asalto sea distinto ---
+  // cresta de peñascos: los defensores tiran asomándose por los lados de las rocas
+  function rocas(scn, f, face, R) {
+    const spots = [], m1 = mat(0x857261, null, { flatShading: true }), m2 = mat(0x7a6f62, null, { flatShading: true });
+    for (let k = 0; k < 9; k++) {
+      const a = face - 1.25 + k * 0.31 + (R() - 0.5) * 0.1, rr = 9 + (R() - 0.5) * 4, x = f.x + Math.sin(a) * rr, z = f.z + Math.cos(a) * rr, s = 1.5 + R() * 1.1;
+      const r = new C.Mesh(geoRoca(1.3 + k), k % 2 ? m1 : m2); r.position.set(x, height(x, z) + s * 0.35, z); r.rotation.set(R(), R() * 6, R()); r.scale.set(s * 1.3, s * 1.15, s); r.castShadow = r.receiveShadow = true; scn.add(r); r.updateMatrixWorld(); blockers.push(r); addCircle(x, z, s * 1.05);
+      const lado = k % 2 ? 1 : -1; spots.push({ x: x - Math.sin(a) * 1.2 + Math.cos(a) * lado * (s + 0.7), z: z - Math.cos(a) * 1.2 - Math.sin(a) * lado * (s + 0.7), yaw: a + Math.PI, muro: false });
+    }
+    for (let i = 0; i < 3; i++) { const a = face + (i - 1) * 0.7; spots.push({ x: f.x + Math.sin(a) * 4, z: f.z + Math.cos(a) * 4, yaw: a + Math.PI, muro: false }); }
+    return spots;
+  }
+  // morabito: santuario encalado con cúpula, rodeado de una cerca de piedra
+  function morabito(scn, f, face, R) {
+    const spots = [], cal = new C.MeshLambertMaterial({ color: lin(0xefe9da), map: tex().revoco }), y = height(f.x, f.z);
+    caja(4.6, 4.2, 4.6, cal, f.x, y + 1.3, f.z, face, scn, true);
+    const cup = new C.Mesh(new C.SphereGeometry(2.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), cal); cup.position.set(f.x, y + 3.4, f.z); cup.castShadow = true; scn.add(cup);
+    caja(1, 1.9, 0.1, mat(0x2f4f3a), f.x + Math.sin(face) * 2.33, y + 0.95, f.z + Math.cos(face) * 2.33, face, scn, false);
+    for (const [ox, oz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) caja(0.5, 0.7, 0.5, cal, f.x + ox, y + 3.6, f.z + oz, 0, scn, false);
+    addCircle(f.x, f.z, 3.3);
+    let k = 0;
+    for (let a = face - 2.2; a <= face + 2.21; a += 0.31, k++) {
+      if (k === 7 || (k > 2 && R() < 0.1)) continue; // la entrada y algún portillo
+      muroPiedra(scn, f.x + Math.sin(a) * 11, f.z + Math.cos(a) * 11, 3.3, 1.15, 0.8, a, R);
+      if (k % 2 === 0) spots.push({ x: f.x + Math.sin(a) * 9.7, z: f.z + Math.cos(a) * 9.7, yaw: a + Math.PI, muro: true });
+    }
+    for (const s of [-1, 1]) spots.push({ x: f.x + Math.cos(face) * s * 3.6, z: f.z - Math.sin(face) * s * 3.6, yaw: face + Math.PI, muro: false });
+    return spots;
+  }
+  // aduar: cuatro casas de adobe unidas por tapias bajas
+  function aldea(scn, f, face, R) {
+    const spots = [], ad = new C.MeshLambertMaterial({ color: lin(0xb48a5e), map: tex().revoco }), ad2 = new C.MeshLambertMaterial({ color: lin(0xa67c52), map: tex().revoco }), viga = mat(0x4f3f2c), osc = mat(0x1d1710);
+    const cs = Math.cos(face), sn = Math.sin(face), P2 = (lx, lz) => [f.x + lx * cs + lz * sn, f.z - lx * sn + lz * cs];
+    [[-9, 5, 5, 4.5], [8, 6, 5.5, 4], [-6, -6, 4.5, 5], [7, -5, 5, 5]].forEach(([lx, lz, wd, dp], i) => {
+      const [x, z] = P2(lx, lz), y = height(x, z), h = 2.7 + R();
+      caja(wd, h + 1.5, dp, i % 2 ? ad : ad2, x, y + h / 2 - 0.75, z, face, scn, true); caja(wd + 0.4, 0.22, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
+      caja(0.9, 1.7, 0.1, osc, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
+      addCircle(x, z, Math.max(wd, dp) * 0.6);
+      spots.push({ x: x + cs * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), z: z - sn * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), yaw: face + Math.PI, muro: false });
+    });
+    [[-3.5, 8.5, 6], [1.5, 9.5, 5], [-12, 0, 5, 1.57], [11.5, 0.5, 5, 1.57]].forEach(([lx, lz, lg, g]) => {
+      const [x, z] = P2(lx, lz), y = height(x, z), a = face + (g || 0);
+      caja(lg, 2.3, 0.6, ad2, x, y + 0.15, z, a, scn, true); for (let i = -1; i <= 1; i++) addCircle(x + Math.cos(a) * i * lg / 3, z - Math.sin(a) * i * lg / 3, 0.9);
+      spots.push({ x: x - Math.sin(a) * 1.2 * (g ? (lx < 0 ? -1 : 1) : 1), z: z - Math.cos(a) * 1.2 * (g ? (lx < 0 ? -1 : 1) : 1), yaw: g ? face + Math.PI : a + Math.PI, muro: !g });
+    });
+    for (let i = 0; i < 3; i++) { const [x, z] = P2((i - 1) * 3.5, 1); spots.push({ x, z, yaw: face + Math.PI, muro: false }); }
+    return spots;
+  }
+  // línea de trinchera con sacos terreros en zigzag
+  function trinchera(scn, f, face, R) {
+    const spots = [];
+    for (let k = -4; k <= 4; k++) {
+      const a = face + k * 0.24, rr = 10 + (k % 2 ? 1.6 : 0), x = f.x + Math.sin(a) * rr, z = f.z + Math.cos(a) * rr, y = height(x, z), g = a + (k % 2 ? 0.35 : -0.35);
+      bloqueInvisible(scn, 2.6, 1.4, 0.9, x, y + 0.45, z, g);
+      for (let fl = 0; fl < 4; fl++) for (let s = 0; s < 4; s++) { const o = -0.95 + s * 0.63 + (fl % 2) * 0.3; sacosL.push(mtx(x + Math.cos(g) * o, y + 0.13 + fl * 0.26, z - Math.sin(g) * o, 0, g + (R() - 0.5) * 0.15, 0, 0.38, 0.14, 0.27)); }
+      addCircle(x - Math.cos(g) * 0.6, z + Math.sin(g) * 0.6, 0.65); addCircle(x + Math.cos(g) * 0.6, z - Math.sin(g) * 0.6, 0.65);
+      spots.push({ x: f.x + Math.sin(a) * (rr - 1.3), z: f.z + Math.cos(a) * (rr - 1.3), yaw: a + Math.PI, muro: true });
+    }
+    for (let i = 0; i < 3; i++) { const a = face + (i - 1) * 0.8; spots.push({ x: f.x + Math.sin(a) * 4.5, z: f.z + Math.cos(a) * 4.5, yaw: a + Math.PI, muro: false }); }
     return spots;
   }
   function sacos(scn, f, R) {

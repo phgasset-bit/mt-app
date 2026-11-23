@@ -18,6 +18,7 @@ const Snd = (() => {
       fetch('audio/' + n + '.mp3').then(r => r.arrayBuffer())
         .then(a => ctx.decodeAudioData(a, b => { buf[n] = b; }, () => {})).catch(() => {});
     });
+    fetch('audio/himno.mp3').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(x => ctx.decodeAudioData(x, b => { buf.himno = b; if (mus && !mus.src) { musica(false); setTimeout(() => musica(true), 300); } }, () => {})).catch(() => {});
     viento();
   }
   function setVol(v) { vol = v; if (master) master.gain.value = v; }
@@ -109,6 +110,32 @@ const Snd = (() => {
       o.connect(f); f.connect(a); a.connect(master); o.start(t); o.stop(t + d); t += d;
     }
   }
+  // música del parte de misión: si existe audio/himno.mp3 suena ese; si no, una marcha de cornetas y tambores
+  let mus = null;
+  function musica(on) {
+    if (!ctx) return;
+    if (!on) { if (mus) { const m = mus; mus = null; clearInterval(m.iv); m.g.gain.setTargetAtTime(0, ctx.currentTime, 0.25); setTimeout(() => { try { m.src && m.src.stop(); m.g.disconnect(); } catch (e) {} }, 1200); } return; }
+    if (mus) return;
+    const g = ctx.createGain(); g.gain.value = 0; g.connect(master); g.gain.setTargetAtTime(0.5, ctx.currentTime, 0.4);
+    mus = { g, iv: 0, src: null };
+    if (buf.himno) { const src = ctx.createBufferSource(); src.buffer = buf.himno; src.loop = true; src.connect(g); src.start(); mus.src = src; return; }
+    const N = { g: 392, c: 523.25, e: 659.25, G: 783.99, C: 1046.5 }, paso = 0.375; // 160 pasos por minuto, el paso legionario
+    const frase = [['c', 1], ['c', .5], ['e', .5], ['G', 1], ['e', 1], ['G', .5], ['G', .5], ['C', 1], ['G', 2], ['e', 1], ['e', .5], ['G', .5], ['e', 1], ['c', 1], ['g', .5], ['c', .5], ['e', 1], ['c', 2],
+      ['G', 1], ['G', .5], ['e', .5], ['G', 1], ['C', 1], ['C', .5], ['G', .5], ['e', 1], ['G', 2], ['e', 1], ['c', .5], ['e', .5], ['G', 1], ['e', 1], ['c', .5], ['g', .5], ['c', 1], ['c', 2]];
+    const total = frase.reduce((a, n) => a + n[1], 0) * paso;
+    const nota = (f, t, d, gan) => { const o = ctx.createOscillator(), a = ctx.createGain(), fl = ctx.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f * 0.99, t); o.frequency.linearRampToValueAtTime(f, t + 0.03); fl.type = 'bandpass'; fl.frequency.value = 1400; fl.Q.value = 0.8; a.gain.setValueAtTime(0.0001, t); a.gain.linearRampToValueAtTime(gan, t + 0.03); a.gain.setValueAtTime(gan * 0.9, t + d * 0.75); a.gain.linearRampToValueAtTime(0.0001, t + d * 0.95); o.connect(fl); fl.connect(a); a.connect(g); o.start(t); o.stop(t + d); };
+    const golpe = (t, dur, f0, gan, tipo) => { const sr = ctx.createBufferSource(); sr.buffer = nbuf; const f = ctx.createBiquadFilter(); f.type = tipo; f.frequency.value = f0; const a = ctx.createGain(); a.gain.setValueAtTime(gan, t); a.gain.exponentialRampToValueAtTime(0.001, t + dur); sr.connect(f); f.connect(a); a.connect(g); sr.start(t, Math.random()); sr.stop(t + dur + 0.02); };
+    let sig = ctx.currentTime + 0.15;
+    const ronda = () => {
+      if (!mus || mus.g !== g) return;
+      while (sig < ctx.currentTime + 1.2) {
+        let t = sig; for (const [n, d] of frase) { nota(N[n], t, d * paso, 0.2); nota(N[n] / 2, t, d * paso, 0.09); t += d * paso; }
+        for (let k = 0; k * paso < total - 0.01; k++) { const tb = sig + k * paso; if (k % 2 === 0) { golpe(tb, 0.22, 110, 0.9, 'lowpass'); } golpe(tb, 0.09, 2600, 0.28, 'highpass'); if (k % 4 === 3) { golpe(tb + paso * 0.5, 0.06, 2600, 0.2, 'highpass'); golpe(tb + paso * 0.75, 0.06, 2600, 0.2, 'highpass'); } }
+        sig += total;
+      }
+    };
+    ronda(); mus.iv = setInterval(ronda, 400);
+  }
   function viento() {
     const s = ctx.createBufferSource(); s.buffer = nbuf; s.loop = true;
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.6;
@@ -123,5 +150,5 @@ const Snd = (() => {
     s.connect(a); a.connect(salida(pan || 0)); s.start(ctx.currentTime + (t0 || 0));
     return true;
   }
-  return { init, setVol, motor, caida, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
+  return { init, setVol, motor, musica, caida, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
 })();

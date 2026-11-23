@@ -10,7 +10,7 @@ const MISIONES = [
     bumps: [[-20, 20, 45, 9], [70, 120, 60, 5], [-90, 150, 50, 4]],
     fases: [
       { tipo: 'hold', x: 0, z: 165, t: 110, cada: 13, n: 3, nom: 'Aguanta el parapeto' },
-      { tipo: 'take', x: -20, z: 20, n: 8, nom: 'Desaloja la loma' }
+      { tipo: 'take', x: -20, z: 20, n: 8, pos: 'trinchera', nom: 'Desaloja la trinchera de la loma' }
     ]
   },
   {
@@ -22,7 +22,7 @@ const MISIONES = [
     salto: { alt: 125, zVerde: 140, zMin: -20 },
     bumps: [[30, -20, 40, 6], [-80, 60, 50, 9], [90, 120, 50, 8], [0, -150, 50, 4]],
     fases: [
-      { tipo: 'take', x: 30, z: -20, n: 9, nom: 'Limpia la zona de salto' },
+      { tipo: 'take', x: 30, z: -20, n: 9, pos: 'rocas', nom: 'Limpia los peñascos de la zona de salto' },
       { tipo: 'reach', x: 0, z: -141, nom: 'Entra en el fuerte' }
     ]
   },
@@ -47,7 +47,7 @@ const MISIONES = [
     fases: [
       { tipo: 'ambush', x: 5, z: 130, n: 7, nom: 'Sigue la pista' },
       { tipo: 'ambush', x: -5, z: 20, n: 9, nom: 'Cruza el barranco' },
-      { tipo: 'take', x: 10, z: -130, n: 9, nom: 'Toma el collado' }
+      { tipo: 'take', x: 10, z: -130, n: 9, pos: 'rocas', contra: 5, nom: 'Toma el collado' }
     ]
   },
   {
@@ -58,8 +58,8 @@ const MISIONES = [
     amp: 8, seed: 2.9, inicio: [0, 235], aliados: 6, avion: 1, fuerte: [0, -165],
     bumps: [[-50, 95, 38, 12], [45, -15, 40, 13], [0, -165, 55, 6]],
     fases: [
-      { tipo: 'take', x: -50, z: 95, n: 8, nom: 'Toma la cota 1' },
-      { tipo: 'take', x: 45, z: -15, n: 10, nom: 'Toma la cota 2' },
+      { tipo: 'take', x: -50, z: 95, n: 8, pos: 'morabito', nom: 'Toma el morabito' },
+      { tipo: 'take', x: 45, z: -15, n: 10, pos: 'aldea', contra: 5, nom: 'Limpia el aduar' },
       { tipo: 'take', x: 0, z: -112, n: 8, nom: 'Enlaza con el fuerte' }
     ]
   },
@@ -68,7 +68,7 @@ const MISIONES = [
     parte: ['La columna vuelve a la capital con la guarnición y los civiles rescatados. Tu sección va en retaguardia.',
       'Abre paso, y cuando la columna cruce el collado, aguanta allí hasta que haya pasado el último hombre.'],
     historia: 'La columna con los sitiados de Tiliuin y la VI Bandera llegó a Sidi Ifni el 5 de diciembre (alguna fuente da el 6). En toda la campaña la bandera tuvo 6 muertos y 49 heridos.',
-    amp: 9, seed: 6.1, inicio: [0, 230], aliados: 5,
+    amp: 9, seed: 6.1, inicio: [0, 230], aliados: 5, clima: 'atardecer',
     bumps: [[70, 140, 45, 10], [-70, 40, 50, 11], [0, -60, 35, 7], [80, -140, 50, 9]],
     fases: [
       { tipo: 'ambush', x: 0, z: 140, n: 8, nom: 'Abre paso a la columna' },
@@ -95,12 +95,12 @@ const MISIONES = [
     parte: ['Con los puestos del interior evacuados, toca alejar al enemigo de la capital.',
       'Tres cotas fortificadas, muchas armas automáticas. Avanza de parapeto en parapeto y no malgastes munición.'],
     historia: 'A comienzos de 1958 varias operaciones consolidaron un perímetro defensivo alrededor de Sidi Ifni. España conservó solo la capital y su entorno hasta la retrocesión del territorio a Marruecos en 1969.',
-    amp: 8, seed: 8.4, inicio: [0, 240], aliados: 6, avion: 1,
+    amp: 8, seed: 8.4, inicio: [0, 240], aliados: 6, avion: 1, clima: 'siroco',
     bumps: [[40, 120, 38, 12], [-55, 0, 42, 14], [30, -130, 45, 15]],
     fases: [
-      { tipo: 'take', x: 40, z: 120, n: 10, nom: 'Toma la primera cota' },
-      { tipo: 'take', x: -55, z: 0, n: 12, nom: 'Toma la segunda cota' },
-      { tipo: 'take', x: 30, z: -130, n: 13, nom: 'Toma la cota principal' }
+      { tipo: 'take', x: 40, z: 120, n: 10, pos: 'trinchera', nom: 'Asalta la trinchera' },
+      { tipo: 'take', x: -55, z: 0, n: 12, pos: 'aldea', nom: 'Toma el aduar fortificado' },
+      { tipo: 'take', x: 30, z: -130, n: 13, contra: 6, nom: 'Toma la cota principal' }
     ]
   },
   {
@@ -113,7 +113,7 @@ const MISIONES = [
     fases: [
       { tipo: 'ambush', x: 0, z: 120, n: 11, nom: 'Sal de la emboscada' },
       { tipo: 'hold', x: -10, z: 30, t: 110, cada: 10, n: 4, nom: 'Resiste en las dunas' },
-      { tipo: 'take', x: 0, z: -110, n: 13, nom: 'Limpia el cauce' }
+      { tipo: 'take', x: 0, z: -110, n: 13, pos: 'rocas', nom: 'Limpia el cauce' }
     ]
   },
   {

@@ -42,7 +42,7 @@ const MISIONES = [
     parte: ['El puesto de Tiliuin sigue cercado, ahora con los paracaidistas dentro. Hay que llegar por tierra y romper el cerco.',
       'La columna avanza por pistas de montaña. Vigila las crestas: cada barranco es una emboscada posible.'],
     historia: 'El 29 de noviembre los paracaidistas saltaron sobre Tiliuin (operación Pañuelo), el primer salto de guerra del Ejército español. La columna de socorro de la VI Bandera tuvo que abrirse paso por tierra.',
-    amp: 9, seed: 4.2, inicio: [0, 230], aliados: 5,
+    amp: 9, seed: 4.2, inicio: [0, 230], aliados: 5, avion: 1,
     bumps: [[-75, 130, 45, 11], [80, 60, 50, 12], [-70, -20, 50, 10], [10, -130, 40, 12], [0, 100, 40, -5], [0, 0, 40, -5]],
     fases: [
       { tipo: 'ambush', x: 5, z: 130, n: 7, nom: 'Sigue la pista' },
@@ -81,7 +81,7 @@ const MISIONES = [
     parte: ['Los puestos del interior se evacúan uno a uno. Tres camiones con heridos, munición y agua vuelven a la capital por una pista de montaña.',
       'Tu sección va a pie por delante. Los camiones solo avanzan cuando no hay fuego: limpia cada emboscada deprisa, porque mientras dure el tiroteo el convoy sufre.'],
     historia: 'En diciembre de 1957 las columnas españolas socorrieron y evacuaron los puestos cercados del interior (Tiliuin, Telata, Tiugsa, Tenin...) y regresaron a Sidi Ifni por pistas batidas desde las alturas. Esta misión es una recreación libre de aquellas marchas.',
-    amp: 9, seed: 11.3, inicio: [0, 225], aliados: 6, convoy: true,
+    amp: 9, seed: 11.3, inicio: [0, 225], aliados: 6, convoy: true, avion: 1,
     bumps: [[-70, 150, 45, 11], [75, 70, 50, 12], [-75, -20, 50, 11], [70, -110, 45, 12], [0, -200, 40, 5]],
     fases: [
       { tipo: 'ambush', x: 0, z: 140, n: 7, nom: 'Abre paso al convoy' },

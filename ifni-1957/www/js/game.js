@@ -322,6 +322,7 @@
   function herir(s, dmg, desde, porJugador, cabeza) {
     if (s.muerto || s.aire) return;
     if (s.esJugador) {
+      if (G.vuelo) return;
       if (G.carro) dmg *= 0.3;
       P.vida -= dmg; G.minVida = Math.min(G.minVida, P.vida); Snd.impacto(); $('dano').style.opacity = clamp(dmg / 40, 0.35, 0.9);
       const rel = Math.atan2(-(desde.x - P.pos.x), -(desde.z - P.pos.z)) - P.yaw;
@@ -409,11 +410,59 @@
   function curar() { if (P.curas > 0 && P.vida < 100 && !P.muerto) { P.curas--; P.vida = Math.min(100, P.vida + 50); aviso('Te vendas la herida (+50)', 2); } }
   function pedirAvion() {
     if (P.avion <= 0 || !G.fase || G.fase.tipo === 'reach') { aviso(P.avion <= 0 ? 'No queda apoyo aéreo' : 'Sin objetivo para la aviación', 2); return; }
+    if (G.vuelo || (G.salto && G.salto.fase !== 'suelo')) return;
     P.avion--;
-    const f = G.fase, av = World.avion(); av.position.set(f.x + 30, H(f.x, f.z) + 70, f.z + 380); scene.add(av);
-    G.avion = { m: av, f, soltadas: 0 };
+    // el jugador pilota la pasada del Heinkel: entra por detrás de la sección, rumbo a la posición
+    const f = G.fase, av = World.avion(), dx = f.x - P.pos.x, dz = f.z - P.pos.z, d = Math.hypot(dx, dz) || 1;
+    const pos = new V3(P.pos.x - dx / d * 330, 0, P.pos.z - dz / d * 330); pos.y = Math.max(H(f.x, f.z), H(P.pos.x, P.pos.z)) + 75;
+    av.position.copy(pos); scene.add(av);
+    const mira = new THREE.Mesh(new THREE.RingGeometry(8, 10.5, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.9, depthTest: false, fog: false })); mira.renderOrder = 9; scene.add(mira); { const haz = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 46, 6), mira.material); haz.position.y = 23; haz.renderOrder = 9; mira.add(haz); }
+    G.vuelo = { m: av, pos, rumbo: Math.atan2(-dx, -dz), yaw0: P.yaw, pitch0: P.pitch, bombas: 4, t: 0, mgT: 0, n: 0, mira, alabeo: 0, finT: 0 };
+    P.yaw = G.vuelo.rumbo; P.pitch = 0; P.mira = false; disparando = false; G.pedido = 0;
+    $('bFuego').textContent = 'BOMBA'; $('fuego2').textContent = 'AMETR.';
     Snd.avion(); voz('aviacion', '¡AVIACIÓN!', 1);
-    aviso('Un Heinkel bate la posición: aléjate de ella', 3);
+    aviso('Pilotas el Heinkel: gira arrastrando, BOMBA suelta sobre el círculo rojo, AMETR. ametralla', 5);
+  }
+  const _imp = new V3();
+  function impactoBomba(V, out) { // dónde caería una bomba soltada ahora
+    const h = V.pos.y - H(V.pos.x, V.pos.z), t = (-2 + Math.sqrt(4 + 2 * 9.8 * Math.max(1, h))) / 9.8;
+    out.set(V.pos.x - Math.sin(V.rumbo) * 56 * t, 0, V.pos.z - Math.cos(V.rumbo) * 56 * t); out.y = H(out.x, out.z) + 0.4; return out;
+  }
+  function finVuelo() {
+    const V = G.vuelo; if (!V) return; G.vuelo = null;
+    scene.remove(V.mira); G.avion = { m: V.m, libre: new V3(-Math.sin(V.rumbo) * 62, 4, -Math.cos(V.rumbo) * 62), t: 8 };
+    P.yaw = V.yaw0; P.pitch = V.pitch0; disparando = false; G.mgCarro = false; G.pedido = 0;
+    $('bFuego').textContent = G.carro ? 'CAÑÓN' : 'FUEGO'; $('fuego2').textContent = G.carro ? 'AMETR.' : 'FUEGO';
+    aviso('El Heinkel se retira. ¡Adelante!', 2.5);
+  }
+  function actualizaVuelo(dt) {
+    const V = G.vuelo; V.t += dt;
+    let dy = P.yaw - V.rumbo; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283;
+    const giro = clamp(dy, -0.55 * dt, 0.55 * dt); V.rumbo += giro; P.yaw = V.rumbo + clamp(dy - giro, -0.5, 0.5);
+    V.alabeo += (clamp(dy * 1.6, -0.6, 0.6) - V.alabeo) * Math.min(1, dt * 3);
+    V.pos.x -= Math.sin(V.rumbo) * 62 * dt; V.pos.z -= Math.cos(V.rumbo) * 62 * dt;
+    const suelo = H(V.pos.x, V.pos.z); V.pos.y += (Math.max(V.pos.y, suelo + 55) - V.pos.y) * Math.min(1, dt * 2);
+    V.m.position.copy(V.pos); V.m.rotation.set(0, V.rumbo, V.alabeo, 'YXZ');
+    impactoBomba(V, _imp); V.mira.position.copy(_imp); V.mira.material.opacity = 0.6 + Math.sin(G.t * 10) * 0.3;
+    if (G.pedido > 0) {
+      G.pedido = 0;
+      if (V.bombas > 0) {
+        V.bombas--; G.tiros++;
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 8), World.mat(0x333333)); b.rotation.x = Math.PI / 2; b.position.copy(V.pos).add(new V3(0, -1.2, 0)); scene.add(b);
+        G.proy.push({ tipo: 'bomba', m: b, v: new V3(-Math.sin(V.rumbo) * 56, -2, -Math.cos(V.rumbo) * 56), t: 12, jug: true });
+        Snd.clic(); if (V.bombas === 0) V.finT = 4.5;
+      }
+    }
+    V.mgT -= dt;
+    if ((G.mgCarro || teclas.Space) && V.mgT <= 0) { // ametralladora de morro: barre el suelo por delante del círculo
+      V.mgT = 0.075; V.n++;
+      const p = new V3(_imp.x - Math.sin(V.rumbo) * 30 + rnd(-4, 4), 0, _imp.z - Math.cos(V.rumbo) * 30 + rnd(-4, 4)); p.y = H(p.x, p.z) + 0.2;
+      Snd.disparo('mg', 0, 0); polvo(p, 1, 0.7); if (V.n % 2 === 0) trazadora(V.pos.clone().add(new V3(0, -0.8, 0)), p);
+      for (const s of G.sold) if (s.team === 'E' && !s.muerto && s.pos.distanceTo(p) < 2.6) { sangre(new V3(s.pos.x, s.pos.y + 1, s.pos.z), null, true); herir(s, 90, P.pos, true); }
+    }
+    for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, V.pos) < 160) s.alerta = true;
+    if (V.finT > 0) { V.finT -= dt; if (V.finT <= 0) return finVuelo(); }
+    if (V.t > 24 || Math.hypot(V.pos.x, V.pos.z) > 720) finVuelo();
   }
 
   // ---------- IA común ----------
@@ -1069,7 +1118,8 @@
       if (p.t <= 0) { scene.remove(p.m); G.proy.splice(i, 1); explotar(p.m.position.clone(), p.tipo === 'bomba' ? 13 : 8, p.tipo === 'bomba' ? 6 : 3.5, p.jug); }
     }
     const av = G.avion;
-    if (av) {
+    if (av && av.libre) { av.m.position.addScaledVector(av.libre, dt); av.t -= dt; if (av.t <= 0) { scene.remove(av.m); G.avion = null; } }
+    else if (av) {
       av.m.position.z -= 62 * dt;
       if (av.soltadas < 4 && av.m.position.z < av.f.z + 40 - av.soltadas * 9) {
         av.soltadas++;
@@ -1081,6 +1131,14 @@
     }
   }
   function actualizaCamara(dt) {
+    if (G.vuelo) { // cámara de persecución tras el bombardero, mirando al punto de caída
+      const V = G.vuelo, sy = Math.sin(V.rumbo), cy = Math.cos(V.rumbo);
+      cam.position.set(V.pos.x + sy * 34, V.pos.y + 22, V.pos.z + cy * 34); cam.rotation.set(-0.5, V.rumbo, V.alabeo * 0.35);
+      cam.fov += (62 - cam.fov) * Math.min(1, dt * 8); cam.updateProjectionMatrix();
+      modelos.forEach(m => m.g.visible = false); brazos.visible = false; mg.g.visible = false; fogonazo.visible = false;
+      const R = World.refs; R.sun.position.copy(V.pos).addScaledVector(R.solDir, 120); R.sun.target.position.copy(V.pos);
+      return;
+    }
     const a = ARMAS[P.arma], md = modelos[P.arma];
     P.retroceso *= Math.pow(0.0005, dt); G.temblor = Math.max(0, G.temblor - dt * 1.5);
     const alt = P.muerto ? 0.35 : (P.agach ? 1.05 : 1.62);
@@ -1145,7 +1203,8 @@
     $('tVida').textContent = Math.ceil(P.vida); $('vida').firstElementChild.style.width = P.vida + '%';
     $('tCuras').textContent = P.curas; $('tBajas').textContent = G.bajas;
     $('tEsc').textContent = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
-    if (G.carro) { const C = G.carro; $('tMun').textContent = C.rec > 0 ? '··' : 'LISTO'; $('tRes').textContent = C.obuses + ' proyectiles'; $('tArma').textContent = 'M-24 Chaffee · cañón de 75 mm'; $('tArma').style.color = ''; }
+    if (G.vuelo) { $('tMun').textContent = G.vuelo.bombas; $('tRes').textContent = 'bombas'; $('tArma').textContent = 'Heinkel CASA 2.111'; $('tArma').style.color = ''; }
+    else if (G.carro) { const C = G.carro; $('tMun').textContent = C.rec > 0 ? '··' : 'LISTO'; $('tRes').textContent = C.obuses + ' proyectiles'; $('tArma').textContent = 'M-24 Chaffee · cañón de 75 mm'; $('tArma').style.color = ''; }
     else if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
     else { $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tArma').style.color = ''; }
     $('tGran').textContent = P.granadas;
@@ -1172,7 +1231,7 @@
     const dt = Math.min(0.05, (ahora - ultimo) / 1000); const ultimoReal = ultimo; ultimo = ahora;
     if (jugando && !pausado && G) {
       G.t += dt; gritoT -= dt; G.viva = Math.max(0, G.viva - dt); G.vivaCD = Math.max(0, G.vivaCD - dt);
-      actualizaJugador(dt); actualizaArma(dt);
+      if (G.vuelo) actualizaVuelo(dt); else { actualizaJugador(dt); actualizaArma(dt); }
       for (const s of G.sold) actualizaSoldado(s, dt);
       actualizaProyectiles(dt); actualizaFase(dt); if (G.camiones) actualizaConvoy(dt); actualizaEfectos(dt); actualizaSangre(dt);
       const combate = G.sold.some(s => s.team === 'E' && !s.muerto && s.alerta);
@@ -1279,7 +1338,7 @@
   }
   const pulsaFuego = () => { disparando = true; G.pedido = 0.3; };
   boton('bFuego', pulsaFuego, () => disparando = false);
-  boton('fuego2', () => { if (G.carro) G.mgCarro = true; else pulsaFuego(); }, () => { disparando = false; if (G) G.mgCarro = false; });
+  boton('fuego2', () => { if (G.carro || G.vuelo) G.mgCarro = true; else pulsaFuego(); }, () => { disparando = false; if (G) G.mgCarro = false; });
   boton('bMira', () => P.mira = !P.mira);
   boton('bRec', recargar);
   boton('bAgach', () => P.agach = !P.agach);

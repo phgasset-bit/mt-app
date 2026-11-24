@@ -75,6 +75,8 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 .mken.jefe i{border-top-color:#f2b90f}.mken.jefe small{color:#ffe08a;width:110px;left:-55px}
 .mken.herido i{border-top-color:#39c46a}.mken.herido small{color:#b9ffd0}.mken.herido.borde i{border-top-color:transparent;border-left-color:#39c46a}
 .mis.diaria{border-color:var(--gualda)}
+.codigo{font-family:ui-monospace,monospace;font-size:13px;background:rgba(0,0,0,.4);padding:8px 10px;word-break:break-all;user-select:all;color:var(--hueso)}
+.fila-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.fila-b input{flex:1;min-width:140px;padding:8px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(217,183,122,.4);color:var(--hueso);font-size:16px}
 .mken.civil i{border-top-color:#e9f1ff}.mken.civil small{color:#e9f1ff;width:90px;left:-45px}.mken.civil.borde i{border-top-color:transparent;border-left-color:#e9f1ff}
 #fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
 .zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
@@ -271,6 +273,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
         <button type="button" data-tab="avatar">Mi legionario</button>
         <button type="button" data-tab="armeria">Armería</button>
         <button type="button" data-tab="hoja">Hoja de servicios</button>
+        <button type="button" data-tab="bandera">Bandera</button>
         <button type="button" data-tab="ranking">Ranking</button>
         <button type="button" data-tab="tienda">Cantina</button>
         <button type="button" id="bAjustes">Ajustes</button>
@@ -279,6 +282,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
       <div id="tab-avatar" class="tab" hidden></div>
       <div id="tab-armeria" class="tab" hidden></div>
       <div id="tab-hoja" class="tab" hidden></div>
+      <div id="tab-bandera" class="tab" hidden></div>
       <div id="tab-ranking" class="tab" hidden></div>
       <div id="tab-tienda" class="tab" hidden></div>
     </div>
@@ -369,7 +373,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 <script src="js/audio.js"></script>
 <script src="js/world.js"></script>
 <script src="js/missions.js"></script>
-<script src="js/entorno.js"></script><script src="js/nativo.js"></script>
+<script src="js/entorno.js"></script><script src="js/nube.js"></script><script src="js/nativo.js"></script>
 <script src="js/progreso.js"></script>
 <script src="js/avatar.js"></script>
 <script src="js/laminas.js"></script>

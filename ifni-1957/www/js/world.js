@@ -597,9 +597,9 @@ const World = (() => {
     return GEO;
   }
   // soldado con el modelo esculpido y esqueleto (si está cargado); si no, el modelo sencillo
-  function soldado(team, k) {
+  function soldado(team, k, av) {
     if (typeof Humanos !== 'undefined' && Humanos.listo) {
-      const h = team === 'L' ? Humanos.legionario(k) : Humanos.enemigo(k), B = h.B, g = h.g; g.rotation.order = 'YXZ';
+      const h = team === 'L' ? (av ? Humanos.legionarioDe(av) : Humanos.legionario(k)) : Humanos.enemigo(k), B = h.B, g = h.g; g.rotation.order = 'YXZ';
       const arma = new C.Group(); g.add(arma);
       const madera = mat(0x6a4426), hierro = mat(0x2a2a2a, 'phong', { shininess: 40 }), Gm = geo();
       const pz = (m, x, y, z, sx, sy, sz) => { const o = new C.Mesh(Gm.caja, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; arma.add(o); };

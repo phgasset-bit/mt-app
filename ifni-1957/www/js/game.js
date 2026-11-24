@@ -325,7 +325,7 @@
 
   // ---------- soldados ----------
   function crearSoldado(team, x, z, k, extra) {
-    const m = World.soldado(team, k);
+    const m = World.soldado(team, k, extra && extra.av);
     const s = Object.assign({ team, ...m, pos: new V3(x, H(x, z), z), yaw: 0, vida: team === 'L' ? 100 : 60, muerto: false, agach: false, estado: 'idle', t: rnd(0, 2), tirT: rnd(1, 3), visT: rnd(0, 0.8), obj: null, alerta: false, anim: Math.random() * 6, mueve: false, dest: null, cad: rnd(2.6, 4.2), muertoT: 0, rafaga: 0, apunta: 0, ciclo: Math.random() * 4, polvoT: 0 }, extra || {});
     scene.add(m.g); G.sold.push(s); return s;
   }
@@ -853,8 +853,10 @@
         crearSoldado('L', x, m.inicio[1], k, { hueco: k, muralla: true, elev: 4.4, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
       }
     } else for (let k = 0; k < (G.diaria && G.diaria.mod.id === 'pocos' ? Math.ceil(nAli / 2) : nAli); k++) {
-      const h = huecos[k % huecos.length], s = crearSoldado('L', P.pos.x + h[0], P.pos.z + h[1], k, { hueco: k, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
-      if (k === 1) s.tipoArma = 'fao';
+      const cmp = k === 0 ? Progreso.P.companero : null; // el legionario de un amigo, con su aspecto, en el primer puesto de la escuadra
+      const h = huecos[k % huecos.length], s = crearSoldado('L', P.pos.x + h[0], P.pos.z + h[1], k, { hueco: k, cad: cmp ? 1.9 : rnd(2.2, 3.4), nombre: cmp ? cmp.n : NOMBRES[k % NOMBRES.length], av: cmp ? cmp.av : null, amigo: !!cmp });
+      if (k === 1 || (cmp && cmp.a && cmp.a !== 'mauser' && !/astra|star/.test(cmp.a))) s.tipoArma = 'fao';
+      if (cmp) { s.vida = 140; setTimeout(() => G && G.m === m && aviso('Te acompaña el legionario ' + cmp.n, 3.5), 7000); }
     }
     jugando = true; pausado = false;
     ['menu', 'parte', 'fin', 'revivir', 'portada'].forEach(id => $(id).hidden = true);

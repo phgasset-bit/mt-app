@@ -101,6 +101,13 @@ const Humanos = (() => {
     const piezas = [k % 3 === 2 ? 'cuerpo_muycachas_baja' : 'cuerpo_cachas_baja', 'cabeza_' + BARBAS[(k * 5 + 1) % 4] + '_baja', k % 3 === 2 ? 'casco_baja' : 'gorrillo_baja'];
     return crear(piezas, paleta);
   }
+  // legionario de combate con el aspecto de un avatar concreto (el compañero que trae el jugador)
+  function legionarioDe(av) {
+    av = av || {}; const barba = BARBAS.includes(av.barba) ? av.barba : 'corta';
+    const piezas = [av.fisico === 'muycachas' ? 'cuerpo_muycachas_baja' : 'cuerpo_cachas_baja', 'cabeza_' + barba + '_baja'];
+    if (av.tocado === 'casco') piezas.push('casco_baja'); else if (av.tocado !== 'sin') piezas.push('gorrillo_baja');
+    return crear(piezas, paletaAvatar(av));
+  }
   // combatientes marroquíes: atuendo, tocado, barba y colores variados en cada uno
   const PIEL_MORO = [0x9c6c4a, 0x875a3a, 0xa87754, 0x7a4e30, 0xb08060];
   const TUNICAS = [0x8d7b62, 0x6e6352, 0xbcae90, 0x5a5046, 0x9c8a6c, 0x7a6a50, 0xd6cbb0, 0x4a4238];
@@ -122,5 +129,5 @@ const Humanos = (() => {
     const u = UNIFORME[av.camisa] || UNIFORME.caqui;
     return { 0: PIEL[av.piel] || PIEL[1], 6: PELO[av.pelo] || PELO[0], 1: u[0], 2: u[1], 3: u[2], 12: av.tocado === 'gala' ? 0xe8b923 : 0xb3261e };
   }
-  return { cargar, crear, legionario, enemigo, geometria, paletaAvatar, junta, local, PIEL, PELO, get listo() { return listo; }, get man() { return man; } };
+  return { cargar, crear, legionario, legionarioDe, enemigo, geometria, paletaAvatar, junta, local, PIEL, PELO, get listo() { return listo; }, get man() { return man; } };
 })();

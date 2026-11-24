@@ -95,7 +95,7 @@ const Progreso = (() => {
   }
 
   // ---------- perfil ----------
-  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [], extras: { bayoneta: 1 } };
+  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [], extras: { bayoneta: 1 }, companero: null, amigos: [], bandera: null };
   let P = JSON.parse(JSON.stringify(BASE));
   try { const s = JSON.parse(localStorage.getItem('ifni_perfil') || 'null'); if (s) P = Object.assign(P, s); } catch (e) {}
   const guardar = () => { try { localStorage.setItem('ifni_perfil', JSON.stringify(P)); } catch (e) {} };
@@ -142,6 +142,7 @@ const Progreso = (() => {
       if (MISIONES.every(m => P.hechas[m.id])) dar('campana');
     }
     P.xp += puntos; P.pts += pts; P.oro += oro;
+    if (r.ok && typeof Nube !== 'undefined' && Nube.activa) { Nube.sumar(P, puntos).catch(() => {}); Nube.guardarProgreso(P).catch(() => {}); }
     P.stats.misiones += r.ok ? 1 : 0; P.stats.bajas += r.bajasJ; P.stats.cabezas += r.cabezas; P.stats.tiros += r.tiros; P.stats.aciertos += r.aciertos; if (!r.ok) P.stats.caidas++;
     if (!P.mejor[r.mision] || puntos > P.mejor[r.mision]) P.mejor[r.mision] = puntos;
     P.historial.unshift({ m: r.mision, p: puntos, d: new Date().toISOString().slice(0, 10), dif: r.dif }); P.historial = P.historial.slice(0, 30);

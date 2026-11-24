@@ -41,11 +41,63 @@ const UI = (() => {
 
   function tab(nombre) {
     document.querySelectorAll('.pestanas button').forEach(b => b.classList.toggle('on', b.dataset.tab === nombre));
-    ['campana', 'avatar', 'armeria', 'hoja', 'ranking', 'tienda'].forEach(t => $('tab-' + t).hidden = t !== nombre);
+    ['campana', 'avatar', 'armeria', 'hoja', 'bandera', 'ranking', 'tienda'].forEach(t => $('tab-' + t).hidden = t !== nombre);
     Avatar.activo = nombre === 'avatar';
-    ({ campana, avatar, armeria, hoja, ranking, tienda })[nombre]();
+    ({ campana, avatar, armeria, hoja, bandera, ranking, tienda })[nombre]();
     if (alistando) bandaAlistamiento(nombre);
     cabecera();
+  }
+
+  // ---------- bandera (clan) y compañero de escuadra ----------
+  const codLeg = () => { const P = Progreso.P; return 'IFNI1.' + btoa(unescape(encodeURIComponent(JSON.stringify({ n: (P.avatar.nombre || 'Legionario').slice(0, 24), av: P.avatar, r: Progreso.rango(), a: P.equipo.p })))).replace(/=+$/, ''); };
+  function leeCodigo(t) {
+    try { const m = String(t || '').trim().match(/IFNI1\.([A-Za-z0-9+/]+)/); if (!m) return null; const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      if (!o || typeof o.av !== 'object') return null; return { n: String(o.n || 'Legionario').replace(/[<>&"']/g, '').slice(0, 24), av: o.av, r: o.r | 0, a: String(o.a || 'mauser') }; } catch (e) { return null; }
+  }
+  async function compartir(texto, titulo) {
+    try { if (navigator.share) { await navigator.share({ title: titulo, text: texto }); return; } } catch (e) { return; }
+    try { await navigator.clipboard.writeText(texto); toast('Copiado: pégalo en WhatsApp'); } catch (e) { toast('Mantén pulsado el código para copiarlo'); }
+  }
+  let miembrosB = null, errB = '';
+  function bandera() {
+    const P = Progreso.P, l = $('tab-bandera'), R = Progreso.RANGOS, amigos = P.amigos || (P.amigos = []);
+    let h = '<h3>Compañero de escuadra</h3><p class="nota">Lleva al combate al legionario de un amigo: sale con su aspecto y su nombre, manejado por la máquina, y aguanta más que el resto.</p>';
+    h += '<div class="cartas">' + (P.companero ? '<div class="carta eq"><b>' + esc(P.companero.n) + '</b><small>' + esc(R[Math.min(R.length - 1, P.companero.r | 0)].nom) + ' · va contigo</small><div class="acc"><button type="button" class="mini" data-b="sinComp">Dejarlo en el cuartel</button></div></div>' : '<div class="carta"><b>Sin compañero</b><small>Añade a un amigo con su código o elige a uno de tu bandera.</small></div>');
+    amigos.forEach((a, i) => { if (P.companero && P.companero.n === a.n) return; h += '<div class="carta"><b>' + esc(a.n) + '</b><small>' + esc(R[Math.min(R.length - 1, a.r | 0)].nom) + '</small><div class="acc"><button type="button" class="mini" data-b="llevar" data-i="' + i + '">Llevar conmigo</button><button type="button" class="mini" data-b="quitar" data-i="' + i + '">Quitar</button></div></div>'; });
+    h += '</div><div class="fila-b"><input id="bCod" placeholder="Pega aquí el código de tu amigo (IFNI1...)" autocomplete="off"><button type="button" class="mini" data-b="anadir">Añadir amigo</button></div>';
+    h += '<p class="nota">Tu código, para que tus amigos te lleven a ti:</p><div class="codigo" id="bMio">' + esc(codLeg()) + '</div><div class="fila-b"><button type="button" class="mini" data-b="compartir">Enviar mi código</button></div>';
+    h += '<h3>Bandera</h3>';
+    if (!Nube.activa) h += '<p class="nota">Las banderas (grupos de jugadores que suman puntos juntos cada semana) se activarán cuando el juego tenga conectada su base de datos en la nube. El compañero de escuadra por código ya funciona sin conexión.</p>';
+    else if (!P.bandera) h += '<p class="nota">Una bandera es un grupo de amigos que suma puntos cada semana. Crea la tuya y pasa el código, o únete a la de un amigo.</p><div class="fila-b"><input id="bNom" placeholder="Nombre de la bandera" maxlength="24"><button type="button" class="mini" data-b="crear">Crear bandera</button></div><div class="fila-b"><input id="bUnir" placeholder="Código de 5 letras" maxlength="5" autocapitalize="characters"><button type="button" class="mini" data-b="unir">Unirme</button></div>' + (errB ? '<p class="nota">' + esc(errB) + '</p>' : '');
+    else {
+      h += '<p class="nota"><b>' + esc(P.bandera.nombre) + '</b> · código <b>' + esc(P.bandera.codigo) + '</b> · semana ' + esc(Nube.semana()) + '</p>';
+      if (!miembrosB) h += '<p class="nota">' + (errB ? esc(errB) : 'Cargando la bandera...') + '</p>';
+      else {
+        h += '<p class="nota">Puntos de la bandera esta semana: <b>' + fmt(miembrosB.reduce((s, m) => s + m.puntos, 0)) + '</b> · ' + miembrosB.length + ' legionarios</p><table class="tabla"><tbody>';
+        miembrosB.forEach((m, i) => { h += '<tr><td>' + (i + 1) + '. ' + esc(m.nombre) + (m.yo ? ' (tú)' : '') + '</td><td>' + fmt(m.puntos) + '</td><td>' + (m.yo || !m.av ? '' : '<button type="button" class="mini" data-b="llevarM" data-i="' + i + '">Llevar conmigo</button>') + '</td></tr>'; });
+        h += '</tbody></table>';
+      }
+      h += '<div class="fila-b"><button type="button" class="mini" data-b="invitar">Invitar a un amigo</button><button type="button" class="mini" data-b="recargar">Actualizar</button><button type="button" class="mini" data-b="salir">Salir de la bandera</button></div>';
+    }
+    l.innerHTML = h;
+    if (Nube.activa && P.bandera && !miembrosB && !errB) Nube.miembros(P).then(m => { miembrosB = m; if (!$('tab-bandera').hidden) bandera(); }).catch(e => { errB = 'No se pudo conectar: ' + e.message; if (!$('tab-bandera').hidden) bandera(); });
+    l.onclick = async e => {
+      const b = e.target.closest('[data-b]'); if (!b) return; const d = b.dataset, i = +d.i; errB = '';
+      try {
+        if (d.b === 'anadir') { const c = leeCodigo($('bCod').value); if (!c) { toast('Ese código no es válido'); return; } if (!amigos.some(a => a.n === c.n)) amigos.push(c); if (amigos.length > 12) amigos.shift(); P.companero = c; toast(c.n + ' irá contigo'); }
+        else if (d.b === 'llevar') { P.companero = amigos[i]; toast(amigos[i].n + ' irá contigo'); }
+        else if (d.b === 'quitar') { amigos.splice(i, 1); }
+        else if (d.b === 'sinComp') P.companero = null;
+        else if (d.b === 'compartir') { await compartir('Llévame en tu escuadra de Ifni 1957. Pega este código en Bandera → Añadir amigo:\n' + codLeg(), 'Mi legionario de Ifni 1957'); return; }
+        else if (d.b === 'llevarM') { const m = miembrosB[i]; P.companero = { n: m.nombre, av: m.av, r: 0, a: m.arma || 'mauser' }; toast(m.nombre + ' irá contigo'); }
+        else if (d.b === 'crear') { b.disabled = true; await Nube.crearBandera($('bNom').value, P); miembrosB = null; toast('Bandera creada'); }
+        else if (d.b === 'unir') { b.disabled = true; await Nube.unirse($('bUnir').value, P); miembrosB = null; toast('Ya estás en la bandera'); }
+        else if (d.b === 'salir') { if (!(await confirmar('Salir de la bandera', 'Dejarás de sumar puntos con ' + P.bandera.nombre + '.', 'Salir'))) return; await Nube.salir(P); miembrosB = null; }
+        else if (d.b === 'recargar') miembrosB = null;
+        else if (d.b === 'invitar') { await compartir('Únete a mi bandera «' + P.bandera.nombre + '» en Ifni 1957. Código: ' + P.bandera.codigo, 'Bandera de Ifni 1957'); return; }
+      } catch (er) { errB = er.message || 'No se pudo completar'; }
+      Progreso.guardar(); bandera();
+    };
   }
 
   function campana() {

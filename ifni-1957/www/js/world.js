@@ -453,6 +453,7 @@ const World = (() => {
       caja(wd + 0.4, 0.25, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
       caja(0.9, 1.7, 0.1, oscuro, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
       caja(0.5, 0.5, 0.1, oscuro, x + sn * (dp / 2 + 0.02) + cs * wd * 0.3, y + h * 0.65, z + cs * (dp / 2 + 0.02) - sn * wd * 0.3, face, scn, false);
+      (f._casas = f._casas || []).push({ x, z, px: x + sn * (dp / 2 + 1.7), pz: z + cs * (dp / 2 + 1.7), alto: h });
       edificio(x, z, Math.max(wd, dp) * 0.6, 2);
       addCircle(x, z, Math.max(wd, dp) * 0.6);
       spots.push({ x: x + cs * (wd / 2 + 1), z: z - sn * (wd / 2 + 1), yaw: face + Math.PI, muro: false });
@@ -505,6 +506,7 @@ const World = (() => {
       grupoEd = [];
       caja(wd, h + 1.5, dp, i % 2 ? ad : ad2, x, y + h / 2 - 0.75, z, face, scn, true); caja(wd + 0.4, 0.22, dp + 0.4, viga, x, y + h + 0.05, z, face, scn, false);
       caja(0.9, 1.7, 0.1, osc, x + sn * (dp / 2 + 0.02), y + 0.85, z + cs * (dp / 2 + 0.02), face, scn, false);
+      (f._casas = f._casas || []).push({ x, z, px: x + sn * (dp / 2 + 1.7), pz: z + cs * (dp / 2 + 1.7), alto: h });
       edificio(x, z, Math.max(wd, dp) * 0.6, 2);
       addCircle(x, z, Math.max(wd, dp) * 0.6);
       spots.push({ x: x + cs * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), z: z - sn * (wd / 2 + 0.9) * (lx < 0 ? 1 : -1), yaw: face + Math.PI, muro: false });

@@ -75,6 +75,7 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 .mken.jefe i{border-top-color:#f2b90f}.mken.jefe small{color:#ffe08a;width:110px;left:-55px}
 .mken.herido i{border-top-color:#39c46a}.mken.herido small{color:#b9ffd0}.mken.herido.borde i{border-top-color:transparent;border-left-color:#39c46a}
 .mis.diaria{border-color:var(--gualda)}
+.mken.civil i{border-top-color:#e9f1ff}.mken.civil small{color:#e9f1ff;width:90px;left:-45px}.mken.civil.borde i{border-top-color:transparent;border-left-color:#e9f1ff}
 #fuego2{left:max(20px,env(safe-area-inset-left,0px));top:118px;width:64px;height:64px;border-color:var(--sangre);font-size:12px}
 .zurdo #bFuego,.zurdo #bAgach{right:auto;left:max(24px,env(safe-area-inset-left,0px))}
 .zurdo #bMira{right:auto;left:calc(max(24px,env(safe-area-inset-left,0px)) + 104px)}
@@ -125,7 +126,7 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
 .monedas{display:flex;flex-direction:column;gap:2px;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;padding-left:6px}
 .monedas .oro,.mini.oro,.boton.oro{color:var(--gualda)}
 .eur{font-weight:400;opacity:.8;font-size:.9em}
-.pestanas{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid rgba(217,183,122,.3)}
+.pestanas{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid rgba(217,183,122,.3);position:sticky;top:0;z-index:6;background:rgba(29,23,16,.96);box-shadow:0 6px 10px -6px rgba(0,0,0,.7);margin-inline:-6px;padding-inline:6px}
 .pestanas button{background:transparent;border:0;color:var(--arena);font-family:var(--texto);font-size:17px;font-weight:600;padding:8px 12px;letter-spacing:.03em}
 .pestanas button.on{color:var(--hueso);box-shadow:inset 0 -3px 0 var(--sangre)}
 .pestanas button:focus-visible{outline:2px solid var(--gualda)}

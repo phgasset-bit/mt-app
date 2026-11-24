@@ -370,7 +370,8 @@
           if (G.rachaN === 3) { cartel('¡RACHA!'); G.viva = Math.max(G.viva, 7); aviso('Tres seguidos: la escuadra se crece', 2.5); } }
         if (!s.elev && Math.random() < 0.65) soltarBotin(s.pos);
         if (Math.random() < 0.25 && gritoT <= 0) { gritoAliado(); gritoT = 4; }
-      } else { voz(Math.random() < 0.5 ? 'herido' : 'sanitario', null, 0.8, panDe(s.pos)); aviso('Ha caído el legionario ' + s.nombre, 2.5); }
+      } else if (s.civil) { G.civiles = (G.civiles || 0) + 1; aviso(porJugador ? '¡Has matado a un civil! Mira antes de disparar' : 'Ha muerto un civil', 3.5); }
+      else { voz(Math.random() < 0.5 ? 'herido' : 'sanitario', null, 0.8, panDe(s.pos)); aviso('Ha caído el legionario ' + s.nombre, 2.5); }
     } else { s.golpe = 0.4; if (s.team === 'E') { s.estado = 'cubierto'; s.agach = true; s.t = rnd(1.5, 3); s.alerta = true; } }
   }
 
@@ -438,6 +439,7 @@
       for (let i = 0; i < 12; i++) particula(q.clone().add(new V3(rnd(-c.r, c.r), rnd(0, c.alto * 0.7), rnd(-c.r, c.r))), i % 3 ? 0xb39a78 : 0x5a4c3c, rnd(3, 6.5), rnd(2.5, 5), 2.2, rnd(0.6, 2.4));
       for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(geoGota, World.mat(0x8f7350)); m.scale.set(rnd(8, 22), rnd(6, 14), rnd(8, 22)); m.position.copy(q).add(new V3(rnd(-c.r, c.r) * 0.6, rnd(0.5, c.alto * 0.6), rnd(-c.r, c.r) * 0.6)); scene.add(m); gotas.push({ m, v: new V3(rnd(-7, 7), rnd(3, 12), rnd(-7, 7)), seco: true }); }
       G.temblor = Math.max(G.temblor, 0.6); Snd.explosion(dist2D(q, P.pos) * 0.8, panDe(q)); aviso('¡Edificio derribado!', 2);
+      if (G_casas) for (const k of G_casas) if (!k.hecho && Math.hypot(k.x - c.x, k.z - c.z) < 1.5) registrarCasa(k, true);
     }
     const d = dist2D(p, P.pos); Snd.explosion(d, panDe(p)); G.temblor = Math.max(G.temblor, clamp(1.2 - d / 40, 0, 1));
     for (const s of G.sold) {
@@ -638,6 +640,7 @@
       L(s.legL, 'x', 1.45); L(s.rodL, 'x', -1.45); L(s.legR, 'x', 0.15); L(s.rodR, 'x', -1.6); L(s.torso, 'x', -0.08);
       bajada = 0.42;
     } else { L(s.legL, 'x', 0); L(s.legR, 'x', 0); L(s.rodL, 'x', 0); L(s.rodR, 'x', 0); L(s.torso, 'x', 0); }
+    if (s.civil) { s.armL.rotation.set(2.75, 0, 0.3); s.armR.rotation.set(2.75, 0, -0.3); s.codoL.rotation.set(0.35, 0, 0); s.codoR.rotation.set(0.35, 0, 0); return bajada; }
     if (s.golpe > 0) { s.golpe -= dt; s.torso.rotation.x = 0.5 * Math.min(1, s.golpe / 0.3); }
     const apunta = s.obj && !s.mueve && !(s.golpe > 0);
     if (s.humano) {
@@ -675,9 +678,11 @@
     }
     if (s.muerto) { if (s.muertoT < 1) { s.muertoT += dt * 1.7; const k = Math.min(1, s.muertoT), e = k * k * (1 + 0.12 * Math.sin(k * 9.4) * (1 - k)); if (s.caida === 2) { s.g.rotation.z = s.caidaLado * e * 1.5; s.g.rotation.x = e * 0.2; } else s.g.rotation.x = (s.caida ? -1 : 1) * e * 1.5; s.legL.rotation.x = e * 0.7 * (s.caida === 1 ? -0.3 : 1); s.rodL.rotation.x = -e * 1.1; s.rodR.rotation.x = -e * 0.4; s.cabeza.rotation.x = e * 0.4; s.g.position.y = s.pos.y + (s.caida === 2 ? 0.2 : 0.12) * k; } else if ((s.muertoT += dt) > 30 && s.g.parent) scene.remove(s.g); return; }
     s.visT -= dt;
+    if (s.visT <= 0 && s.civil) s.visT = 9;
     if (s.visT <= 0) { s.visT = rnd(0.45, 0.85); s.obj = elegirObjetivo(s); if (s.obj && s.team === 'E' && !s.alerta) { s.alerta = true; s.apunta = rnd(0.6, 1.2); } }
     s.mueve = false;
-    if (s.team === 'E') iaEnemigo(s, dt); else iaAliado(s, dt);
+    if (s.civil) { if (!s.llego) { s.agach = false; if (moverHacia(s, s.dest, 3.4, dt)) s.llego = true; } else s.agach = true; }
+    else if (s.team === 'E') iaEnemigo(s, dt); else iaAliado(s, dt);
     s.pos.y = H(s.pos.x, s.pos.z) + (s.elev || 0);
     s.lejos = dist2D(s.pos, P.pos) > 110;
     const baj = pose(s, dt);
@@ -775,6 +780,38 @@
   }
 
   // ---------- misiones y fases ----------
+  // casa a casa: cada casa del aduar hay que registrarla; dentro puede haber insurgentes, civiles o nadie
+  let G_casas = null;
+  function prepararCasas(f) {
+    G_casas = null; if (!f._casas || !f._casas.length) return;
+    const n = f._casas.length, tipos = ['ins', 'civ']; while (tipos.length < n) tipos.push(Math.random() < 0.45 ? 'ins' : Math.random() < 0.6 ? 'civ' : 'vacia');
+    tipos.sort(() => Math.random() - 0.5);
+    G_casas = f._casas.map((c, i) => {
+      const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.marca, color: 0xffffff, depthTest: false, transparent: true, sizeAttenuation: false, fog: false })); mk.scale.set(0.026, 0.026, 1); mk.renderOrder = 9; mk.position.set(c.px, H(c.px, c.pz) + 3.4, c.pz); scene.add(mk);
+      return Object.assign({}, c, { tipo: tipos[i], hecho: false, mk });
+    });
+  }
+  function registrarCasa(c, derribada) {
+    c.hecho = true; scene.remove(c.mk);
+    const ax = c.px - c.x, az = c.pz - c.z, d = Math.hypot(ax, az) || 1, ux = ax / d, uz = az / d;
+    if (derribada) {
+      if (c.tipo === 'civ') { G.civiles = (G.civiles || 0) + 2; aviso('Había civiles en la casa derribada', 4); }
+      else if (c.tipo === 'ins') { G.bajas += 2; aviso('Los insurgentes de la casa han caído con ella', 3); }
+      return;
+    }
+    if (c.tipo === 'ins') {
+      for (let k = 0; k < 2; k++) { const s = crearSoldado('E', c.px + uz * (k ? 1.2 : -1.2), c.pz - ux * (k ? 1.2 : -1.2), k + G.sold.length, { fase: G.faseI, estado: 'asomado', alerta: true, muro: false, t: rnd(3, 5), apunta: rnd(0.7, 1.1), spotYaw: 0 }); s.yaw = Math.atan2(-(P.pos.x - s.pos.x), -(P.pos.z - s.pos.z)); }
+      voz('enemigo', null, 1); cartel('¡INSURGENTES!'); aviso('¡Salen armados de la casa!', 2.5);
+    } else if (c.tipo === 'civ') {
+      for (let k = 0; k < 2; k++) { const s = crearSoldado('C', c.px + uz * (k ? 0.9 : -0.9), c.pz - ux * (k ? 0.9 : -0.9), k * 3 + 2 + G.sold.length, { civil: true, vida: 40, dest: { x: c.px + ux * rnd(4, 7) + uz * (k ? 3 : -3), z: c.pz + uz * rnd(4, 7) - ux * (k ? 3 : -3) } }); s.arma.visible = false; s.yaw = Math.atan2(-ux, -uz) + Math.PI; }
+      aviso('Civiles: salen con las manos en alto. ¡No dispares!', 3.5);
+    } else aviso('Casa vacía', 1.8);
+  }
+  function actualizaCasas() {
+    if (!G_casas) return 0; let pend = 0; const alc = G.carro ? 8 : 3.4;
+    for (const c of G_casas) { if (c.hecho) continue; if (!P.muerto && !G.vuelo && Math.hypot(c.px - P.pos.x, c.pz - P.pos.z) < alc) registrarCasa(c); else pend++; }
+    return pend;
+  }
   function limpiarEscena() { fuegos.length = 0; gotas.length = 0; manchas.length = 0; charcos.length = 0; scene.traverse(o => { if (o.geometry && o.geometry.dispose && o.parent === scene && !o.isInstancedMesh) o.geometry.dispose(); }); efectos.length = 0; trazas.length = 0; }
   function construir(m) {
     limpiarEscena(); scene = new THREE.Scene(); World.build(m, scene); scene.add(cam);
@@ -785,7 +822,7 @@
   function empezar(i) {
     Snd.musica(false);
     misionIdx = i; const m = MISIONES[i], v = Progreso.ventajas();
-    m.fases.forEach(f => { delete f._spots; });
+    m.fases.forEach(f => { delete f._spots; delete f._casas; }); G_casas = null;
     const marca = construir(m), nAli = m.aliados + v.esc;
     G = { m, sold: [], proy: [], faseI: -1, fase: null, marca, bajas: 0, bajasJ: 0, cabezas: 0, tiros: 0, aciertos: 0, minVida: 100, recT: 0, cool: 0, viva: 0, vivaCD: 0, vivaN: 0, temblor: 0, flashT: 0, dirT: 0, finT: 0, cambioT: 0, t: 0, gritoBat: rnd(10, 16), flareT: 4, avion: null, asalto: false, fin: false, aliadosIni: nAli, revivido: false, pedido: 0 };
     equiparArmas();
@@ -849,9 +886,10 @@
         s.yaw = sp.yaw; if (k % 5 === 3) s.tipoArma = 'fao';
         if (k === 0 && !G.m.fases.slice(G.faseI + 1).some(x => x.tipo === 'take')) { s.jefe = true; s.vida = 240; s.tipoArma = 'fao'; s.g.scale.setScalar(1.12); }
       }
+      prepararCasas(f); if (G_casas) setTimeout(() => G && G.fase === f && aviso('Registra las casas una a una: puede haber insurgentes o civiles', 5), 3500);
       aviso(f.nom, 3);
       if (G.faseI > 0) { Snd.corneta('ataque'); setTimeout(() => G && voz('adelante', '¡ADELANTE, LEGIONARIOS!'), 1700); }
-    } else if (f.tipo === 'hold') { G.holdT = f.t; G.oleada = 3; aviso(f.nom + ': ponte tras los sacos', 3.5); }
+    } else if (f.tipo === 'hold') { G_casas = null; G.holdT = f.t; G.oleada = 3; aviso(f.nom + ': ponte tras los sacos', 3.5); }
     else if (f.tipo === 'nido') {
       G.nido = { calor: 0, mun: 100, cintas: 9, rec: 0, bloqueo: false, n: 0 }; G.holdT = f.t; G.oleada = 4; G.muro = 100; P.yaw = 0; P.pitch = -0.08;
       aviso('Ametralladora en la muralla: que nadie llegue al pie del muro', 4);
@@ -885,8 +923,9 @@
       }
       const aliCerca = G.sold.some(s => s.team === 'L' && !s.muerto && Math.hypot(s.pos.x - f.x, s.pos.z - f.z) < 16);
       if (n.length && n.length <= 2 && (dObj < 20 || aliCerca)) { G.desborde += dt; if (G.desborde > 8) { for (const s of n) { s.estado = 'huye'; s.dest = { x: s.pos.x + rnd(-30, 30), z: s.pos.z - 150 }; s.fase = -1; } aviso('Los últimos defensores huyen', 2.5); } } else G.desborde = 0;
-      G.obj2 = n.length ? 'Enemigos en la posición: ' + n.length : 'Ocupa la posición';
-      if (!n.length && dObj < 16 && f.contra && !G.contraHecho) { // la posición cae, pero el enemigo vuelve a por ella
+      const pendCasas = actualizaCasas();
+      G.obj2 = (n.length ? 'Enemigos en la posición: ' + n.length : pendCasas ? 'Registra las casas' : 'Ocupa la posición') + (pendCasas ? ' · casas por registrar: ' + pendCasas : '');
+      if (!n.length && !pendCasas && dObj < 16 && f.contra && !G.contraHecho) { // la posición cae, pero el enemigo vuelve a por ella
         G.contraHecho = true;
         const ax = f.x - G.m.inicio[0], az = f.z - G.m.inicio[1], d = Math.hypot(ax, az) || 1, ux = ax / d, uz = az / d;
         for (let k = 0; k < f.contra; k++) {
@@ -895,7 +934,7 @@
         }
         voz('enemigo', '¡CONTRAATAQUE!', 1); aviso('¡Contraataque! Aguanta la posición tras los parapetos', 3.5); Snd.corneta('diana');
       } else
-      if (!n.length && dObj < 16) faseCumplida('Posición asegurada');
+      if (!n.length && !pendCasas && dObj < 16) faseCumplida('Posición asegurada');
     } else if (f.tipo === 'hold') {
       const dentro = dObj < 22;
       if (dentro) G.holdT -= dt;
@@ -1000,6 +1039,7 @@
       PP.pts += hechos.length * 300; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
       extra = '<p><b>Méritos:</b> ' + ms.map(x => (x.ok(r) ? '★ ' : '☆ ') + x.t).join(' · ') + (hechos.length ? ' · <b>+₧ ' + hechos.length * 300 + '</b>' : '') + '</p>';
       if (G.rescates) extra += '<p>Heridos salvados: ' + G.rescates + '</p>';
+      if (G.civiles) { const pen = Math.min(PP.pts, G.civiles * 500); PP.pts -= pen; extra += '<p><b>Civiles muertos: ' + G.civiles + '</b> · sanción de ₧ ' + pen + '</p>'; }
       if (G.diaria) { const D = PP.diaria || {}; if (!(D.dia === G.diaria.dia && D.hecha)) { PP.diaria = { dia: G.diaria.dia, hecha: true }; PP.pts += 1500; PP.oro += 5; extra += '<p><b>Orden del día cumplida:</b> +₧ 1.500 y ◆ 5</p>'; } }
       Progreso.guardar();
     }
@@ -1339,14 +1379,14 @@
     const w = capaMarcas.clientWidth || innerWidth, h = capaMarcas.clientHeight || innerHeight;
     const lista = G.sold.filter(s => s.team === 'E' && !s.muerto && s.estado !== 'huye' && (s.alerta || (s.ultimoTiro && G.t - s.ultimoTiro < 4)))
       .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < 170).sort((a, b) => a.d - b.d).slice(0, 10)
-      .concat(G.sold.filter(s => s.herido > 0).map(s => ({ s, d: dist2D(s.pos, P.pos) })));
+      .concat(G.sold.filter(s => s.herido > 0 || (s.civil && !s.muerto)).map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => !o.s.civil || o.d < 70));
     let i = 0;
     for (const { s, d } of lista) {
       _m.set(s.pos.x, s.pos.y + (s.herido > 0 ? 1.2 : s.agach ? 1.5 : 2.05), s.pos.z).project(cam);
       const detras = _m.z > 1; let x = _m.x, y = _m.y; if (detras) { x = -x; y = -y; }
       const dentro = !detras && Math.abs(x) < 0.94 && Math.abs(y) < 0.9;
-      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4)); e.classList.toggle('jefe', !!s.jefe); e.classList.toggle('herido', s.herido > 0);
-      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = s.herido > 0 ? '✚ ' + Math.ceil(s.herido) + ' s' : s.jefe ? 'JEFE · ' + Math.round(d) + ' m' : Math.round(d) + ' m'; }
+      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4)); e.classList.toggle('jefe', !!s.jefe); e.classList.toggle('herido', s.herido > 0); e.classList.toggle('civil', !!s.civil);
+      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = s.civil ? 'CIVIL' : s.herido > 0 ? '✚ ' + Math.ceil(s.herido) + ' s' : s.jefe ? 'JEFE · ' + Math.round(d) + ' m' : Math.round(d) + ' m'; }
       else {
         const a = Math.atan2(y, x), k = Math.min(0.9 / Math.abs(Math.cos(a) || 1e-6), 0.82 / Math.abs(Math.sin(a) || 1e-6));
         e.style.left = ((Math.cos(a) * k + 1) / 2 * w) + 'px'; e.style.top = ((1 - Math.sin(a) * k) / 2 * h) + 'px';

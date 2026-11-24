@@ -57,6 +57,8 @@ Las pesetas y el oro son monedas del juego (no son pesetas reales): se ganan jug
 
 ## 5. Armería
 
+> **Precios actualizados (noviembre de 2026):** ningún artículo de la armería ni del avatar cuesta más de 0,50 €. Los precios vigentes son los de `www/js/progreso.js` y `www/js/avatar.js`: Z-45 ₧ 600 / ◆ 20 · naranjero ₧ 900 / ◆ 30 · FAO ₧ 1.200 / ◆ 40 · CETME ₧ 1.600 / ◆ 55 · Astra ₧ 300 / ◆ 10 · Star ₧ 700 / ◆ 22 · cuchillo y bolsa de granadas ₧ 500 / ◆ 16 · granadas defensivas ₧ 900 / ◆ 30. La tabla siguiente conserva los precios anteriores como referencia.
+
 | Arma | Empleo necesario | Pesetas | Oro (acceso anticipado) |
 |---|---|---|---|
 | Mauser M43 7,92 | — | Inicial | — |

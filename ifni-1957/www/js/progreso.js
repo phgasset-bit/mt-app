@@ -34,32 +34,32 @@ const Progreso = (() => {
   // ---------- armería ----------
   const ARMAS = {
     mauser: { nom: 'Mauser M43 7,92', desc: 'Fusil de cerrojo reglamentario. Cinco cartuchos, mata de un disparo.', rango: 0, pts: 0, oro: 0, tipo: 'mauser', carg: 5, res: 45, cad: 1.2, dmg: 120, disp: 0.03, dispM: 0.002, rec: 2.6, auto: false, retro: 0.06 },
-    z45: { nom: 'Subfusil Star Z-45', desc: 'Subfusil de 9 mm. Cadencia alta, alcance corto.', rango: 0, pts: 2000, oro: 120, tipo: 'z45', carg: 30, res: 120, cad: 0.13, dmg: 34, disp: 0.045, dispM: 0.018, rec: 2.3, auto: true, retro: 0.018 },
-    naranjero: { nom: 'Subfusil naranjero', desc: 'Copia valenciana del MP-28 con cargador lateral de 32.', rango: 3, pts: 4500, oro: 200, tipo: 'z45', carg: 32, res: 128, cad: 0.1, dmg: 32, disp: 0.05, dispM: 0.02, rec: 2.6, auto: true, retro: 0.02 },
-    fao: { nom: 'Fusil ametrallador FAO', desc: 'Arma de pelotón de 7,92. Pega fuerte y se recarga despacio.', rango: 4, pts: 8000, oro: 320, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 80, disp: 0.055, dispM: 0.012, rec: 3.6, auto: true, retro: 0.035 },
-    cetme: { nom: 'CETME modelo A', desc: 'Fusil de asalto español de 1958, los primeros en pruebas. Preciso y automático.', rango: 6, pts: 14000, oro: 480, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 72, disp: 0.035, dispM: 0.006, rec: 2.4, auto: true, retro: 0.028 },
-    astra: { nom: 'Pistola Astra 400', desc: 'El «puro»: pistola reglamentaria de 9 mm Largo. Ocho cartuchos, se saca y se recarga en un momento.', rango: 0, pts: 900, oro: 50, tipo: 'z45', carg: 8, res: 48, cad: 0.26, dmg: 46, disp: 0.04, dispM: 0.014, rec: 1.4, auto: false, retro: 0.03, pistola: true },
-    star: { nom: 'Pistola Star Super', desc: 'Pistola Star de 9 mm Largo, de las últimas en llegar. Nueve cartuchos y más precisa.', rango: 2, pts: 2600, oro: 110, tipo: 'z45', carg: 9, res: 54, cad: 0.22, dmg: 50, disp: 0.032, dispM: 0.01, rec: 1.3, auto: false, retro: 0.028, pistola: true }
+    z45: { nom: 'Subfusil Star Z-45', desc: 'Subfusil de 9 mm. Cadencia alta, alcance corto.', rango: 0, pts: 600, oro: 20, tipo: 'z45', carg: 30, res: 120, cad: 0.13, dmg: 34, disp: 0.045, dispM: 0.018, rec: 2.3, auto: true, retro: 0.018 },
+    naranjero: { nom: 'Subfusil naranjero', desc: 'Copia valenciana del MP-28 con cargador lateral de 32.', rango: 3, pts: 900, oro: 30, tipo: 'z45', carg: 32, res: 128, cad: 0.1, dmg: 32, disp: 0.05, dispM: 0.02, rec: 2.6, auto: true, retro: 0.02 },
+    fao: { nom: 'Fusil ametrallador FAO', desc: 'Arma de pelotón de 7,92. Pega fuerte y se recarga despacio.', rango: 4, pts: 1200, oro: 40, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 80, disp: 0.055, dispM: 0.012, rec: 3.6, auto: true, retro: 0.035 },
+    cetme: { nom: 'CETME modelo A', desc: 'Fusil de asalto español de 1958, los primeros en pruebas. Preciso y automático.', rango: 6, pts: 1600, oro: 55, tipo: 'mauser', carg: 20, res: 100, cad: 0.11, dmg: 72, disp: 0.035, dispM: 0.006, rec: 2.4, auto: true, retro: 0.028 },
+    astra: { nom: 'Pistola Astra 400', desc: 'El «puro»: pistola reglamentaria de 9 mm Largo. Ocho cartuchos, se saca y se recarga en un momento.', rango: 0, pts: 300, oro: 10, tipo: 'z45', carg: 8, res: 48, cad: 0.26, dmg: 46, disp: 0.04, dispM: 0.014, rec: 1.4, auto: false, retro: 0.03, pistola: true },
+    star: { nom: 'Pistola Star Super', desc: 'Pistola Star de 9 mm Largo, de las últimas en llegar. Nueve cartuchos y más precisa.', rango: 2, pts: 700, oro: 22, tipo: 'z45', carg: 9, res: 54, cad: 0.22, dmg: 50, disp: 0.032, dispM: 0.01, rec: 1.3, auto: false, retro: 0.028, pistola: true }
   };
 
   // ---------- granadas y arma blanca ----------
   const EXTRAS = {
     bayoneta: { nom: 'Machete-bayoneta Bolo', desc: 'El machete reglamentario. Botón CUCHILLO cuando tengas a un enemigo a un paso.', pts: 0, oro: 0, grupo: 'blanca' },
-    cuchillo: { nom: 'Cuchillo de monte', desc: 'Más ligero: golpe más rápido y con algo más de alcance.', pts: 1800, oro: 70, grupo: 'blanca' },
-    bolsa: { nom: 'Bolsa de granadas', desc: 'Dos granadas de mano más en cada misión.', pts: 1500, oro: 60, grupo: 'granadas' },
-    defensiva: { nom: 'Granadas defensivas', desc: 'Con camisa de metralla: más radio de acción. Lánzalas a cubierto.', pts: 3200, oro: 120, grupo: 'granadas' }
+    cuchillo: { nom: 'Cuchillo de monte', desc: 'Más ligero: golpe más rápido y con algo más de alcance.', pts: 500, oro: 16, grupo: 'blanca' },
+    bolsa: { nom: 'Bolsa de granadas', desc: 'Dos granadas de mano más en cada misión.', pts: 500, oro: 16, grupo: 'granadas' },
+    defensiva: { nom: 'Granadas defensivas', desc: 'Con camisa de metralla: más radio de acción. Lánzalas a cubierto.', pts: 900, oro: 30, grupo: 'granadas' }
   };
 
   // ---------- tatuajes (en el antebrazo, visibles en primera persona) ----------
   const TATUAJES = {
     ninguno: { nom: 'Sin tatuaje', pts: 0, oro: 0 },
-    ancla: { nom: 'Ancla', pts: 400, oro: 0 },
-    madre: { nom: 'Corazón «Madre»', pts: 900, oro: 0 },
-    calavera: { nom: 'Calavera y tibias', pts: 0, oro: 60 },
-    legion: { nom: 'Puñal «Legión»', pts: 2500, oro: 0, rango: 2 },
-    novio: { nom: 'Novio de la Muerte', pts: 0, oro: 120 },
-    cristo: { nom: 'Cristo de la Buena Muerte', pts: 0, oro: 150 },
-    armas: { nom: 'Alabarda, arcabuz y ballesta', pts: 0, oro: 200, rango: 4 }
+    ancla: { nom: 'Ancla', pts: 150, oro: 0 },
+    madre: { nom: 'Corazón «Madre»', pts: 300, oro: 0 },
+    calavera: { nom: 'Calavera y tibias', pts: 0, oro: 12 },
+    legion: { nom: 'Puñal «Legión»', pts: 600, oro: 0, rango: 2 },
+    novio: { nom: 'Novio de la Muerte', pts: 0, oro: 25 },
+    cristo: { nom: 'Cristo de la Buena Muerte', pts: 0, oro: 30 },
+    armas: { nom: 'Alabarda, arcabuz y ballesta', pts: 0, oro: 40, rango: 4 }
   };
   function dibujaTatuaje(id, g, cx, cy, s) {
     g.save(); g.translate(cx, cy); g.scale(s, s);

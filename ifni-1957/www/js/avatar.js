@@ -6,10 +6,10 @@ const Avatar = (() => {
   const PELO = [0x1c1612, 0x4a3324, 0x8a6a3a, 0x9c9a94];
   const COSMETICOS = {
     fisico: { atletico: { nom: 'Atlético' }, cachas: { nom: 'Cachas' }, muycachas: { nom: 'Muy cachas' } },
-    tocado: { gorrillo: { nom: 'Gorrillo con borla roja' }, sin: { nom: 'Sin tocado' }, casco: { nom: 'Casco modelo 42', pts: 800 }, gala: { nom: 'Gorrillo de gala, borla dorada', oro: 90 } },
-    camisa: { caqui: { nom: 'Camisa caqui de campaña' }, verde: { nom: 'Uniforme verde de paseo', pts: 1500 }, gala: { nom: 'Correaje blanco de gala', oro: 150, rango: 4 } },
-    barba: { corta: { nom: 'Barba corta' }, bigote: { nom: 'Bigote' }, ninguna: { nom: 'Afeitado' }, gastador: { nom: 'Barba de gastador', oro: 80 } },
-    panuelo: { no: { nom: 'Sin pañuelo' }, rojo: { nom: 'Pañuelo rojo al cuello', pts: 700 } }
+    tocado: { gorrillo: { nom: 'Gorrillo con borla roja' }, sin: { nom: 'Sin tocado' }, casco: { nom: 'Casco modelo 42', pts: 250 }, gala: { nom: 'Gorrillo de gala, borla dorada', oro: 25 } },
+    camisa: { caqui: { nom: 'Camisa caqui de campaña' }, verde: { nom: 'Uniforme verde de paseo', pts: 450 }, gala: { nom: 'Correaje blanco de gala', oro: 45, rango: 4 } },
+    barba: { corta: { nom: 'Barba corta' }, bigote: { nom: 'Bigote' }, ninguna: { nom: 'Afeitado' }, gastador: { nom: 'Barba de gastador', oro: 25 } },
+    panuelo: { no: { nom: 'Sin pañuelo' }, rojo: { nom: 'Pañuelo rojo al cuello', pts: 200 } }
   };
   const HERIDAS = {
     ojo: { nom: 'Ojo izquierdo perdido', txt: 'Llevas parche en el ojo izquierdo.' },

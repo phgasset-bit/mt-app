@@ -51,3 +51,4 @@
 - Guardado en la nube del progreso (Play Juegos) para no perder compras al desinstalar.
 - Recomendado: verificación de compras en servidor (contra fraude).
 - Consultar el uso comercial del emblema de la Legión con el Ministerio de Defensa.
+- **Sustituir `www/audio/himno.mp3`**: la grabación actual de «El novio de la muerte» es de terceros y solo vale para pruebas. Antes de publicar hay que poner una grabación propia o con permiso (o borrar el archivo: entonces suena la marcha de cornetas del juego).

@@ -783,6 +783,7 @@
     return mk;
   }
   function empezar(i) {
+    Snd.musica(false);
     misionIdx = i; const m = MISIONES[i], v = Progreso.ventajas();
     m.fases.forEach(f => { delete f._spots; });
     const marca = construir(m), nAli = m.aliados + v.esc;
@@ -1419,7 +1420,7 @@
   function alMenu() {
     jugando = false; pausado = true; G = null; Snd.motor(-1);
     ['hud', 'mandos', 'parte', 'fin', 'pausa', 'ajustes', 'revivir'].forEach(id => $(id).hidden = true);
-    construir(MISIONES.find(m => m.id === 'tiliuin')); UI.tab('campana'); $('menu').hidden = false;
+    construir(MISIONES.find(m => m.id === 'tiliuin')); if (Snd.listo) Snd.musica(true); UI.tab('campana'); $('menu').hidden = false;
     if (document.pointerLockElement) document.exitPointerLock();
   }
   function pausar(v) {
@@ -1439,11 +1440,14 @@
   $('aZurdo').onchange = e => { AJ.zurdo = e.target.checked; app.classList.toggle('zurdo', AJ.zurdo); };
   $('aDif').onchange = e => AJ.dif = +e.target.value;
   $('aCal').onchange = e => { AJ.calidad = e.target.value; AJ.calAuto = false; aplicaCalidad(); redim(); };
+  // el himno suena desde que se entra al menú y se calla al empezar el combate
+  $('bEntrar').addEventListener('click', () => { Snd.init(); Snd.setVol(AJ.vol); Snd.musica(true); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) Snd.musica(false); else if (!jugando && Snd.listo && $('portada').hidden) Snd.musica(true); });
   $('bAjOk').onclick = () => { guardarAJ(); $('ajustes').hidden = true; $(ajDesde).hidden = false; };
   $('bAjustes').onclick = () => abrirAjustes('menu');
   $('bAj2').onclick = () => abrirAjustes('pausa');
   $('bCombate').onclick = () => { Snd.init(); Snd.setVol(AJ.vol); Snd.musica(false); $('parte').hidden = true; empezar(misionIdx); };
-  $('bVolver').onclick = () => { G_diaria = null; Snd.musica(false); $('parte').hidden = true; $('menu').hidden = false; };
+  $('bVolver').onclick = () => { G_diaria = null; $('parte').hidden = true; $('menu').hidden = false; };
   $('bSig').onclick = () => { $('fin').hidden = true; abrirParte(misionIdx + 1); };
   $('bRep').onclick = () => { $('fin').hidden = true; empezar(misionIdx); };
   $('bMenu').onclick = alMenu;

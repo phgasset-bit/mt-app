@@ -133,8 +133,36 @@ const MISIONES = [
       { tipo: 'take', x: -45, z: 120, n: 10, nom: 'Bate los puestos avanzados' },
       { tipo: 'take', x: 0, z: -150, n: 26, poblado: true, nom: 'Asalta el poblado de Tafudart' }
     ]
+  },
+  {
+    id: 'buchon1', epilogo: true, tit: 'Buchones sobre la Saguia', dato: 'Aeródromo de El Aaiún · febrero de 1958',
+    parte: ['El 71 Escuadrón ha llegado a África con sus Hispano HA-1112 «Buchón». No hay aviación enemiga: vuestro trabajo es el ataque a tierra.',
+      'Despega, bate las dos posiciones que frenan a la columna y vuelve a tomar tierra. Cañones de 20 mm con FUEGO y cohetes de 80 mm con COHETE. No bajes demasiado sobre el enemigo: tiran a todo lo que vuela.'],
+    historia: 'El 71 Escuadrón, con cazas Hispano Aviación HA-1112-M1L «Buchón», salió hacia África el 30 de enero de 1958 y operó desde Gando y El Aaiún. Sin aviación enemiga, los Buchones se emplearon en ataque a tierra con sus cañones de 20 mm y cohetes de 80 mm.',
+    desierto: true, amp: 2, seed: 12.4, inicio: [120, 250], aliados: 0, caza: true, pista: { x: 120, z0: 255, z1: 40 },
+    bumps: [[-60, 40, 45, 6], [-20, -170, 55, 7], [120, 150, 90, -2]],
+    fases: [
+      { tipo: 'take', x: -60, z: 40, n: 9, pos: 'trinchera', nom: 'Bate la trinchera' },
+      { tipo: 'take', x: -20, z: -170, n: 11, pos: 'rocas', nom: 'Bate los peñascos' },
+      { tipo: 'aterriza', x: 120, z: 240, nom: 'Vuelve al aeródromo y toma tierra' }
+    ]
+  },
+  {
+    id: 'buchon2', epilogo: true, tit: 'Apoyo a la columna', dato: 'Sáhara español · febrero de 1958',
+    parte: ['La columna de la Legión está detenida ante un poblado fortificado. Piden fuego desde el aire.',
+      'Tres objetivos: los puestos avanzados, la trinchera y el poblado. En el poblado hay casas con civiles: bate los parapetos y las torres, no las casas. Te quedan ocho cohetes; adminístralos.'],
+    historia: 'En la operación Teide (febrero de 1958) la aviación española apoyó el avance de las columnas en el Sáhara. Las aeronaves, veteranas de otra época, volvían a menudo con impactos de fusilería recibidos en los vuelos rasantes.',
+    desierto: true, amp: 2, seed: 15.8, inicio: [-120, 250], aliados: 0, caza: true, pista: { x: -120, z0: 255, z1: 40 },
+    bumps: [[40, 90, 40, 5], [-40, -40, 45, 5], [30, -170, 70, 6], [-120, 150, 90, -2]],
+    fases: [
+      { tipo: 'take', x: 40, z: 90, n: 8, nom: 'Bate los puestos avanzados' },
+      { tipo: 'take', x: -40, z: -40, n: 10, pos: 'trinchera', nom: 'Bate la trinchera' },
+      { tipo: 'take', x: 30, z: -170, n: 14, poblado: true, nom: 'Bate el poblado sin tocar las casas' },
+      { tipo: 'aterriza', x: -120, z: 240, nom: 'Vuelve al aeródromo y toma tierra' }
+    ]
   }
 ];
+
 
 // Campañas: varias misiones seguidas, como etapas de una misma operación. Entre etapa y etapa se conservan la salud, las vendas y las granadas.
 // «informe» es lo que cuenta el sargento antes de salir; «ordenes» resume qué hay que conseguir en cada etapa.
@@ -162,5 +190,13 @@ const CAMPANAS = [
       'Dos tiempos. Primero salimos de esa emboscada, resistimos en las dunas y limpiamos el cauce. Después, ya en febrero, volvemos con los carros M-24 del Pavía: batimos los puestos avanzados y asaltamos el poblado de Tafudart.',
       'En el poblado hay que registrar las casas. Con el cañón se abre brecha, pero no tiréis abajo una casa sin saber quién hay dentro.'],
     ordenes: ['Salir de la emboscada, rechazar la carga, resistir y limpiar el cauce', 'Con la sección de carros: batir los puestos avanzados y asaltar Tafudart']
+  },
+  {
+    id: 'aire', tit: 'Alas sobre el Sáhara', dato: 'El Aaiún · febrero de 1958', sargento: 'Capitán jefe de patrulla',
+    etapas: ['buchon1', 'buchon2'],
+    informe: ['Señores, atentos. El 71 Escuadrón salió de la Península el 30 de enero con sus Buchones: célula de Messerschmitt, motor Merlin, dos cañones de veinte milímetros y ocho cohetes. Aquí no hay cazas enemigos. Nuestro trabajo es el ataque a tierra.',
+      'Dos salidas. En la primera despegamos de El Aaiún y batimos dos posiciones que frenan a la columna. En la segunda apoyamos el asalto a un poblado fortificado. Y después hay que volver y tomar tierra.',
+      'Entrad rasantes, tirad y salid. No os quedéis sobre el enemigo: tiran con todo lo que tienen y estos aviones ya no son jóvenes. Y ojo con el poblado, que hay civiles.'],
+    ordenes: ['Despegar, batir la trinchera y los peñascos, y aterrizar', 'Batir los puestos avanzados, la trinchera y el poblado, y aterrizar']
   }
 ];

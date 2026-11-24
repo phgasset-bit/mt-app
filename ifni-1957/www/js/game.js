@@ -344,6 +344,7 @@
     if (s.muerto || s.aire) return;
     if (s.esJugador) {
       if (G.vuelo) return;
+      if (G.caza) dmg *= 0.45;
       if (G.carro) dmg *= 0.3;
       P.vida -= dmg; G.minVida = Math.min(G.minVida, P.vida); Snd.impacto(); $('dano').style.opacity = clamp(dmg / 40, 0.35, 0.9);
       const rel = Math.atan2(-(desde.x - P.pos.x), -(desde.z - P.pos.z)) - P.yaw;
@@ -589,7 +590,7 @@
     particula(mz, 0xffffff, 0.55, 0.07, 0.5, 0, true);
     if (s.team === 'E') Snd.disparo('enemigo', dj, panDe(s.pos)); else Snd.disparo(fao ? 'z45' : 'enemigo', Math.max(dj, 8), panDe(s.pos));
     let p;
-    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif * (G.difX || 1); if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; if (t === P && G.salto && G.salto.fase !== 'suelo') p = G.salto.fase === 'campana' ? p * 0.3 : 0; if (t === P && G.nido) p *= 0.7; if (s.tirador) p = Math.min(0.3, p * 3.2); }
+    if (s.team === 'E') { p = (0.3 * Math.exp(-d / 55) + 0.03) * AJ.dif * (G.difX || 1); if (G.viva > 0) p *= 0.6; if (t.agach) p *= 0.55; if (t === P && P.mov > 0.3) p *= 0.75; if (t === P && G.salto && G.salto.fase !== 'suelo') p = G.salto.fase === 'campana' ? p * 0.3 : 0; if (t === P && G.nido) p *= 0.7; if (s.tirador) p = Math.min(0.3, p * 3.2); if (t === P && G.caza) p = (0.3 * Math.exp(-s.pos.distanceTo(G.caza.pos) / 70) + 0.015) * AJ.dif * 0.6; }
     else { p = (0.26 * Math.exp(-d / 60) + 0.05) * (G.viva > 0 ? 1.7 : 1); if (t.agach) p *= 0.6; if (fao) p *= 0.55; }
     const acierta = Math.random() < p;
     const dest = new V3(t.pos.x, t.pos.y + (t.agach ? 1 : 1.35), t.pos.z);
@@ -836,10 +837,15 @@
     equiparArmas();
     Object.assign(P, { yaw: 0, pitch: -0.02, vida: 100, curas: 2 + v.cura, agach: false, mira: false, arma: 0, granadas: 3 + v.gran + ((Progreso.P.extras || {}).bolsa ? 2 : 0), avion: (m.avion || 0) + (m.avion ? v.avion : 0), muerto: false, retroceso: 0 });
     P.pos.set(m.inicio[0], 0, m.inicio[1]); P.pos.y = H(P.pos.x, P.pos.z);
-    G.nido = null; G.salto = null; mg.g.visible = false; G.carro = null;
+    G.nido = null; G.salto = null; mg.g.visible = false; G.carro = null; G.caza = null;
+    if (m.caza) { // caza Buchón en cabecera de pista, motor al ralentí
+      const av = World.buchon(); scene.add(av);
+      G.caza = { m: av, pos: new V3(m.pista.x, World.refs.pistaY + 1.93, m.pista.z0 - 6), yaw: 0, pitch: 0, roll: 0, v: 0, suelo: true, gasT: 3, mun: 240, cohetes: 8, cT: 0, n: 0, lastYaw: 0, lastPitch: 0, aterrizando: false, avisoT: 0 };
+      P.yaw = 0; P.pitch = 0;
+    }
     if (G_camp && G_camp.lleva) { const L = G_camp.lleva; P.vida = Math.max(55, L.vida); P.curas = Math.max(1, L.curas); P.granadas = Math.max(2, L.granadas); }
     Snd.narrar(null);
-    G.orden = 'auto'; $('bOrden').innerHTML = 'ORDEN<br>AUTO'; $('bOrden').style.visibility = m.nido ? 'hidden' : '';
+    G.orden = 'auto'; $('bOrden').innerHTML = 'ORDEN<br>AUTO'; $('bOrden').style.visibility = m.nido || m.caza ? 'hidden' : '';
     G.diaria = G_diaria && G_diaria.idx === i ? G_diaria : null; G_diaria = null;
     if (G.diaria) { const md = G.diaria.mod.id; if (md === 'sinCuras') P.curas = 0; if (md === 'sinGranadas') P.granadas = 0; G.difX = md === 'duro' ? 1.35 : 1; }
     if (m.carro) {
@@ -850,8 +856,8 @@
     }
     G.camiones = null;
     if (m.convoy) { G.convoy = 100; G.camiones = [0, 1, 2].map(i => { const c = World.camion(); const z = m.inicio[1] + 12 + i * 12; c.pos = new V3(World.pathX(z), 0, z); scene.add(c.g); return c; }); }
-    $('bFuego').textContent = m.carro ? 'CAÑÓN' : 'FUEGO'; $('fuego2').textContent = m.carro ? 'AMETR.' : 'FUEGO';
-    ['bAgach', 'bArma', 'bGran', 'bRec'].forEach(id => $(id).style.visibility = m.carro ? 'hidden' : '');
+    $('bFuego').textContent = m.carro || m.caza ? 'CAÑÓN' : 'FUEGO'; $('fuego2').textContent = m.caza ? 'COHETE' : m.carro ? 'AMETR.' : 'FUEGO';
+    ['bAgach', 'bArma', 'bGran', 'bRec'].forEach(id => $(id).style.visibility = m.carro || m.caza ? 'hidden' : ''); ['bCura', 'bMira', 'bViva'].forEach(id => $(id).style.visibility = m.caza ? 'hidden' : '');
     if (m.salto) {
       // el Junkers entra sobre la zona de salto; el jugador va en la puerta y la sección salta con él
       const av = World.avion(); av.position.set(m.inicio[0], H(m.inicio[0], m.inicio[1]) + m.salto.alt, m.inicio[1] + 60); scene.add(av);
@@ -862,7 +868,7 @@
         const x = m.inicio[0] + (k % 2 ? 1 : -1) * (4 + Math.floor(k / 2) * 3.6);
         crearSoldado('L', x, m.inicio[1], k, { hueco: k, muralla: true, elev: 4.4, cad: rnd(2.2, 3.4), nombre: NOMBRES[k % NOMBRES.length] });
       }
-    } else for (let k = 0; k < (G.diaria && G.diaria.mod.id === 'pocos' ? Math.ceil(nAli / 2) : nAli); k++) {
+    } else if (m.caza) { /* el piloto vuela solo */ } else for (let k = 0; k < (G.diaria && G.diaria.mod.id === 'pocos' ? Math.ceil(nAli / 2) : nAli); k++) {
       const cmp = k === 0 ? Progreso.P.companero : null; // el legionario de un amigo, con su aspecto, en el primer puesto de la escuadra
       const h = huecos[k % huecos.length], s = crearSoldado('L', P.pos.x + h[0], P.pos.z + h[1], k, { hueco: k, cad: cmp ? 1.9 : rnd(2.2, 3.4), nombre: cmp ? cmp.n : NOMBRES[k % NOMBRES.length], av: cmp ? cmp.av : null, amigo: !!cmp });
       if (k === 1 || (cmp && cmp.a && cmp.a !== 'mauser' && !/astra|star/.test(cmp.a))) s.tipoArma = 'fao';
@@ -880,6 +886,7 @@
     }
     if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
     if (m.avion && !m.salto) setTimeout(() => { if (G && G.m === m && jugando && P.avion > 0) aviso('Tienes una pasada de aviación: pulsa ✈ AVIÓN (arriba a la derecha) y pilotas tú el Heinkel', 6); }, 9000);
+    if (m.caza) { aviso('Motor en marcha. Al coger velocidad, tira del joystick hacia atrás para despegar', 6); return; }
     if (m.carro) aviso('Mandas una sección de tres M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
@@ -939,7 +946,7 @@
       const n = enemigosVivos();
       if (!G.avisoEnemigo && n.some(e => e.alerta)) { G.avisoEnemigo = true; voz('enemigo', null, 0.9, 0); }
       if (!G.asalto && dObj < 38 && n.length) { G.asalto = true; voz('asalto', '¡AL ASALTO!'); setTimeout(() => G && voz('a_mi_b', null, 0.8, -0.4), 1300); }
-      if (f.n >= 9 && n.length >= 4 && n.some(e => e.alerta) && dObj > 22) {
+      if (f.n >= 9 && n.length >= 4 && n.some(e => e.alerta) && dObj > 22 && !G.caza) {
         G.morteroT -= dt;
         if (G.morteroT <= 0) { // mortero enemigo: silba, avisa y cae donde estabas
           G.morteroT = rnd(15, 26) / AJ.dif;
@@ -949,7 +956,7 @@
       }
       const aliCerca = G.sold.some(s => s.team === 'L' && !s.muerto && Math.hypot(s.pos.x - f.x, s.pos.z - f.z) < 16);
       if (n.length && n.length <= 2 && (dObj < 20 || aliCerca)) { G.desborde += dt; if (G.desborde > 8) { for (const s of n) { s.estado = 'huye'; s.dest = { x: s.pos.x + rnd(-30, 30), z: s.pos.z - 150 }; s.fase = -1; } aviso('Los últimos defensores huyen', 2.5); } } else G.desborde = 0;
-      const pendCasas = actualizaCasas();
+      const pendCasas = G.caza ? 0 : actualizaCasas();
       G.obj2 = (n.length ? 'Enemigos en la posición: ' + n.length : pendCasas ? 'Registra las casas' : 'Ocupa la posición') + (pendCasas ? ' · casas por registrar: ' + pendCasas : '');
       if (!n.length && !pendCasas && dObj < 16 && f.contra && !G.contraHecho) { // la posición cae, pero el enemigo vuelve a por ella
         G.contraHecho = true;
@@ -960,7 +967,7 @@
         }
         voz('enemigo', '¡CONTRAATAQUE!', 1); aviso('¡Contraataque! Aguanta la posición tras los parapetos', 3.5); Snd.corneta('diana');
       } else
-      if (!n.length && !pendCasas && dObj < 16) faseCumplida('Posición asegurada');
+      if (!n.length && !pendCasas && (dObj < 16 || G.caza)) faseCumplida(G.caza ? 'Posición batida' : 'Posición asegurada');
     } else if (f.tipo === 'hold') {
       const dentro = dObj < 22;
       if (dentro) G.holdT -= dt;
@@ -1013,6 +1020,7 @@
       const n = enemigosVivos().length;
       G.obj2 = f.tipo === 'tiradores' ? 'Tiradores: ' + n + ' · usa la MIRA' : 'Enemigos a la carga: ' + n;
       if (!n) faseCumplida(f.tipo === 'tiradores' ? 'Cresta limpia' : 'Carga rechazada');
+    } else if (f.tipo === 'aterriza') { G.obj2 = 'Baja de 45 m y enfila la pista por su cabecera';
     } else if (f.tipo === 'reach') { G.obj2 = 'Sin enemigos a la vista'; if (dObj < 12) faseCumplida(G.camiones ? 'El convoy ha llegado' : 'Has alcanzado la columna'); }
   }
   function actualizaConvoy(dt) {
@@ -1046,7 +1054,7 @@
   function diaria() {
     const d = new Date(), dia = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); let h = 0; for (const c of dia) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const lista = MISIONES.map((m, i) => i).filter(i => !MISIONES[i].carro && !MISIONES[i].nido && !MISIONES[i].salto), idx = lista[h % lista.length], mod = MODS[(h >>> 5) % MODS.length], D = Progreso.P.diaria || {};
-    return { dia, idx, mod, hecha: D.dia === dia && D.hecha, texto: MISIONES[idx].tit + ', ' + mod.t, premio: '₧ 1.500 y ◆ 5' };
+    return { dia, idx, mod, hecha: D.dia === dia && D.hecha, texto: MISIONES[idx].tit + ', ' + mod.t, premio: '₧ 400 y ◆ 2' };
   }
   window.IfniDiaria = { info: diaria, jugar() { G_diaria = diaria(); abrirParte(G_diaria.idx); } };
   // campaña: varias misiones seguidas como etapas; entre una y otra se conservan salud, vendas y granadas
@@ -1070,12 +1078,12 @@
     if (document.pointerLockElement) document.exitPointerLock();
     const res = resultado(true), m = G.m, c = CAMPANAS[G_camp.ci];
     const r = { vivos: G.sold.filter(s => s.team === 'L' && !s.muerto).length, aliadosIni: G.sold.filter(s => s.team === 'L').length, cabezas: G.cabezas, tiempo: G.t };
-    const hechos = meritos(m).filter(x => x.ok(r)), PP = Progreso.P; PP.pts += hechos.length * 300; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
-    if (G.civiles) PP.pts = Math.max(0, PP.pts - G.civiles * 500); Progreso.guardar();
-    G_camp.puntos += res.puntos; G_camp.pts += res.pts + hechos.length * 300; G_camp.lleva = { vida: P.vida, curas: P.curas, granadas: P.granadas }; G_camp.i++;
+    const hechos = meritos(m).filter(x => x.ok(r)), PP = Progreso.P; PP.pts += hechos.length * 100; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
+    if (G.civiles) PP.pts = Math.max(0, PP.pts - G.civiles * 200); Progreso.guardar();
+    G_camp.puntos += res.puntos; G_camp.pts += res.pts + hechos.length * 100; G_camp.lleva = { vida: P.vida, curas: P.curas, granadas: P.granadas }; G_camp.i++;
     const sig = MISIONES.find(x => x.id === c.etapas[G_camp.i]);
     $('eTit').textContent = 'Etapa ' + G_camp.i + ' de ' + c.etapas.length + ' cumplida';
-    $('eTxt').innerHTML = '<p><b>' + m.tit + '</b> · ' + res.puntos.toLocaleString('es-ES') + ' puntos · ₧ ' + (res.pts + hechos.length * 300).toLocaleString('es-ES') + (hechos.length ? ' · ' + '★'.repeat(hechos.length) : '') + (G.civiles ? ' · civiles muertos: ' + G.civiles : '') + '</p>' +
+    $('eTxt').innerHTML = '<p><b>' + m.tit + '</b> · ' + res.puntos.toLocaleString('es-ES') + ' puntos · ₧ ' + (res.pts + hechos.length * 100).toLocaleString('es-ES') + (hechos.length ? ' · ' + '★'.repeat(hechos.length) : '') + (G.civiles ? ' · civiles muertos: ' + G.civiles : '') + '</p>' +
       '<h3>Siguiente: ' + sig.tit + '</h3><p>' + c.ordenes[G_camp.i] + '.</p><p class="nota">' + sig.parte[sig.parte.length - 1] + '</p><p class="nota">Sigues con ' + Math.ceil(Math.max(55, P.vida)) + ' de salud.</p>';
     $('etapa').hidden = false; Snd.musica(true);
     $('bEtapa').onclick = () => { $('etapa').hidden = true; empezar(MISIONES.indexOf(sig)); };
@@ -1098,12 +1106,12 @@
     if (ok) {
       const r = { vivos: G.sold.filter(s => s.team === 'L' && !s.muerto).length, aliadosIni: G.sold.filter(s => s.team === 'L').length, cabezas: G.cabezas, tiempo: G.t };
       const ms = meritos(m), hechos = ms.filter(x => x.ok(r)), PP = Progreso.P;
-      PP.pts += hechos.length * 300; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
-      extra = '<p><b>Méritos:</b> ' + ms.map(x => (x.ok(r) ? '★ ' : '☆ ') + x.t).join(' · ') + (hechos.length ? ' · <b>+₧ ' + hechos.length * 300 + '</b>' : '') + '</p>';
+      PP.pts += hechos.length * 100; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
+      extra = '<p><b>Méritos:</b> ' + ms.map(x => (x.ok(r) ? '★ ' : '☆ ') + x.t).join(' · ') + (hechos.length ? ' · <b>+₧ ' + hechos.length * 100 + '</b>' : '') + '</p>';
       if (G.rescates) extra += '<p>Heridos salvados: ' + G.rescates + '</p>';
-      if (G.civiles) { const pen = Math.min(PP.pts, G.civiles * 500); PP.pts -= pen; extra += '<p><b>Civiles muertos: ' + G.civiles + '</b> · sanción de ₧ ' + pen + '</p>'; }
-      if (G.diaria) { const D = PP.diaria || {}; if (!(D.dia === G.diaria.dia && D.hecha)) { PP.diaria = { dia: G.diaria.dia, hecha: true }; PP.pts += 1500; PP.oro += 5; extra += '<p><b>Orden del día cumplida:</b> +₧ 1.500 y ◆ 5</p>'; } }
-      if (G_camp) { const c = CAMPANAS[G_camp.ci]; PP.campanas = PP.campanas || {}; PP.campanas[c.id] = 1; PP.pts += 1000; extra = '<p><b>Campaña cumplida: ' + c.tit + '</b> · ' + c.etapas.length + ' etapas · ' + (G_camp.puntos + res.puntos).toLocaleString('es-ES') + ' puntos en total · premio de campaña ₧ 1.000</p>' + extra; }
+      if (G.civiles) { const pen = Math.min(PP.pts, G.civiles * 200); PP.pts -= pen; extra += '<p><b>Civiles muertos: ' + G.civiles + '</b> · sanción de ₧ ' + pen + '</p>'; }
+      if (G.diaria) { const D = PP.diaria || {}; if (!(D.dia === G.diaria.dia && D.hecha)) { PP.diaria = { dia: G.diaria.dia, hecha: true }; PP.pts += 400; PP.oro += 2; extra += '<p><b>Orden del día cumplida:</b> +₧ 400 y ◆ 2</p>'; } }
+      if (G_camp) { const c = CAMPANAS[G_camp.ci]; PP.campanas = PP.campanas || {}; PP.campanas[c.id] = 1; PP.pts += 300; extra = '<p><b>Campaña cumplida: ' + c.tit + '</b> · ' + c.etapas.length + ' etapas · ' + (G_camp.puntos + res.puntos).toLocaleString('es-ES') + ' puntos en total · premio de campaña ₧ 300</p>' + extra; }
       Progreso.guardar();
     }
     const enCampana = !!G_camp; if (ok) G_camp = null;
@@ -1121,7 +1129,7 @@
     pausado = true; $('mandos').hidden = true; $('revivir').hidden = false;
     $('bRevivir').onclick = async () => {
       $('revivir').hidden = true;
-      if (await Progreso.Anuncios.recompensado()) { G.revivido = true; P.muerto = false; P.vida = 60; if (G.nido && G.muro <= 0) G.muro = 40; if (G.camiones && G.convoy <= 0) G.convoy = 40; P.pitch = 0; G.finT = 0; pausado = false; $('mandos').hidden = false; aviso('¡Arriba, legionario!', 2); voz('a_mi', '¡A MÍ LA LEGIÓN!'); }
+      if (await Progreso.Anuncios.recompensado()) { G.revivido = true; P.muerto = false; P.vida = 60; if (G.nido && G.muro <= 0) G.muro = 40; if (G.caza) { const C = G.caza; C.caido = false; C.m.visible = true; C.suelo = false; C.aterrizando = false; C.pos.y = sueloCaza(C.pos.x, C.pos.z) + 95; C.pitch = 0.1; C.roll = 0; C.v = 60; } if (G.camiones && G.convoy <= 0) G.convoy = 40; P.pitch = 0; G.finT = 0; pausado = false; $('mandos').hidden = false; aviso('¡Arriba, legionario!', 2); voz('a_mi', '¡A MÍ LA LEGIÓN!'); }
       else finPantalla(false);
     };
     $('bRendirse').onclick = () => { $('revivir').hidden = true; finPantalla(false); };
@@ -1280,7 +1288,86 @@
       for (const s of G.sold) if (s.team === 'E' && !s.muerto && dist2D(s.pos, P.pos) < 140) s.alerta = true;
     }
   }
+  // ---------- caza Buchón: despegue, ataque a tierra y toma ----------
+  const _fw = new V3(), _ap = new V3();
+  function sueloCaza(x, z) { return Math.abs(x) < 318 && Math.abs(z) < 318 ? H(x, z) : -2.6; }
+  function actualizaCaza(dt) {
+    const C = G.caza, pista = G.m.pista, py = World.refs.pistaY + 1.93;
+    (C.m.userData.helices || []).forEach(h => h.rotation.z += dt * (C.gasT <= 0 ? 42 : 14));
+    let mx = mov.x, my = mov.y;
+    if (teclas.KeyA) mx -= 1; if (teclas.KeyD) mx += 1; if (teclas.KeyS) my += 1; if (teclas.KeyW) my -= 1;
+    const dYaw = P.yaw - C.lastYaw, dPit = P.pitch - C.lastPitch; // lo que se arrastra en la mitad derecha también pilota
+    if (P.muerto) { // tocado: cae en barrena
+      if (!C.caido) { C.pitch += (-0.7 - C.pitch) * Math.min(1, dt); C.roll += dt * 1.6; C.v = Math.min(80, C.v + dt * 8); }
+    } else if (C.aterrizando) { // toma automática: alinea, posa y frena
+      C.yaw += (0 - C.yaw) * Math.min(1, dt * 2); C.roll += (0 - C.roll) * Math.min(1, dt * 3); C.pitch += ((C.pos.y > py + 0.3 ? -0.09 : 0) - C.pitch) * Math.min(1, dt * 2.5);
+      C.pos.x += (pista.x - C.pos.x) * Math.min(1, dt * 1.2); C.pos.y = Math.max(py, C.pos.y - dt * Math.max(4, (C.pos.y - py) * 0.9));
+      if (C.pos.y <= py + 0.05) C.v = Math.max(0, C.v - dt * 13); else C.v += (48 - C.v) * Math.min(1, dt);
+      C.pos.z -= C.v * dt;
+      if (C.v < 2 && !C.parado) { C.parado = true; C.gasT = 99; if (G.fase && G.fase.tipo === 'aterriza') faseCumplida('Has tomado tierra. ¡Buen trabajo!'); }
+    } else if (C.suelo) { // carrera de despegue
+      C.gasT -= dt; if (C.gasT <= 0) C.v = Math.min(60, C.v + 7.5 * dt);
+      C.pos.z -= C.v * dt; C.pos.y = py;
+      if (C.v > 40 && (my > 0.25 || dPit > 0.004 || C.pos.z < pista.z1 + 30)) { C.suelo = false; C.pitch = 0.17; aviso('¡En el aire! Joystick: alabeo y cabeceo. CAÑÓN y COHETE para atacar', 5); setTimeout(() => { if (G && G.caza === C && !C.aterrizando) C.m.userData.tren.visible = false; }, 2200); }
+    } else {
+      C.roll += (clamp(mx, -1, 1) * 1.1 - C.roll) * Math.min(1, dt * 3.2);
+      C.yaw += dYaw - Math.tan(C.roll) * 9.8 / Math.max(42, C.v) * dt * 1.7;
+      C.pitch = clamp(C.pitch + my * 0.85 * dt + dPit, -0.85, 0.75);
+      C.v += (62 - Math.sin(C.pitch) * 26 - C.v) * Math.min(1, dt * 0.8);
+      const alt = C.pos.y - sueloCaza(C.pos.x, C.pos.z);
+      if (alt > 220) C.pitch += (-0.08 - C.pitch) * Math.min(1, dt * 1.5); // techo de la misión
+      if (Math.hypot(C.pos.x, C.pos.z) > 400) { // se sale de la zona: el avión vira solo hacia el combate
+        let d = Math.atan2(C.pos.x, C.pos.z) - C.yaw; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283;
+        C.yaw += clamp(d, -dt * 1.0, dt * 1.0); C.roll += (clamp(-d, -1, 1) * 0.9 - C.roll) * Math.min(1, dt * 2);
+        C.avisoT -= dt; if (C.avisoT <= 0) { C.avisoT = 5; aviso('Virando de vuelta a la zona de combate', 2.5); }
+      }
+      // toma de tierra: basta con llegar bajo y enfilado a la cabecera
+      if (G.fase && G.fase.tipo === 'aterriza' && Math.abs(C.pos.x - pista.x) < 45 && C.pos.z < pista.z0 + 150 && C.pos.z > pista.z1 + 60 && C.pos.y - py < 48 && Math.cos(C.yaw) > 0.55) { C.aterrizando = true; C.m.userData.tren.visible = true; aviso('Tren fuera: tomando tierra', 3); }
+    }
+    if (!C.suelo || P.muerto) {
+      _fw.set(-Math.sin(C.yaw) * Math.cos(C.pitch), Math.sin(C.pitch), -Math.cos(C.yaw) * Math.cos(C.pitch));
+      if (!C.aterrizando && !C.caido) C.pos.addScaledVector(_fw, C.v * dt);
+      if (!C.aterrizando && !C.caido && C.pos.y < sueloCaza(C.pos.x, C.pos.z) + 1.3) { // contra el suelo
+        C.caido = true; C.m.visible = false; explosionFx(C.pos); explosionGrande(C.pos.clone()); Snd.explosion(0, 0); G.temblor = 1;
+        if (!P.muerto) { P.vida = 0; P.muerto = true; G.finT = 2.8; aviso('Te has estrellado', 4); }
+      }
+    }
+    // armas: se tira al punto que marca la cruz
+    C.cT -= dt;
+    if (!C.suelo && !C.aterrizando && !P.muerto) {
+      const apunta = () => { cam.updateMatrixWorld(); cam.getWorldPosition(_o); _f.set(0, 0, -1).applyQuaternion(cam.quaternion); const r = trazar(_o, _f, 650, 'L'); _ap.copy(_o).addScaledVector(_f, r.t); return r; };
+      if (disparando && C.cT <= 0) {
+        if (C.mun <= 0) { C.cT = 0.6; Snd.clic(); } else {
+          C.cT = 0.075; C.mun--; C.n++; G.tiros++; apunta();
+          const b = C.pos.clone().add(new V3(Math.cos(C.yaw) * (C.n % 2 ? 2 : -2), -0.2, -Math.sin(C.yaw) * (C.n % 2 ? 2 : -2)));
+          _d.copy(_ap).add(new V3(rnd(-2.2, 2.2), rnd(-1, 1), rnd(-2.2, 2.2))).sub(b).normalize();
+          const r = trazar(b, _d, 650, 'L'); _hit.copy(b).addScaledVector(_d, r.t);
+          Snd.disparo('mg', 0, 0); if (C.n % 2 === 0) trazadora(b, _hit.clone());
+          if (r.s) { G.aciertos++; sangre(_hit, _d, true); herir(r.s, 95, P.pos, true, r.cabeza); } else if (r.t < 649) polvo(_hit, 2, 0.8);
+          // proyectil explosivo de 20 mm: la metralla alcanza a quien esté junto al impacto
+          if (r.t < 649) for (const s of G.sold) if (s.team !== 'L' && !s.muerto && s !== r.s && s.pos.distanceTo(_hit) < 2.6) { sangre(new V3(s.pos.x, s.pos.y + 1.1, s.pos.z), null, false); herir(s, 55, P.pos, true); }
+        }
+      }
+      const pide = G.cohetePed || (teclas.Space && !C.spc); C.spc = !!teclas.Space; G.cohetePed = false;
+      if (pide) {
+        if (C.cohetes <= 0) aviso('No quedan cohetes', 1.5); else {
+          C.cohetes--; G.tiros++; apunta(); const fin = _ap.clone(), lado = C.cohetes % 2 ? 3 : -3;
+          const b = C.pos.clone().add(new V3(Math.cos(C.yaw) * lado, -0.4, -Math.sin(C.yaw) * lado)), dir = fin.clone().sub(b), L = dir.length(); dir.divideScalar(L || 1);
+          const q = C.m.children.find(x => x.name === 'cohete' && x.visible); if (q) q.visible = false;
+          const m = new THREE.Mesh(geoTraza, matTraza); m.scale.set(5, 5, 2.5); m.position.copy(b); m.lookAt(fin); scene.add(m);
+          G.proy.push({ tipo: 'obus', m, v: dir.multiplyScalar(190), t: L / 190, fin, jug: true });
+          Snd.disparo('mauser', 0, 0); Snd.silbido(0); for (let i = 0; i < 4; i++) particula(b.clone().addScaledVector(dir, -i * 0.004), 0xe8e0d0, rnd(1, 2), rnd(0.8, 1.6), 2, 0.3);
+          aviso(C.cohetes + ' cohetes', 1);
+        }
+      }
+    } else G.cohetePed = false;
+    C.m.position.copy(C.pos); C.m.rotation.set(C.pitch, C.yaw, -C.roll, 'YXZ');
+    P.pos.set(C.pos.x, C.pos.y - 1.35, C.pos.z); P.yaw = C.lastYaw = C.yaw; P.pitch = C.lastPitch = clamp(C.pitch, -1.2, 1.2); P.mov = 0;
+    for (const s of G.sold) if (s.team === 'E' && !s.muerto && !s.alerta && s.pos.distanceTo(C.pos) < 240) s.alerta = true;
+    Snd.motor(C.caido || C.parado ? -1 : Math.min(1, 0.35 + C.v / 95));
+  }
   function actualizaJugador(dt) {
+    if (G.caza) return actualizaCaza(dt);
     if (G.carro) return actualizaCarro(dt);
     if (G.salto && G.salto.fase !== 'suelo') { actualizaSalto(dt); if (P.muerto) P.pitch = Math.max(P.pitch - dt * 0.6, -0.5); return; }
     if (G.nido) {
@@ -1330,6 +1417,7 @@
     if (G.flashT > 0) { G.flashT -= dt; if (G.flashT <= 0) { fogonazo.visible = false; luzDisparo.intensity = 0; } }
   }
   function actualizaArma(dt) {
+    if (G.caza) return;
     if (G.cuchT > 0) G.cuchT -= dt;
     if (G.carro) return armaCarro(dt);
     if (G.nido) return armaNido(dt);
@@ -1372,6 +1460,15 @@
     }
   }
   function actualizaCamara(dt) {
+    if (G.caza) { // cámara tras la cola del caza; la cruz del centro es adonde van los disparos
+      const C = G.caza, cp = Math.cos(C.pitch), fx = -Math.sin(C.yaw) * cp, fy = Math.sin(C.pitch), fz = -Math.cos(C.yaw) * cp, d = C.suelo ? 11 : 13;
+      cam.position.set(C.pos.x - fx * d, C.pos.y - fy * d + (C.suelo ? 3.1 : 4.8), C.pos.z - fz * d); cam.position.y = Math.max(cam.position.y, sueloCaza(cam.position.x, cam.position.z) + 0.8);
+      cam.rotation.set(C.pitch - (C.suelo ? 0.07 : 0.14), C.yaw, -C.roll * 0.5); G.temblor = Math.max(0, G.temblor - dt * 1.5);
+      cam.fov += (68 - cam.fov) * Math.min(1, dt * 8); cam.updateProjectionMatrix(); $('visor').hidden = true; $('mira').style.visibility = '';
+      modelos.forEach(m => m.g.visible = false); brazos.visible = false; mg.g.visible = false; fogonazo.visible = false;
+      const R = World.refs; R.sun.position.copy(C.pos).addScaledVector(R.solDir, 120); R.sun.target.position.copy(C.pos);
+      return;
+    }
     if (G.vuelo) { $('visor').hidden = true; // cámara de persecución tras el bombardero, mirando al punto de caída
       const V = G.vuelo, sy = Math.sin(V.rumbo), cy = Math.cos(V.rumbo);
       const cayendo = G.proy.some(p => p.tipo === 'bomba'); V.picado = (V.picado || 0) + ((cayendo ? 1 : 0) - (V.picado || 0)) * Math.min(1, dt * 2.5);
@@ -1442,7 +1539,7 @@
   function actualizaMarcas() {
     const w = capaMarcas.clientWidth || innerWidth, h = capaMarcas.clientHeight || innerHeight;
     const lista = G.sold.filter(s => s.team === 'E' && !s.muerto && s.estado !== 'huye' && (s.alerta || (s.ultimoTiro && G.t - s.ultimoTiro < 4)))
-      .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < 170).sort((a, b) => a.d - b.d).slice(0, 10)
+      .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < (G.caza ? 520 : 170)).sort((a, b) => a.d - b.d).slice(0, 10)
       .concat(G.sold.filter(s => s.herido > 0 || (s.civil && !s.muerto)).map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => !o.s.civil || o.d < 70));
     let i = 0;
     for (const { s, d } of lista) {
@@ -1466,7 +1563,8 @@
     $('tVida').textContent = Math.ceil(P.vida); $('vida').firstElementChild.style.width = P.vida + '%';
     $('tCuras').textContent = P.curas; $('tBajas').textContent = G.bajas;
     $('tEsc').textContent = G.sold.filter(s => s.team === 'L' && !s.muerto).length;
-    if (G.vuelo) { $('tMun').textContent = G.vuelo.bombas; $('tRes').textContent = 'bombas'; $('tArma').textContent = 'Heinkel CASA 2.111'; $('tArma').style.color = ''; }
+    if (G.caza) { const C = G.caza; $('tMun').textContent = C.mun; $('tRes').textContent = C.cohetes + ' cohetes'; $('tArma').textContent = 'Buchón · ' + Math.round(C.v * 3.6) + ' km/h · ' + Math.max(0, Math.round(C.pos.y - sueloCaza(C.pos.x, C.pos.z))) + ' m'; $('tArma').style.color = ''; }
+    else if (G.vuelo) { $('tMun').textContent = G.vuelo.bombas; $('tRes').textContent = 'bombas'; $('tArma').textContent = 'Heinkel CASA 2.111'; $('tArma').style.color = ''; }
     else if (G.carro) { const C = G.carro; $('tMun').textContent = C.rec > 0 ? '··' : 'LISTO'; $('tRes').textContent = C.obuses + ' proyectiles'; $('tArma').textContent = 'M-24 Chaffee · cañón de 75 mm'; $('tArma').style.color = ''; }
     else if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
     else { $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tArma').style.color = ''; }
@@ -1519,7 +1617,7 @@
     G_camp = null; Snd.narrar(null);
     Snd.init(); misionIdx = i; const m = MISIONES[i];
     $('pDato').textContent = m.dato; $('pTit').textContent = m.tit;
-    $('pTxt').innerHTML = m.parte.map(p => '<p>' + p + '</p>').join('') + (G_diaria && G_diaria.idx === i ? '<p><b>Orden del día:</b> cúmplela ' + G_diaria.mod.t + '. Premio: ' + G_diaria.premio + '.</p>' : '') + '<p class="nota"><b>Méritos (₧ 300 cada uno):</b> ' + meritos(m).map(x => x.t).join(' · ') + '</p>';
+    $('pTxt').innerHTML = m.parte.map(p => '<p>' + p + '</p>').join('') + (G_diaria && G_diaria.idx === i ? '<p><b>Orden del día:</b> cúmplela ' + G_diaria.mod.t + '. Premio: ' + G_diaria.premio + '.</p>' : '') + '<p class="nota"><b>Méritos (₧ 100 cada uno):</b> ' + meritos(m).map(x => x.t).join(' · ') + '</p>';
     $('menu').hidden = true; $('parte').hidden = false; Snd.musica(true);
   }
   function alMenu() {
@@ -1607,7 +1705,7 @@
   }
   const pulsaFuego = () => { disparando = true; G.pedido = 0.3; };
   boton('bFuego', pulsaFuego, () => disparando = false);
-  boton('fuego2', () => { if (G.carro || G.vuelo) G.mgCarro = true; else pulsaFuego(); }, () => { disparando = false; if (G) G.mgCarro = false; });
+  boton('fuego2', () => { if (G.caza) { G.cohetePed = true; return; } if (G.carro || G.vuelo) G.mgCarro = true; else pulsaFuego(); }, () => { disparando = false; if (G) G.mgCarro = false; });
   boton('bMira', () => P.mira = !P.mira);
   boton('bRec', recargar);
   boton('bAgach', () => P.agach = !P.agach);

@@ -81,13 +81,13 @@ const Progreso = (() => {
 
   // ---------- medallas ----------
   const MEDALLAS = {
-    sufrimientos: { nom: 'Medalla de Sufrimientos por la Patria', req: 'Cumple una misión tras quedarte por debajo de 30 de salud', pts: 200, oro: 0, color: '#7a1f1f' },
-    merito: { nom: 'Cruz del Mérito Militar, distintivo rojo', req: '8 o más bajas propias en una misión cumplida', pts: 300, oro: 0, color: '#b3261e' },
-    tirador: { nom: 'Distintivo de Tirador Selecto', req: '5 bajas de un disparo a la cabeza en una misión', pts: 250, oro: 0, color: '#5a6b3a' },
-    nadie: { nom: 'Mención: nadie se queda atrás', req: 'Cumple una misión sin perder a ningún legionario', pts: 400, oro: 5, color: '#3c4a33' },
-    militar: { nom: 'Medalla Militar Individual', req: '20 o más bajas propias en Veterano', pts: 1000, oro: 20, color: '#c9a227' },
-    laureada: { nom: 'Cruz Laureada de San Fernando', req: 'Veterano, sin bajas en la escuadra y con más de 50 de salud', pts: 3000, oro: 50, color: '#e8b923' },
-    campana: { nom: 'Medalla de la Campaña de Ifni-Sáhara', req: 'Cumple todas las misiones', pts: 2000, oro: 30, color: '#c60b1e', unica: true }
+    sufrimientos: { nom: 'Medalla de Sufrimientos por la Patria', req: 'Cumple una misión tras quedarte por debajo de 30 de salud', pts: 60, oro: 0, color: '#7a1f1f' },
+    merito: { nom: 'Cruz del Mérito Militar, distintivo rojo', req: '8 o más bajas propias en una misión cumplida', pts: 90, oro: 0, color: '#b3261e' },
+    tirador: { nom: 'Distintivo de Tirador Selecto', req: '5 bajas de un disparo a la cabeza en una misión', pts: 80, oro: 0, color: '#5a6b3a' },
+    nadie: { nom: 'Mención: nadie se queda atrás', req: 'Cumple una misión sin perder a ningún legionario', pts: 120, oro: 2, color: '#3c4a33' },
+    militar: { nom: 'Medalla Militar Individual', req: '20 o más bajas propias en Veterano', pts: 300, oro: 6, color: '#c9a227' },
+    laureada: { nom: 'Cruz Laureada de San Fernando', req: 'Veterano, sin bajas en la escuadra y con más de 50 de salud', pts: 900, oro: 15, color: '#e8b923' },
+    campana: { nom: 'Medalla de la Campaña de Ifni-Sáhara', req: 'Cumple todas las misiones', pts: 600, oro: 10, color: '#c60b1e', unica: true }
   };
   function medallaSVG(id, t) {
     const m = MEDALLAS[id];
@@ -95,7 +95,7 @@ const Progreso = (() => {
   }
 
   // ---------- perfil ----------
-  const BASE = { nombre: 'Legionario', xp: 0, pts: 2500, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [], extras: { bayoneta: 1 }, companero: null, amigos: [], bandera: null };
+  const BASE = { nombre: 'Legionario', xp: 0, pts: 700, oro: 0, armas: { mauser: 1 }, tatuajes: { ninguno: 1 }, equipo: { p: 'mauser', s: null, tat: 'ninguno' }, medallas: {}, hechas: {}, mejor: {}, stats: { misiones: 0, bajas: 0, cabezas: 0, tiros: 0, aciertos: 0, caidas: 0 }, sinAnuncios: false, veterano: false, avatar: { nombre: '', piel: 1, pelo: 0, fisico: 'cachas', barba: 'corta', tocado: 'gorrillo', camisa: 'caqui', panuelo: 'no' }, alistado: false, cosmeticos: { 'tocado:gorrillo': 1, 'tocado:sin': 1, 'camisa:caqui': 1, 'barba:ninguna': 1, 'panuelo:no': 1 }, heridas: { ojo: false, cicatriz: false, cabeza: false }, mostrarHeridas: true, anunciosHoy: { dia: '', n: 0 }, misionesDesdeAnuncio: 0, historial: [], extras: { bayoneta: 1 }, companero: null, amigos: [], bandera: null };
   let P = JSON.parse(JSON.stringify(BASE));
   try { const s = JSON.parse(localStorage.getItem('ifni_perfil') || 'null'); if (s) P = Object.assign(P, s); } catch (e) {}
   const guardar = () => { try { localStorage.setItem('ifni_perfil', JSON.stringify(P)); } catch (e) {} };
@@ -122,7 +122,7 @@ const Progreso = (() => {
     let puntos = lineas.reduce((s, l) => s + l[2], 0) * mult * (r.ok ? 1 : 0.3);
     puntos = Math.round(puntos);
     const rangoAntes = rango();
-    let pts = Math.round(puntos / 6), oro = 0;
+    let pts = Math.round(puntos / 18), oro = 0;
     const ganadas = []; let herida = null;
     if (r.ok) {
       const dar = id => { const m = MEDALLAS[id]; if (m.unica && P.medallas[id]) return; P.medallas[id] = (P.medallas[id] || 0) + 1; ganadas.push(id); pts += m.pts; oro += m.oro; };

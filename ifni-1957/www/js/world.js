@@ -368,7 +368,19 @@ const World = (() => {
     instancias(scn, new C.SphereGeometry(1, 8, 5), mat(0xb39a6c), sacosL, true, false);
     if (m.fuerte) fuerte(scn, m.fuerte[0], m.fuerte[1]);
 
-    refs = { sun, hemi, flare, terr, solDir };
+    let pistaY = 0;
+    if (m.pista) { // pista de tierra apisonada del aeródromo, algo levantada sobre el terreno
+      const P = m.pista, largo = Math.abs(P.z1 - P.z0), zc = (P.z0 + P.z1) / 2; let hm = -99;
+      for (let z = Math.min(P.z0, P.z1); z <= Math.max(P.z0, P.z1); z += 6) for (const dx of [-9, 0, 9]) hm = Math.max(hm, height(P.x + dx, z));
+      pistaY = hm + 0.25;
+      const pm = new C.Mesh(new C.BoxGeometry(22, 6, largo + 30), new C.MeshLambertMaterial({ color: lin(des ? 0xb9a27c : 0x9a8a6c), map: T.suelo })); pm.position.set(P.x, pistaY - 3, zc); pm.receiveShadow = true; scn.add(pm);
+      for (let z = Math.min(P.z0, P.z1) + 8; z < Math.max(P.z0, P.z1); z += 16) { const r = new C.Mesh(new C.PlaneGeometry(0.7, 7), new C.MeshBasicMaterial({ color: lin(0xe8e0c8) })); r.rotation.x = -Math.PI / 2; r.position.set(P.x, pistaY + 0.03, z); scn.add(r); }
+      // manga de viento y barracón
+      const palo = new C.Mesh(new C.CylinderGeometry(0.06, 0.06, 6, 6), mat(0x555555)); palo.position.set(P.x + 16, pistaY + 3, P.z0 - 10); scn.add(palo);
+      const manga = new C.Mesh(new C.ConeGeometry(0.5, 2.4, 8, 1, true), new C.MeshLambertMaterial({ color: lin(0xd9482b), side: C.DoubleSide })); manga.rotation.z = Math.PI / 2; manga.position.set(P.x + 17.2, pistaY + 5.7, P.z0 - 10); scn.add(manga);
+      caja(14, 4, 8, new C.MeshLambertMaterial({ color: lin(0xcfc6ad), map: T.revoco }), P.x + 26, height(P.x + 26, P.z0 + 6) + 1.5, P.z0 + 6, 0, scn, false);
+    }
+    refs = { sun, hemi, flare, terr, solDir, pistaY };
     return refs;
   }
 
@@ -753,6 +765,45 @@ const World = (() => {
       for (const a of [0.6, -0.6]) { const as = new C.Mesh(new C.PlaneGeometry(0.16, 1.5), new C.MeshBasicMaterial({ color: 0x111111, side: C.DoubleSide })); as.rotation.set(a, Math.PI / 2, 0, 'YXZ'); as.position.set(l * 0.09, 1.45, 8.0); g.add(as); } }
     return g;
   }
+  // caza Hispano Aviación HA-1112-M1L «Buchón»: célula de Bf 109, morro profundo del Merlin, hélice de cuatro palas, cañones y cohetes bajo el ala
+  function buchon() {
+    const g = new C.Group(), azul = mat(0x5d7892, 'phong', { shininess: 30 }), panza = mat(0x9fb6c4), osc = mat(0x23262a), cristal = new C.MeshPhongMaterial({ color: lin(0xa9c8d4), shininess: 120, transparent: true, opacity: 0.55 });
+    const som = o => { o.castShadow = true; return o; };
+    const f1 = som(new C.Mesh(new C.CylinderGeometry(0.62, 0.52, 3.4, 14), azul)); f1.rotation.x = Math.PI / 2; f1.position.z = -1.9; g.add(f1);
+    const f2 = som(new C.Mesh(new C.CylinderGeometry(0.62, 0.16, 5.4, 14), azul)); f2.rotation.x = -Math.PI / 2; f2.position.z = 2.5; g.add(f2);
+    const barba = som(new C.Mesh(new C.SphereGeometry(0.5, 12, 8), azul)); barba.scale.set(0.95, 0.75, 3.1); barba.position.set(0, -0.42, -2.1); g.add(barba); // radiador y cárter del Merlin
+    const esc = new C.Mesh(new C.CylinderGeometry(0.05, 0.05, 2.2, 6), osc); esc.rotation.x = Math.PI / 2; for (const l of [-1, 1]) { const e = esc.clone(); e.position.set(l * 0.6, 0.12, -2.2); g.add(e); }
+    const buje = som(new C.Mesh(new C.ConeGeometry(0.42, 1.1, 12), osc)); buje.rotation.x = -Math.PI / 2; buje.position.z = -4.1; g.add(buje);
+    const hel = new C.Group(); hel.position.z = -3.85; g.add(hel);
+    for (let k = 0; k < 4; k++) { const pala = new C.Mesh(new C.BoxGeometry(0.2, 1.5, 0.05), osc); pala.position.y = 0.85; const br = new C.Group(); br.rotation.z = k * Math.PI / 2; br.add(pala); hel.add(br); }
+    hel.add(new C.Mesh(new C.CircleGeometry(1.6, 20), new C.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.15, side: C.DoubleSide, depthWrite: false })));
+    g.userData.helices = [hel];
+    const cab = new C.Mesh(new C.SphereGeometry(0.46, 12, 8), cristal); cab.scale.set(0.9, 0.85, 2.2); cab.position.set(0, 0.52, -0.35); g.add(cab);
+    const marco = new C.Mesh(new C.BoxGeometry(0.86, 0.04, 0.05), osc); marco.position.set(0, 0.86, -0.75); g.add(marco);
+    // ala baja trapezoidal con algo de diedro, cañones y cohetes
+    const sh = new C.Shape(); sh.moveTo(0, -1.05); sh.lineTo(4.7, -0.55); sh.quadraticCurveTo(5.1, 0.1, 4.7, 0.5); sh.lineTo(0, 1.15); sh.lineTo(0, -1.05);
+    const gAla = new C.ExtrudeGeometry(sh, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2 }); gAla.translate(0, 0, -0.07); gAla.rotateX(Math.PI / 2);
+    const she = new C.Shape(); she.moveTo(0, -0.5); she.lineTo(1.5, -0.3); she.quadraticCurveTo(1.7, 0.05, 1.5, 0.3); she.lineTo(0, 0.55); she.lineTo(0, -0.5);
+    const gEst = new C.ExtrudeGeometry(she, { depth: 0.07, bevelEnabled: false }); gEst.rotateX(Math.PI / 2);
+    for (const l of [-1, 1]) {
+      const ala = som(new C.Mesh(gAla, azul)); ala.scale.x = l; ala.position.set(l * 0.35, -0.42, -0.9); ala.rotation.z = l * 0.11; g.add(ala);
+      const est = som(new C.Mesh(gEst, azul)); est.scale.x = l; est.position.set(l * 0.1, 0.42, 4.45); g.add(est);
+      const can = new C.Mesh(new C.CylinderGeometry(0.035, 0.035, 1.3, 6), osc); can.rotation.x = Math.PI / 2; can.position.set(l * 2.0, -0.2, -2.1); g.add(can);
+      for (let k = 0; k < 4; k++) { const co = new C.Mesh(new C.CylinderGeometry(0.045, 0.045, 0.95, 6), mat(0x8a8f86)); co.rotation.x = Math.PI / 2; co.position.set(l * (2.6 + k * 0.42), -0.32 + (2.6 + k * 0.42) * 0.1, -0.9); co.name = 'cohete'; g.add(co); }
+      const r = (rr, col, x, y, z, rx, ry) => { const c = new C.Mesh(new C.CircleGeometry(rr, 18), new C.MeshBasicMaterial({ color: lin(col), side: C.DoubleSide })); c.position.set(x, y, z); c.rotation.set(rx, ry, 0); g.add(c); };
+      r(0.5, 0xc60b1e, l * 3.5, 0.06, -0.85, -Math.PI / 2, 0); r(0.33, 0xffc400, l * 3.5, 0.065, -0.85, -Math.PI / 2, 0); r(0.15, 0xc60b1e, l * 3.5, 0.07, -0.85, -Math.PI / 2, 0);
+      r(0.36, 0xc60b1e, l * 0.6, 0.05, 1.5, 0, l * Math.PI / 2); r(0.24, 0xffc400, l * 0.61, 0.05, 1.5, 0, l * Math.PI / 2); r(0.11, 0xc60b1e, l * 0.62, 0.05, 1.5, 0, l * Math.PI / 2);
+      const tm = new C.Mesh(new C.PlaneGeometry(0.7, 1.0), new C.MeshBasicMaterial({ color: lin(0xeeeeea), side: C.DoubleSide })); tm.rotation.y = Math.PI / 2; tm.position.set(l * 0.07, 1.0, 5.0); g.add(tm);
+      for (const a of [0.6, -0.6]) { const as = new C.Mesh(new C.PlaneGeometry(0.1, 0.85), new C.MeshBasicMaterial({ color: 0x111111, side: C.DoubleSide })); as.rotation.set(a, Math.PI / 2, 0, 'YXZ'); as.position.set(l * 0.075, 1.0, 5.0); g.add(as); }
+    }
+    const sd = new C.Shape(); sd.moveTo(-0.9, 0); sd.quadraticCurveTo(-0.5, 1.4, 0.15, 1.45); sd.quadraticCurveTo(0.75, 1.4, 0.7, 0); sd.lineTo(-0.9, 0);
+    const der = som(new C.Mesh(new C.ExtrudeGeometry(sd, { depth: 0.1, bevelEnabled: false }), azul)); der.rotation.y = -Math.PI / 2; der.position.set(0.05, 0.4, 4.7); g.add(der);
+    // tren de aterrizaje (se oculta en vuelo)
+    const tren = new C.Group(); g.add(tren); g.userData.tren = tren;
+    for (const l of [-1, 1]) { const pata = new C.Mesh(new C.CylinderGeometry(0.05, 0.05, 1.25, 6), osc); pata.position.set(l * 1.0, -1.0, -1.1); pata.rotation.z = l * -0.12; tren.add(pata); const rueda = new C.Mesh(new C.CylinderGeometry(0.33, 0.33, 0.16, 12), osc); rueda.rotation.z = Math.PI / 2; rueda.position.set(l * 1.08, -1.6, -1.1); tren.add(rueda); }
+    const rc = new C.Mesh(new C.CylinderGeometry(0.12, 0.12, 0.08, 8), osc); rc.rotation.z = Math.PI / 2; rc.position.set(0, -0.35, 4.6); tren.add(rc);
+    return g;
+  }
   // bomba de aviación con aletas (la punta mira a +z, para orientarla con lookAt)
   function bomba() {
     const g = new C.Group(), m = mat(0x3b4034, 'phong', { shininess: 30 }), a = mat(0xb8a23a);
@@ -764,5 +815,5 @@ const World = (() => {
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, bomba, carro, camion, danar, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, buchon, bomba, carro, camion, danar, tex, rng, lin, mat, get refs() { return refs; } };
 })();

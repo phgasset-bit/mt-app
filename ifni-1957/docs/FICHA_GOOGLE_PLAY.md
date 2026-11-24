@@ -28,12 +28,12 @@ Noviembre de 1957. Las bandas del Ejército de Liberación atacan de noche Sidi 
 
 Ifni 1957 es un juego de combate en primera persona ambientado en la guerra de Ifni-Sáhara (1957-1958), la última guerra de España en África. Lugares, fechas y unidades son históricos; el detalle de cada combate es una recreación libre.
 
-OCHO MISIONES Y DOS EPÍLOGOS
-• Defiende el perímetro de Sidi Ifni en plena noche, a la luz de las bengalas.
-• Salta en paracaídas sobre Tiliuin, como en la operación Pañuelo.
-• Aguanta el asedio desde la muralla con la ametralladora.
-• Marcha con la columna, rompe el cerco y escolta el convoy de vuelta.
-• Epílogos en el Sáhara: la emboscada de Edchera y los carros M-24 en Tafudart.
+CUATRO CAMPAÑAS LARGAS, POR ETAPAS
+• Socorro a Tiliuin: el perímetro de noche, el salto en paracaídas, el asedio y la marcha para romper el cerco.
+• El camino de vuelta: el repliegue, el convoy y las cotas que dominan la capital.
+• Sáhara: la emboscada de Edchera y los carros M-24 en Tafudart.
+• Alas sobre el Sáhara: despega con un caza Buchón, ataca con cañones y cohetes y vuelve a tomar tierra.
+• Antes de cada campaña, el sargento te cuenta la historia y las órdenes.
 
 MUCHO MÁS QUE DISPARAR
 • Manda una sección de carros ligeros M-24 y echa abajo los muros con el cañón.

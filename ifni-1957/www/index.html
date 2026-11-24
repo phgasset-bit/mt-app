@@ -75,6 +75,10 @@ body{background:var(--tierra);color:var(--hueso);font-family:var(--texto);font-s
 .mken.jefe i{border-top-color:#f2b90f}.mken.jefe small{color:#ffe08a;width:110px;left:-55px}
 .mken.herido i{border-top-color:#39c46a}.mken.herido small{color:#b9ffd0}.mken.herido.borde i{border-top-color:transparent;border-left-color:#39c46a}
 .mis.diaria{border-color:var(--gualda)}
+.mis.camp{border-color:var(--sangre);background:rgba(120,20,16,.28)}.sueltas{grid-column:1/-1;margin:10px 0 0}
+.informe{display:flex;gap:14px;align-items:flex-start}.informe .retrato{flex:0 0 96px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;background:var(--sombra);padding:10px 6px;border-left:3px solid var(--gualda)}.informe .retrato small{color:var(--arena)}
+.ordenes{margin:6px 0 8px 20px;padding:0;display:flex;flex-direction:column;gap:4px}.ordenes li.ok{color:#b9ffd0}
+@media (max-width:560px){.informe{flex-direction:column}.informe .retrato{flex:none;flex-direction:row;width:100%}}
 .codigo{font-family:ui-monospace,monospace;font-size:13px;background:rgba(0,0,0,.4);padding:8px 10px;word-break:break-all;user-select:all;color:var(--hueso)}
 .fila-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.fila-b input{flex:1;min-width:140px;padding:8px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(217,183,122,.4);color:var(--hueso);font-size:16px}
 .mken.civil i{border-top-color:#e9f1ff}.mken.civil small{color:#e9f1ff;width:90px;left:-45px}.mken.civil.borde i{border-top-color:transparent;border-left-color:#e9f1ff}
@@ -242,6 +246,14 @@ h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,5vw,38px);mar
     <div id="objetivo"><span id="flecha">▲</span><span id="tObj"></span><small id="tObj2"></small></div>
     <div id="municion"><b id="tMun">5</b> / <span id="tRes">50</span><br><span id="tArma">Mauser 7,92</span> · granadas <span id="tGran">3</span></div>
     <div id="grito"></div><div id="aviso"></div>
+  </div>
+
+  <div id="etapa" class="capa panel" hidden>
+    <div class="hoja">
+      <h2 id="eTit"></h2>
+      <div id="eTxt"></div>
+      <div class="fila"><button class="boton" id="bEtapa" type="button">Siguiente etapa</button><button class="boton sec" id="bEtapaMenu" type="button">Dejar la campaña</button></div>
+    </div>
   </div>
 
   <div id="mandos" class="capa" hidden>

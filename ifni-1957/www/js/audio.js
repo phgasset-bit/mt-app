@@ -136,6 +136,17 @@ const Snd = (() => {
     };
     ronda(); mus.iv = setInterval(ronda, 400);
   }
+  let narr = null;
+  function narrar(clave) {
+    narrar.ultima = null;
+    if (narr) { try { narr.stop(); } catch (e) {} narr = null; if (mus) mus.g.gain.setTargetAtTime(0.85, ctx.currentTime, 0.4); }
+    if (!ctx || !clave) return;
+    const suena = b => { if (narr) return; const src = ctx.createBufferSource(); src.buffer = b; const g = ctx.createGain(); g.gain.value = 1.25; src.connect(g); g.connect(master); src.start(ctx.currentTime + 0.6); narr = src; if (mus) mus.g.gain.setTargetAtTime(0.16, ctx.currentTime, 0.4);
+      src.onended = () => { if (narr === src) { narr = null; if (mus) mus.g.gain.setTargetAtTime(0.85, ctx.currentTime, 0.8); } }; };
+    const pedida = clave; narrar.ultima = pedida;
+    if (buf[clave]) return suena(buf[clave]);
+    fetch('audio/' + clave + '.mp3').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(x => ctx.decodeAudioData(x, b => { buf[clave] = b; if (narrar.ultima === pedida) suena(b); }, () => {})).catch(() => {});
+  }
   function viento() {
     const s = ctx.createBufferSource(); s.buffer = nbuf; s.loop = true;
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.6;
@@ -150,5 +161,5 @@ const Snd = (() => {
     s.connect(a); a.connect(salida(pan || 0)); s.start(ctx.currentTime + (t0 || 0));
     return true;
   }
-  return { init, setVol, motor, musica, caida, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
+  return { init, setVol, motor, musica, narrar, caida, disparo, cerrojo, clic, recarga, silbido, impacto, explosion, avion, corneta, voz, get listo() { return !!ctx; }, get cargadas() { return Object.keys(buf).length; } };
 })();

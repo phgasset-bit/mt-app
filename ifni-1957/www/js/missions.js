@@ -1,5 +1,5 @@
 // Campaña. Las misiones son una recreación libre: lugares, fechas y unidades son históricos; el detalle táctico es inventado.
-// Coordenadas en metros. El jugador avanza hacia -z. Tipos de fase: take (tomar posición), hold (resistir), ambush (emboscada), reach (llegar), nido (defender el fuerte con la ametralladora).
+// Coordenadas en metros. El jugador avanza hacia -z. Tipos de fase: take (tomar posición), hold (resistir), ambush (emboscada), reach (llegar), nido (defender el fuerte con la ametralladora), tiradores (enemigos lejanos que hay que abatir con la mira), carga (enemigos que se echan encima).
 const MISIONES = [
   {
     id: 'perimetro', tit: 'Sidi Ifni: el perímetro', dato: 'Sidi Ifni · noche del 23 de noviembre de 1957',
@@ -47,6 +47,7 @@ const MISIONES = [
     fases: [
       { tipo: 'ambush', x: 5, z: 130, n: 7, nom: 'Sigue la pista' },
       { tipo: 'ambush', x: -5, z: 20, n: 9, nom: 'Cruza el barranco' },
+      { tipo: 'tiradores', x: 0, z: -60, n: 4, nom: 'Abate a los tiradores de la cresta' },
       { tipo: 'take', x: 10, z: -130, n: 9, pos: 'rocas', contra: 5, nom: 'Toma el collado' }
     ]
   },
@@ -72,6 +73,7 @@ const MISIONES = [
     bumps: [[70, 140, 45, 10], [-70, 40, 50, 11], [0, -60, 35, 7], [80, -140, 50, 9]],
     fases: [
       { tipo: 'ambush', x: 0, z: 140, n: 8, nom: 'Abre paso a la columna' },
+      { tipo: 'carga', x: 0, z: 60, n: 7, nom: 'Rechaza la carga' },
       { tipo: 'hold', x: 0, z: -60, t: 120, cada: 11, n: 3, nom: 'Aguanta el collado' },
       { tipo: 'reach', x: 0, z: -210, nom: 'Alcanza a la columna' }
     ]
@@ -86,6 +88,7 @@ const MISIONES = [
     fases: [
       { tipo: 'ambush', x: 0, z: 140, n: 7, nom: 'Abre paso al convoy' },
       { tipo: 'ambush', x: 0, z: 30, n: 9, nom: 'Cruza la vaguada' },
+      { tipo: 'tiradores', x: 0, z: -40, n: 5, nom: 'Abate a los tiradores que baten la pista' },
       { tipo: 'ambush', x: 0, z: -90, n: 10, nom: 'Despeja el collado' },
       { tipo: 'reach', x: 0, z: -205, nom: 'Lleva el convoy al llano' }
     ]
@@ -99,7 +102,9 @@ const MISIONES = [
     bumps: [[40, 120, 38, 12], [-55, 0, 42, 14], [30, -130, 45, 15]],
     fases: [
       { tipo: 'take', x: 40, z: 120, n: 10, pos: 'trinchera', nom: 'Asalta la trinchera' },
+      { tipo: 'carga', x: 0, z: 70, n: 8, nom: 'Rechaza la carga' },
       { tipo: 'take', x: -55, z: 0, n: 12, pos: 'aldea', nom: 'Toma el aduar fortificado' },
+      { tipo: 'tiradores', x: 0, z: -70, n: 5, nom: 'Abate a los tiradores de la cota' },
       { tipo: 'take', x: 30, z: -130, n: 13, contra: 6, nom: 'Toma la cota principal' }
     ]
   },
@@ -112,6 +117,7 @@ const MISIONES = [
     bumps: [[0, -110, 70, -7], [-120, -110, 70, -6], [120, -110, 70, -6], [60, 60, 30, 4], [-50, 20, 30, 4]],
     fases: [
       { tipo: 'ambush', x: 0, z: 120, n: 11, nom: 'Sal de la emboscada' },
+      { tipo: 'carga', x: 0, z: 80, n: 8, nom: 'Rechaza la carga' },
       { tipo: 'hold', x: -10, z: 30, t: 110, cada: 10, n: 4, nom: 'Resiste en las dunas' },
       { tipo: 'take', x: 0, z: -110, n: 13, pos: 'rocas', nom: 'Limpia el cauce' }
     ]
@@ -127,5 +133,34 @@ const MISIONES = [
       { tipo: 'take', x: -45, z: 120, n: 10, nom: 'Bate los puestos avanzados' },
       { tipo: 'take', x: 0, z: -150, n: 26, poblado: true, nom: 'Asalta el poblado de Tafudart' }
     ]
+  }
+];
+
+// Campañas: varias misiones seguidas, como etapas de una misma operación. Entre etapa y etapa se conservan la salud, las vendas y las granadas.
+// «informe» es lo que cuenta el sargento antes de salir; «ordenes» resume qué hay que conseguir en cada etapa.
+const CAMPANAS = [
+  {
+    id: 'socorro', tit: 'Socorro a Tiliuin', dato: 'Territorio de Ifni · 23 de noviembre - 3 de diciembre de 1957', sargento: 'Sargento Mendizábal',
+    etapas: ['perimetro', 'salto', 'asedio', 'marcha', 'tiliuin'],
+    informe: ['Legionarios, atentos. La noche del 23 de noviembre las bandas del Ejército de Liberación cortaron los teléfonos y atacaron Sidi Ifni y todos los puestos del interior. La capital aguanta, pero Tiliuin lleva días cercado, con sesenta hombres dentro.',
+      'La operación tiene cinco tiempos. Primero aguantamos el perímetro esta noche. Después saltamos en paracaídas sobre Tiliuin y defendemos su muralla con la ametralladora. Y por último marchamos por la montaña, rompemos el cerco y sacamos de allí a la guarnición.',
+      'De lejos os tirarán desde las crestas: cuerpo a tierra y mira. De cerca, casa por casa y con cuidado, que habrá civiles. Nadie se queda atrás.'],
+    ordenes: ['Aguantar el parapeto y desalojar la trinchera de la loma', 'Saltar sobre Tiliuin, limpiar la zona de salto y entrar en el fuerte', 'Defender la muralla con la ametralladora hasta que llegue la columna', 'Abrirse paso por la montaña: emboscadas, tiradores y el collado', 'Tomar el morabito y el aduar, y enlazar con el fuerte']
+  },
+  {
+    id: 'repliegue', tit: 'El camino de vuelta', dato: 'De Tiliuin a Sidi Ifni · diciembre de 1957 - febrero de 1958', sargento: 'Sargento Mendizábal',
+    etapas: ['repliegue', 'convoy', 'cotas'],
+    informe: ['Tiliuin está evacuado y volado. Ahora toca lo más difícil: volver. La columna lleva a la guarnición, a los heridos y a los civiles por pistas que el enemigo bate desde las alturas.',
+      'Tres tiempos. Primero cubrimos la retaguardia de la columna, de emboscada en emboscada, hasta el collado. Después escoltamos el convoy de camiones: solo avanzan cuando no hay fuego. Y ya en la capital, ensanchamos el perímetro tomando las cotas que la dominan.',
+      'Os cargarán a corta distancia y os tirarán desde lejos el mismo día. Munición hay la justa: recoged la de los caídos.'],
+    ordenes: ['Cubrir la retaguardia, rechazar la carga y aguantar el collado', 'Escoltar los tres camiones hasta el llano sin que los destruyan', 'Tomar la trinchera, el aduar fortificado y la cota principal']
+  },
+  {
+    id: 'sahara', tit: 'Sáhara: Edchera y Tafudart', dato: 'Saguia el Hamra · enero - febrero de 1958', sargento: 'Sargento Ortega',
+    etapas: ['edchera', 'tafudart'],
+    informe: ['Otro frente. Aquí no hay montaña: hay arena, dunas y el cauce seco de la Saguia el Hamra. El 13 de enero una bandera de la Legión cayó en una emboscada en Edchera y pagó muy cara la salida.',
+      'Dos tiempos. Primero salimos de esa emboscada, resistimos en las dunas y limpiamos el cauce. Después, ya en febrero, volvemos con los carros M-24 del Pavía: batimos los puestos avanzados y asaltamos el poblado de Tafudart.',
+      'En el poblado hay que registrar las casas. Con el cañón se abre brecha, pero no tiréis abajo una casa sin saber quién hay dentro.'],
+    ordenes: ['Salir de la emboscada, rechazar la carga, resistir y limpiar el cauce', 'Con la sección de carros: batir los puestos avanzados y asaltar Tafudart']
   }
 ];

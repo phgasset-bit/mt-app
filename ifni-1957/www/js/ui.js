@@ -110,14 +110,8 @@ const UI = (() => {
     }
     if (window.IfniCampana && typeof CAMPANAS !== 'undefined') CAMPANAS.forEach((c, ci) => { // campañas largas, por etapas
       const hechas = c.etapas.filter(id => P.hechas[id]).length, b = document.createElement('button'); b.className = 'mis camp'; b.type = 'button';
-      b.innerHTML = '<span class="mis-n">Campaña ' + ['I', 'II', 'III', 'IV'][ci] + ((P.campanas || {})[c.id] ? ' · cumplida' : '') + '</span>' + esc(c.tit) + '<small>' + esc(c.dato) + '</small><small class="mejor">' + c.etapas.length + ' etapas seguidas · ' + hechas + ' de ' + c.etapas.length + ' superadas</small>';
-      b.onclick = () => { if (alistando) return alJugar(MISIONES.findIndex(m => m.id === c.etapas[0])); IfniCampana.abrir(ci); }; l.appendChild(b);
-    });
-    { const t = document.createElement('p'); t.className = 'nota sueltas'; t.textContent = 'Etapas sueltas, para repetir una sola:'; l.appendChild(t); }
-    MISIONES.forEach((m, i) => {
-      const b = document.createElement('button'); b.className = 'mis'; b.type = 'button'; b.id = 'mis-' + m.id;
-      b.innerHTML = '<span class="mis-n">' + (m.epilogo ? 'Epílogo' : 'Misión ' + (i + 1)) + (P.hechas[m.id] ? ' · cumplida' : '') + ((P.estrellas || {})[m.id] != null ? ' · ' + '★'.repeat(P.estrellas[m.id]) + '☆'.repeat(3 - P.estrellas[m.id]) : '') + '</span>' + esc(m.tit) + '<small>' + esc(m.dato) + '</small>' + (P.mejor[m.id] ? '<small class="mejor">Mejor marca: ' + fmt(P.mejor[m.id]) + '</small>' : '');
-      b.onclick = () => alJugar(i); l.appendChild(b);
+      b.innerHTML = '<span class="mis-n">Campaña ' + ['I', 'II', 'III', 'IV'][ci] + ((P.campanas || {})[c.id] ? ' · cumplida' : '') + '</span>' + esc(c.tit) + '<small>' + esc(c.dato) + '</small><small class="mejor">' + c.etapas.length + ' etapas seguidas · ' + ((P.campProg || {})[c.id] ? 'vas por la etapa ' + ((P.campProg || {})[c.id] + 1) : hechas + ' de ' + c.etapas.length + ' superadas') + '</small>';
+      b.onclick = () => { if (alistando) return alJugar(MISIONES.findIndex(m => m.id === c.etapas[0])); IfniCampana.abrir(ci, Math.min(c.etapas.length - 1, (P.campProg || {})[c.id] || 0)); }; l.appendChild(b);
     });
   }
 

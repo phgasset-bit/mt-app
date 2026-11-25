@@ -1063,13 +1063,15 @@
     const hechas = c.etapas.filter(id => Progreso.P.hechas[id]).length;
     return '<div class="informe"><div class="retrato">' + Progreso.insignia(Math.max(0, Progreso.RANGOS.findIndex(x => x.nom === 'Sargento')), 54) + '<b>' + c.sargento + '</b><small>te informa</small></div><div>' + c.informe.map(p => '<p>' + p + '</p>').join('') + '</div></div>' +
       '<h3>Órdenes</h3><ol class="ordenes">' + c.etapas.map((id, k) => { const m = MISIONES.find(x => x.id === id); return '<li' + (Progreso.P.hechas[id] ? ' class="ok"' : '') + '><b>' + m.tit + '</b> · ' + c.ordenes[k] + '</li>'; }).join('') + '</ol>' +
-      '<p class="nota">' + c.etapas.length + ' etapas seguidas (' + hechas + ' ya cumplidas alguna vez). Si caes, repites solo la etapa en la que estabas. Entre etapas conservas la salud, las vendas y las granadas.</p>';
+      '<p class="nota">' + c.etapas.length + ' etapas seguidas. Si caes, repites solo la etapa en la que estabas, y si lo dejas a medias la campaña se retoma en esa etapa. Entre etapas conservas la salud, las vendas y las granadas.</p>' +
+      (G_camp && G_camp.i > 0 ? '<p class="nota"><b>Retomas la campaña en la etapa ' + (G_camp.i + 1) + '.</b> <button type="button" class="mini" id="bDeCero">Empezar desde la etapa 1</button></p>' : '');
   }
   function abrirCampana(ci, desde) {
     Snd.init(); const c = CAMPANAS[ci]; G_diaria = null;
     G_camp = { ci, i: desde || 0, puntos: 0, pts: 0, lleva: null };
     misionIdx = MISIONES.findIndex(m => m.id === c.etapas[G_camp.i]);
     $('pDato').textContent = c.dato; $('pTit').textContent = c.tit; $('pTxt').innerHTML = informeHTML(c);
+    if ($('bDeCero')) $('bDeCero').onclick = () => { (Progreso.P.campProg = Progreso.P.campProg || {})[c.id] = 0; Progreso.guardar(); abrirCampana(ci, 0); };
     $('menu').hidden = true; $('parte').hidden = false; $('parte').scrollTop = 0; Snd.musica(true); Snd.narrar('informe_' + c.id);
   }
   window.IfniCampana = { abrir: abrirCampana };
@@ -1079,7 +1081,7 @@
     const res = resultado(true), m = G.m, c = CAMPANAS[G_camp.ci];
     const r = { vivos: G.sold.filter(s => s.team === 'L' && !s.muerto).length, aliadosIni: G.sold.filter(s => s.team === 'L').length, cabezas: G.cabezas, tiempo: G.t };
     const hechos = meritos(m).filter(x => x.ok(r)), PP = Progreso.P; PP.pts += hechos.length * 100; PP.estrellas = PP.estrellas || {}; PP.estrellas[m.id] = Math.max(PP.estrellas[m.id] || 0, hechos.length);
-    if (G.civiles) PP.pts = Math.max(0, PP.pts - G.civiles * 200); Progreso.guardar();
+    if (G.civiles) PP.pts = Math.max(0, PP.pts - G.civiles * 200); (PP.campProg = PP.campProg || {})[c.id] = G_camp.i + 1; Progreso.guardar();
     G_camp.puntos += res.puntos; G_camp.pts += res.pts + hechos.length * 100; G_camp.lleva = { vida: P.vida, curas: P.curas, granadas: P.granadas }; G_camp.i++;
     const sig = MISIONES.find(x => x.id === c.etapas[G_camp.i]);
     $('eTit').textContent = 'Etapa ' + G_camp.i + ' de ' + c.etapas.length + ' cumplida';
@@ -1111,7 +1113,7 @@
       if (G.rescates) extra += '<p>Heridos salvados: ' + G.rescates + '</p>';
       if (G.civiles) { const pen = Math.min(PP.pts, G.civiles * 200); PP.pts -= pen; extra += '<p><b>Civiles muertos: ' + G.civiles + '</b> · sanción de ₧ ' + pen + '</p>'; }
       if (G.diaria) { const D = PP.diaria || {}; if (!(D.dia === G.diaria.dia && D.hecha)) { PP.diaria = { dia: G.diaria.dia, hecha: true }; PP.pts += 400; PP.oro += 2; extra += '<p><b>Orden del día cumplida:</b> +₧ 400 y ◆ 2</p>'; } }
-      if (G_camp) { const c = CAMPANAS[G_camp.ci]; PP.campanas = PP.campanas || {}; PP.campanas[c.id] = 1; PP.pts += 300; extra = '<p><b>Campaña cumplida: ' + c.tit + '</b> · ' + c.etapas.length + ' etapas · ' + (G_camp.puntos + res.puntos).toLocaleString('es-ES') + ' puntos en total · premio de campaña ₧ 300</p>' + extra; }
+      if (G_camp) { const c = CAMPANAS[G_camp.ci]; PP.campanas = PP.campanas || {}; PP.campanas[c.id] = 1; (PP.campProg = PP.campProg || {})[c.id] = 0; PP.pts += 300; extra = '<p><b>Campaña cumplida: ' + c.tit + '</b> · ' + c.etapas.length + ' etapas · ' + (G_camp.puntos + res.puntos).toLocaleString('es-ES') + ' puntos en total · premio de campaña ₧ 300</p>' + extra; }
       Progreso.guardar();
     }
     const enCampana = !!G_camp; if (ok) G_camp = null;

@@ -142,8 +142,8 @@ const MISIONES = [
     desierto: true, amp: 2, seed: 12.4, inicio: [120, 250], aliados: 0, caza: true, pista: { x: 120, z0: 255, z1: 40 },
     bumps: [[-60, 40, 45, 6], [-20, -170, 55, 7], [120, 150, 90, -2]],
     fases: [
-      { tipo: 'take', x: -60, z: 40, n: 9, pos: 'trinchera', nom: 'Bate la trinchera' },
-      { tipo: 'take', x: -20, z: -170, n: 11, pos: 'rocas', nom: 'Bate los peñascos' },
+      { tipo: 'take', x: -60, z: 40, n: 9, pos: 'trinchera', nom: 'Destruye el campamento de la trinchera' },
+      { tipo: 'take', x: -20, z: -170, n: 11, pos: 'rocas', nom: 'Destruye el campamento de los peñascos' },
       { tipo: 'aterriza', x: 120, z: 240, nom: 'Vuelve al aeródromo y toma tierra' }
     ]
   },

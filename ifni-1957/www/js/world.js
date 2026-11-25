@@ -160,15 +160,40 @@ const World = (() => {
       if (e.vida <= 0 || Math.hypot(e.x - p.x, e.z - p.z) > e.r + radio * 0.45) continue;
       e.vida -= fuerza; const c = e.p[0];
       if (!c.userData.propio) { c.material = c.material.clone(); c.userData.propio = true; }
-      if (e.vida > 0) { c.material.color.multiplyScalar(0.72); continue; }
+      if (e.vida > 0) { if (!e.tiznado || fuerza >= 1) { e.tiznado = true; c.material.color.multiplyScalar(0.72); } continue; }
       // ruina: el cuerpo queda en un muñón renegrido y lo demás desaparece
-      const alto = c.geometry.parameters.height, base = c.position.y - alto / 2;
+      const alto = c.geometry.parameters.height || 3, base = c.position.y - alto / 2;
       c.scale.y = 0.22; c.position.y = base + alto * 0.11 + 0.5; c.material.color.multiplyScalar(0.5); c.rotation.z = 0.06; c.updateMatrixWorld();
       for (let i = 1; i < e.p.length; i++) { e.p[i].visible = false; const k = blockers.indexOf(e.p[i]); if (k >= 0) blockers.splice(k, 1); }
-      caidos.push({ x: e.x, y: base + 1, z: e.z, r: e.r, alto });
+      caidos.push({ x: e.x, y: base + 1, z: e.z, r: e.r, alto, blanco: !!e.blanco });
     }
     return caidos;
   }
+  // blancos del campamento enemigo, grandes y visibles desde el aire: jaimas, depósitos y camiones
+  function blancos(scn, f, face, R) {
+    const lona = mat(0xd8cba6), lona2 = mat(0x8a7a5c), madera = mat(0x6b5236), bidon = mat(0x4b5a3a), osc = mat(0x23262a), verde = mat(0x5a5f3c);
+    const cs = Math.cos(face), sn = Math.sin(face), P2 = (lx, lz) => [f.x + lx * cs + lz * sn, f.z - lx * sn + lz * cs];
+    const pon = (x, z, r, vida) => { edificio(x, z, r, vida); edificios[edificios.length - 1].blanco = f; edificios[edificios.length - 1].alto = 3; addCircle(x, z, r * 0.7); };
+    [[-30, -18], [-11, -30], [11, -32], [30, -20]].forEach(([lx, lz], i) => { // jaimas grandes
+      const [x, z] = P2(lx, lz), y = height(x, z); grupoEd = [];
+      const t = new C.Mesh(new C.ConeGeometry(7.5, 5.6, 4), i % 2 ? lona : lona2); t.position.set(x, y + 2.8, z); t.rotation.y = face + Math.PI / 4; t.castShadow = true; scn.add(t); blockers.push(t); grupoEd.push(t);
+      caja(0.16, 6.6, 0.16, madera, x, y + 3.3, z, 0, scn, false);
+      pon(x, z, 6.5, 1);
+    });
+    [[-20, -46], [20, -48]].forEach(([lx, lz]) => { // depósitos de munición y bidones
+      const [x, z] = P2(lx, lz), y = height(x, z); grupoEd = [];
+      caja(7.5, 3.4, 5.5, madera, x, y + 1.7, z, face, scn, true); caja(5, 1.8, 3.6, madera, x, y + 4.3, z, face + 0.3, scn, false);
+      for (let k = 0; k < 4; k++) { const b = new C.Mesh(new C.CylinderGeometry(0.8, 0.8, 1.9, 8), bidon); b.position.set(x + Math.cos(k * 1.6) * 5.6, y + 0.95, z + Math.sin(k * 1.6) * 5.6); b.castShadow = true; scn.add(b); grupoEd.push(b); }
+      pon(x, z, 5.8, 1);
+    });
+    { const [x, z] = P2(0, -58), y = height(x, z); grupoEd = []; // camión capturado
+      caja(3.6, 2.2, 9.6, verde, x, y + 1.9, z, face, scn, true); caja(3.3, 2, 2.4, verde, x + sn * 3.4, y + 3.9, z + cs * 3.4, face, scn, false); caja(3.8, 2.5, 5.6, lona2, x - sn * 1.8, y + 4.2, z - cs * 1.8, face, scn, false);
+      for (const lz of [-3.4, 3.4]) for (const lx of [-1.8, 1.8]) { const r = new C.Mesh(new C.CylinderGeometry(0.8, 0.8, 0.5, 10), osc); r.rotation.z = Math.PI / 2; r.rotation.y = face; r.position.set(x + lx * cs + lz * sn, y + 0.8, z - lx * sn + lz * cs); scn.add(r); grupoEd.push(r); }
+      pon(x, z, 5.6, 1.5);
+    }
+  }
+  function blancosVivos(f) { let n = 0; for (const e of edificios) if (e.blanco === f && e.vida > 0) n++; return n; }
+  function blancosDe(f) { return edificios.filter(e => e.blanco === f && e.vida > 0); }
   function bloqueInvisible(scn, w, h, d, x, y, z, ry) {
     const m = new C.Mesh(new C.BoxGeometry(w, h, d), mat(0x000000)); m.visible = false;
     m.position.set(x, y, z); m.rotation.y = ry; scn.add(m); m.updateMatrixWorld(); blockers.push(m);
@@ -267,7 +292,7 @@ const World = (() => {
     if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(2600, 1000), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 730); scn.add(w); }
 
     // zonas libres
-    const libres = m.fases.map(f => [f.x, f.z, f.poblado ? 36 : 16]).concat([[m.inicio[0], m.inicio[1], 10]]);
+    const libres = m.fases.map(f => [f.x, f.z, f.poblado ? 36 : m.caza && f.tipo === 'take' ? 66 : 16]).concat([[m.inicio[0], m.inicio[1], 10]]);
     if (m.fuerte) libres.push([m.fuerte[0], m.fuerte[1], 26]);
     const libre = (x, z, r) => libres.every(l => (x - l[0]) ** 2 + (z - l[1]) ** 2 > (l[2] - (r || 0)) ** 2) && Math.abs(x - pathX(z)) > 4.5;
     const punto = (r) => { for (let t = 0; t < 20; t++) { const x = (R() - 0.5) * 300, z = 268 - R() * 540; if (libre(x, z, r)) return [x, z]; } return null; };
@@ -372,6 +397,7 @@ const World = (() => {
     // posiciones: parapetos de piedra seca, sacos terreros, cobertura de emboscadas
     m.fases.forEach((f, i) => {
       const prev = i === 0 ? { x: m.inicio[0], z: m.inicio[1] } : m.fases[i - 1];
+      if (f.tipo === 'take' && m.caza) blancos(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
       if (f.tipo === 'take') f._spots = (f.poblado ? poblado : ({ rocas, morabito, aldea, trinchera })[f.pos] || parapeto)(scn, f, Math.atan2(prev.x - f.x, prev.z - f.z), R);
       else if (f.tipo === 'hold') sacos(scn, f, R);
       else if (f.tipo === 'ambush') {
@@ -835,5 +861,5 @@ const World = (() => {
     return g;
   }
 
-  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, buchon, bomba, carro, camion, danar, tex, rng, lin, mat, get refs() { return refs; } };
+  return { build, height, pathX, obstaculo, colisiona, coberturaCerca, soldado, avion, buchon, bomba, carro, camion, danar, blancosVivos, blancosDe, tex, rng, lin, mat, get refs() { return refs; } };
 })();

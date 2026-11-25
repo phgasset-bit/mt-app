@@ -1062,7 +1062,7 @@
   function informeHTML(c) {
     const hechas = c.etapas.filter(id => Progreso.P.hechas[id]).length;
     return '<div class="informe"><div class="retrato">' + Progreso.insignia(Math.max(0, Progreso.RANGOS.findIndex(x => x.nom === 'Sargento')), 54) + '<b>' + c.sargento + '</b><small>te informa</small></div><div>' + c.informe.map(p => '<p>' + p + '</p>').join('') + '</div></div>' +
-      '<h3>Órdenes</h3><ol class="ordenes">' + c.etapas.map((id, k) => { const m = MISIONES.find(x => x.id === id); return '<li' + (Progreso.P.hechas[id] ? ' class="ok"' : '') + '><b>' + m.tit + '</b> · ' + c.ordenes[k] + '</li>'; }).join('') + '</ol>' +
+      '<h3>Órdenes</h3><ol class="ordenes">' + c.etapas.map((id, k) => { const m = MISIONES.find(x => x.id === id); return '<li data-e="' + k + '" class="' + (Progreso.P.hechas[id] ? 'ok ' : '') + (G_camp && G_camp.i === k ? 'aqui' : '') + '"><b>' + m.tit + '</b> · ' + c.ordenes[k] + (G_camp && G_camp.i === k ? ' <i>← empiezas aquí</i>' : '') + '</li>'; }).join('') + '</ol><p class="nota">Toca una etapa de la lista para empezar por ella.</p>' +
       '<p class="nota">' + c.etapas.length + ' etapas seguidas. Si caes, repites solo la etapa en la que estabas, y si lo dejas a medias la campaña se retoma en esa etapa. Entre etapas conservas la salud, las vendas y las granadas.</p>' +
       (G_camp && G_camp.i > 0 ? '<p class="nota"><b>Retomas la campaña en la etapa ' + (G_camp.i + 1) + '.</b> <button type="button" class="mini" id="bDeCero">Empezar desde la etapa 1</button></p>' : '');
   }
@@ -1071,6 +1071,7 @@
     G_camp = { ci, i: desde || 0, puntos: 0, pts: 0, lleva: null };
     misionIdx = MISIONES.findIndex(m => m.id === c.etapas[G_camp.i]);
     $('pDato').textContent = c.dato; $('pTit').textContent = c.tit; $('pTxt').innerHTML = informeHTML(c);
+    document.querySelectorAll('#pTxt .ordenes li').forEach(li => li.onclick = () => { const k = +li.dataset.e; if (k !== G_camp.i) abrirCampana(ci, k); });
     if ($('bDeCero')) $('bDeCero').onclick = () => { (Progreso.P.campProg = Progreso.P.campProg || {})[c.id] = 0; Progreso.guardar(); abrirCampana(ci, 0); };
     $('menu').hidden = true; $('parte').hidden = false; $('parte').scrollTop = 0; Snd.musica(true); Snd.narrar('informe_' + c.id);
   }

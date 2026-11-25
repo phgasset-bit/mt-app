@@ -109,7 +109,7 @@ const MISIONES = [
     ]
   },
   {
-    id: 'edchera', epilogo: true, tit: 'Epílogo: Edchera', dato: 'Sáhara español, Saguia el Hamra · 13 de enero de 1958',
+    id: 'edchera', epilogo: true, tit: 'La emboscada de Edchera', dato: 'Sáhara español, Saguia el Hamra · 13 de enero de 1958',
     parte: ['Otro frente, otra bandera. Un reconocimiento de la Legión sale de El Aaiún hacia Edchera y cae en una emboscada en el cauce seco de la Saguia.',
       'Sal de la emboscada, resiste donde te pille y limpia el cauce.'],
     historia: 'El combate de Edchera, el 13 de enero de 1958, fue el más duro de la Legión en esta guerra, con decenas de muertos y heridos (XIII Bandera según la mayoría de las fuentes). El brigada Fadrique Castromonte y el legionario Maderal Oleaga recibieron a título póstumo las últimas Laureadas de San Fernando concedidas.',
@@ -123,7 +123,7 @@ const MISIONES = [
     ]
   },
   {
-    id: 'tafudart', epilogo: true, tit: 'Epílogo: los carros de Tafudart', dato: 'Sáhara español, Saguia el Hamra · febrero de 1958',
+    id: 'tafudart', epilogo: true, tit: 'Los carros de Tafudart', dato: 'Sáhara español, Saguia el Hamra · febrero de 1958',
     parte: ['Operación Teide: españoles y franceses barren el Sáhara. Con la Legión avanzan los carros ligeros M-24 del Regimiento de Caballería Pavía, desembarcados en Villa Bens.',
       'Mandas una sección de tres M-24 que apoya a la II Bandera. Primero los puestos avanzados; después, cruzando el cauce seco, el poblado fortificado de Tafudart: tapias de adobe, torres y una alcazaba. Bate los muros con el cañón, usa la ametralladora contra los que salgan a campo abierto y no dejes atrás a los legionarios.'],
     historia: 'En la operación Teide-Écouvillon (10-25 de febrero de 1958) las tropas españolas y francesas expulsaron del Sáhara al Ejército de Liberación. Los carros M-24 del Regimiento Pavía, únicos carros de combate españoles de toda la campaña, apoyaron con su fuego a la Legión en el ataque a Tafudart. En el territorio de Ifni no llegó a combatir ningún carro.',
@@ -184,7 +184,7 @@ const CAMPANAS = [
     ordenes: ['Cubrir la retaguardia, rechazar la carga y aguantar el collado', 'Escoltar los tres camiones hasta el llano sin que los destruyan', 'Tomar la trinchera, el aduar fortificado y la cota principal']
   },
   {
-    id: 'sahara', tit: 'Sáhara: Edchera y Tafudart', dato: 'Saguia el Hamra · enero - febrero de 1958', sargento: 'Sargento Ortega',
+    id: 'sahara', tit: 'Sáhara: Edchera y los carros de combate', dato: 'Saguia el Hamra · enero - febrero de 1958', sargento: 'Sargento Ortega',
     etapas: ['edchera', 'tafudart'],
     informe: ['Otro frente. Aquí no hay montaña: hay arena, dunas y el cauce seco de la Saguia el Hamra. El 13 de enero una bandera de la Legión cayó en una emboscada en Edchera y pagó muy cara la salida.',
       'Dos tiempos. Primero salimos de esa emboscada, resistimos en las dunas y limpiamos el cauce. Después, ya en febrero, volvemos con los carros M-24 del Pavía: batimos los puestos avanzados y asaltamos el poblado de Tafudart.',

@@ -19,6 +19,7 @@ jobs:
       FIRMA_B64: ${{ secrets.FIRMA_B64 }}
       FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
       FIRMA_ALIAS: ${{ secrets.FIRMA_ALIAS }}
+      PLAY_JSON: ${{ secrets.PLAY_JSON }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,10 +57,19 @@ jobs:
       - name: Paquete para Google Play (AAB firmado)
         if: env.FIRMA_B64 != ''
         run: |
-          echo 'window.IFNI_PRODUCCION = true;' > android/app/src/main/assets/public/js/entorno.js
+          echo 'window.IFNI_PRODUCCION = true;' >> android/app/src/main/assets/public/js/entorno.js
           cd android && ./gradlew bundleRelease
       - uses: actions/upload-artifact@v4
         if: env.FIRMA_B64 != ''
         with:
           name: ifni-1957-google-play-aab
           path: ifni-1957/android/app/build/outputs/bundle/release/app-release.aab
+      - name: Subir a la prueba interna de Google Play (solo si está guardada la cuenta de servicio)
+        if: env.FIRMA_B64 != '' && env.PLAY_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
+          packageName: com.mnmsolar.ifni1957
+          releaseFiles: ifni-1957/android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft

@@ -52,3 +52,14 @@
 - Recomendado: verificación de compras en servidor (contra fraude).
 - Consultar el uso comercial del emblema de la Legión con el Ministerio de Defensa.
 - **Sustituir `www/audio/himno.mp3`**: la grabación actual de «El novio de la muerte» es de terceros y solo vale para pruebas. Antes de publicar hay que poner una grabación propia o con permiso (o borrar el archivo: entonces suena la marcha de cornetas del juego).
+
+## Subida automática a la prueba interna (opcional)
+
+La primera versión hay que subirla a mano en Play Console. A partir de ahí, GitHub puede subir cada compilación a la prueba interna como borrador:
+
+1. Google Cloud Console → crear un proyecto → **IAM y administración → Cuentas de servicio → Crear cuenta de servicio** → en la cuenta, **Claves → Añadir clave → JSON**. Se descarga un archivo `.json`.
+2. En Google Cloud, habilitar la **Google Play Android Developer API** en ese proyecto.
+3. Play Console → **Usuarios y permisos → Invitar a usuarios nuevos** → el correo de la cuenta de servicio → permiso sobre la app «Ifni 1957» para **publicar en canales de prueba**.
+4. GitHub → Settings → Secrets and variables → Actions → nuevo secreto **`PLAY_JSON`** con todo el contenido del archivo `.json`.
+
+Con eso, cada cambio del juego genera el AAB firmado y lo deja como borrador en Pruebas → Prueba interna; solo queda pulsar «Publicar» en Play Console.

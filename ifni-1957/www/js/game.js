@@ -22,7 +22,7 @@
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   function aplicaCalidad() { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, AJ.calidad === 'alta' ? (tactil ? 1.5 : 1.75) : 1)); renderer.shadowMap.enabled = AJ.calidad === 'alta'; try { scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.needsUpdate = true); }); } catch (e) {} }
   aplicaCalidad();
-  const cam = new THREE.PerspectiveCamera(72, 1, 0.05, 1200); cam.rotation.order = 'YXZ';
+  const cam = new THREE.PerspectiveCamera(72, 1, 0.05, 2400); cam.rotation.order = 'YXZ';
   let scene = new THREE.Scene();
   function redim() {
     const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight;
@@ -1290,7 +1290,7 @@
   }
   // ---------- caza Buchón: despegue, ataque a tierra y toma ----------
   const _fw = new V3(), _ap = new V3();
-  function sueloCaza(x, z) { return Math.abs(x) < 318 && Math.abs(z) < 318 ? H(x, z) : -2.6; }
+  function sueloCaza(x, z) { return H(x, z); }
   function actualizaCaza(dt) {
     const C = G.caza, pista = G.m.pista, py = World.refs.pistaY + 1.93;
     (C.m.userData.helices || []).forEach(h => h.rotation.z += dt * (C.gasT <= 0 ? 42 : 14));

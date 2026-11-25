@@ -30,12 +30,12 @@ const World = (() => {
     if (!M) return 0;
     let h = (fbm(x * 0.011 + 50, z * 0.011 + 50) - 0.5) * 2 * M.amp + (fbm(x * 0.05, z * 0.05) - 0.5) * M.amp * 0.22;
     const side = Math.abs(x);
-    if (side > 110) h += (side - 110) * (M.desierto ? 0.04 : 0.22);
+    if (side > 110) h += (Math.min(side, 430) - 110) * (M.desierto ? 0.04 : 0.22); // las laderas dejan de subir lejos del valle
     for (let i = 0; i < M.bumps.length; i++) {
       const b = M.bumps[i], dx = x - b[0], dz = z - b[1];
       h += b[3] * Math.exp(-(dx * dx + dz * dz) / (b[2] * b[2] * 0.5));
     }
-    if (M.mar) h -= Math.max(0, z - 228) * 0.35;
+    if (M.mar) h = Math.max(-7, h - Math.max(0, z - 228) * 0.35);
     return h;
   }
   function pendiente(x, z) { return (Math.abs(height(x + 2, z) - height(x - 2, z)) + Math.abs(height(x, z + 2) - height(x, z - 2))) / 4; }
@@ -204,8 +204,8 @@ const World = (() => {
       }
     }
     // sierras lejanas en capas (perspectiva aérea)
-    sierra(scn, 470, des ? 25 : 70, noche ? 0x1c2436 : des ? 0xc9b48f : 0x9c8f80, hor, 1.3);
-    sierra(scn, 610, des ? 40 : 120, noche ? 0x161d2c : des ? 0xd4c4a4 : 0xb3ad9f, hor, 4.7);
+    sierra(scn, 760, des ? 25 : 70, noche ? 0x1c2436 : des ? 0xc9b48f : 0x9c8f80, hor, 1.3);
+    sierra(scn, 900, des ? 40 : 120, noche ? 0x161d2c : des ? 0xd4c4a4 : 0xb3ad9f, hor, 4.7);
 
     // luces
     const hemi = new C.HemisphereLight(lin(noche ? 0x6a7fae : 0xfff1dc), lin(noche ? 0x1a1820 : 0x7a5838), noche ? 0.75 : 1.05);
@@ -221,8 +221,7 @@ const World = (() => {
     const pos = g.attributes.position, col = new Float32Array(pos.count * 3), cc = new C.Color(), tmp = new C.Color();
     const base = des ? new C.Color(0xd9b07a) : new C.Color(0xb88b5a);
     const roca = new C.Color(0x8a6450), roca2 = new C.Color(0x7d7368), matorral = new C.Color(0x7d7a4a), pista = new C.Color(0xd2b48a), arenaM = new C.Color(0xa69276), sombraC = new C.Color(0x8d6a45);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i), y = height(x, z); pos.setY(i, y);
+    const pinta = (x, z, y, col, i) => {
       const s = pendiente(x, z), n = fbm(x * 0.09, z * 0.09), n2 = fbm(x * 0.02 + 7, z * 0.02 - 3);
       cc.copy(base).lerp(sombraC, n2 * 0.5).multiplyScalar(0.88 + 0.24 * n);
       if (!des) {
@@ -237,14 +236,35 @@ const World = (() => {
       if (noche) cc.multiplyScalar(0.9);
       cc.convertSRGBToLinear();
       col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
-    }
+    };
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i), y = height(x, z); pos.setY(i, y); pinta(x, z, y, col, i); }
     g.setAttribute('color', new C.BufferAttribute(col, 3)); g.computeVertexNormals();
     const terr = new C.Mesh(g, new C.MeshLambertMaterial({ vertexColors: true, map: T.suelo })); terr.receiveShadow = true; scn.add(terr);
-    { // llanura lejana bajo el borde del terreno, para que desde el aire no se vea el final del mapa
-      const ll = new C.Mesh(new C.PlaneGeometry(1500, 1500), new C.MeshLambertMaterial({ color: lin(noche ? 0x3a3a3c : des ? 0xcdb58a : 0xa89474), map: T.suelo }));
-      ll.rotation.x = -Math.PI / 2; ll.position.y = -2.6; scn.add(ll);
+    { // terreno lejano: el mismo relieve y los mismos colores siguen mucho más allá de la zona de combate, para que desde el aire no se vea el borde
+      const S2 = 2400, N2 = 120, g2 = new C.PlaneGeometry(S2, S2, N2, N2); g2.rotateX(-Math.PI / 2);
+      const p2 = g2.attributes.position, c2 = new Float32Array(p2.count * 3), uv = g2.attributes.uv;
+      for (let i = 0; i < p2.count; i++) {
+        const x = p2.getX(i), z = p2.getZ(i), y = height(x, z);
+        p2.setY(i, Math.abs(x) < 318 && Math.abs(z) < 318 ? y - 4 : y); pinta(x, z, y, c2, i);
+        uv.setXY(i, uv.getX(i) * S2 / S, uv.getY(i) * S2 / S);
+      }
+      g2.setAttribute('color', new C.BufferAttribute(c2, 3)); g2.computeVertexNormals();
+      const lejos = new C.Mesh(g2, new C.MeshLambertMaterial({ vertexColors: true, map: T.suelo })); lejos.receiveShadow = false; scn.add(lejos);
+      // fondo por si queda alguna rendija entre las dos mallas
+      const ll = new C.Mesh(new C.PlaneGeometry(2600, 2600), new C.MeshLambertMaterial({ color: lin(noche ? 0x3a3a3c : des ? 0xcdb58a : 0xa89474) }));
+      ll.rotation.x = -Math.PI / 2; ll.position.y = -9; scn.add(ll);
+      // rocas y matas dispersas fuera de la zona de combate
+      const Rf = rng(seed + 91), rocasF = [], matasF = [];
+      for (let i = 0; i < 520; i++) {
+        const a = Rf() * 6.283, r = 330 + Rf() * 620, x = Math.cos(a) * r * (Rf() < 0.5 ? 1 : 0.8), z = Math.sin(a) * r; if (Math.abs(x) < 322 && Math.abs(z) < 322) continue;
+        const y = height(x, z); if (m.mar && y < 0) continue; const s = 0.8 + Rf() * 2.6;
+        if (Rf() < 0.55) rocasF.push(mtx(x, y + s * 0.2, z, Rf() * 0.4, Rf() * 6, Rf() * 0.4, s * 1.3, s * 0.8, s * 1.2));
+        else matasF.push(mtx(x, y + s * 0.35, z, Rf(), Rf() * 6, Rf(), s * 1.2, s * 0.7, s * 1.2));
+      }
+      instancias(scn, geoRoca(5.1), mat(des ? 0xa8875e : 0x8a7260, null, { flatShading: true }), rocasF, false, false);
+      instancias(scn, geoRoca(2.2, 1), mat(des ? 0x8a8552 : 0x5d6638, null, { flatShading: true }), matasF, false, false);
     }
-    if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(900, 200), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 330); scn.add(w); }
+    if (m.mar) { const w = new C.Mesh(new C.PlaneGeometry(2600, 1000), new C.MeshPhongMaterial({ color: lin(noche ? 0x16303e : 0x2c6378), shininess: 80, specular: lin(0x99aabb), transparent: true, opacity: 0.94 })); w.rotation.x = -Math.PI / 2; w.position.set(0, -1.1, 730); scn.add(w); }
 
     // zonas libres
     const libres = m.fases.map(f => [f.x, f.z, f.poblado ? 36 : 16]).concat([[m.inicio[0], m.inicio[1], 10]]);

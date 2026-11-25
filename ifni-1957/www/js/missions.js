@@ -137,7 +137,7 @@ const MISIONES = [
   {
     id: 'buchon1', epilogo: true, tit: 'Buchones sobre la Saguia', dato: 'Aeródromo de El Aaiún · febrero de 1958',
     parte: ['El 71 Escuadrón ha llegado a África con sus Hispano HA-1112 «Buchón». No hay aviación enemiga: vuestro trabajo es el ataque a tierra.',
-      'Despega, bate las dos posiciones que frenan a la columna y vuelve a tomar tierra. Cañones de 20 mm con FUEGO y cohetes de 80 mm con COHETE. No bajes demasiado sobre el enemigo: tiran a todo lo que vuela.'],
+      'Pulsa GAS y el avión despega solo. En el aire, el joystick hacia arriba sube y hacia los lados gira. Bate las dos posiciones que frenan a la columna y vuelve a tomar tierra: cañones de 20 mm con CAÑÓN y cohetes de 80 mm con COHETE. No bajes demasiado sobre el enemigo: tiran a todo lo que vuela.'],
     historia: 'El 71 Escuadrón, con cazas Hispano Aviación HA-1112-M1L «Buchón», salió hacia África el 30 de enero de 1958 y operó desde Gando y El Aaiún. Sin aviación enemiga, los Buchones se emplearon en ataque a tierra con sus cañones de 20 mm y cohetes de 80 mm.',
     desierto: true, amp: 2, seed: 12.4, inicio: [120, 250], aliados: 0, caza: true, pista: { x: 120, z0: 255, z1: 40 },
     bumps: [[-60, 40, 45, 6], [-20, -170, 55, 7], [120, 150, 90, -2]],

@@ -9,7 +9,7 @@
 
   Humanos.cargar();
   // ---------- ajustes ----------
-  const AJ = { sens: 1, vol: 0.9, auto: true, zurdo: false, dif: 1, calidad: 'alta', calAuto: true };
+  const AJ = { sens: 1, vol: 0.9, auto: true, zurdo: false, dif: 1, calidad: 'alta', calAuto: true, invVuelo: false };
   try { Object.assign(AJ, JSON.parse(localStorage.getItem('ifni_aj') || '{}')); } catch (e) {}
   const guardarAJ = () => { try { localStorage.setItem('ifni_aj', JSON.stringify(AJ)); } catch (e) {} };
 
@@ -840,7 +840,7 @@
     G.nido = null; G.salto = null; mg.g.visible = false; G.carro = null; G.caza = null;
     if (m.caza) { // caza Buchón en cabecera de pista, motor al ralentí
       const av = World.buchon(); scene.add(av);
-      G.caza = { m: av, pos: new V3(m.pista.x, World.refs.pistaY + 1.93, m.pista.z0 - 6), yaw: 0, pitch: 0, roll: 0, v: 0, suelo: true, gasT: 3, mun: 240, cohetes: 8, cT: 0, n: 0, lastYaw: 0, lastPitch: 0, aterrizando: false, avisoT: 0 };
+      G.caza = { m: av, pos: new V3(m.pista.x, World.refs.pistaY + 1.93, m.pista.z0 - 6), yaw: 0, pitch: 0, roll: 0, v: 0, suelo: true, gasT: 6, mun: 240, cohetes: 8, cT: 0, n: 0, lastYaw: 0, lastPitch: 0, aterrizando: false, avisoT: 0 };
       P.yaw = 0; P.pitch = 0;
     }
     if (G_camp && G_camp.lleva) { const L = G_camp.lleva; P.vida = Math.max(55, L.vida); P.curas = Math.max(1, L.curas); P.granadas = Math.max(2, L.granadas); }
@@ -886,7 +886,7 @@
     }
     if (m.salto) { aviso('Luz roja: prepárate en la puerta del Junkers', 4); return; }
     if (m.avion && !m.salto) setTimeout(() => { if (G && G.m === m && jugando && P.avion > 0) aviso('Tienes una pasada de aviación: pulsa ✈ AVIÓN (arriba a la derecha) y pilotas tú el Heinkel', 6); }, 9000);
-    if (m.caza) { aviso('Motor en marcha. Al coger velocidad, tira del joystick hacia atrás para despegar', 6); return; }
+    if (m.caza) { $('bFuego').textContent = 'GAS'; aviso('Pulsa GAS para lanzar el motor: el avión despega solo al coger velocidad', 7); return; }
     if (m.carro) aviso('Mandas una sección de tres M-24: joystick para conducir, CAÑÓN y AMETR. para disparar', 5);
     Snd.corneta(m.noche ? 'diana' : 'ataque');
     setTimeout(() => G && G.m === m && voz('luchar', '¡LEGIONARIOS, A LUCHAR!', 1), 2600);
@@ -1296,6 +1296,7 @@
     (C.m.userData.helices || []).forEach(h => h.rotation.z += dt * (C.gasT <= 0 ? 42 : 14));
     let mx = mov.x, my = mov.y;
     if (teclas.KeyA) mx -= 1; if (teclas.KeyD) mx += 1; if (teclas.KeyS) my += 1; if (teclas.KeyW) my -= 1;
+    const sube = clamp(AJ.invVuelo ? my : -my, -1, 1); // >0 = morro arriba
     const dYaw = P.yaw - C.lastYaw, dPit = P.pitch - C.lastPitch; // lo que se arrastra en la mitad derecha también pilota
     if (P.muerto) { // tocado: cae en barrena
       if (!C.caido) { C.pitch += (-0.7 - C.pitch) * Math.min(1, dt); C.roll += dt * 1.6; C.v = Math.min(80, C.v + dt * 8); }
@@ -1306,13 +1307,17 @@
       C.pos.z -= C.v * dt;
       if (C.v < 2 && !C.parado) { C.parado = true; C.gasT = 99; if (G.fase && G.fase.tipo === 'aterriza') faseCumplida('Has tomado tierra. ¡Buen trabajo!'); }
     } else if (C.suelo) { // carrera de despegue
-      C.gasT -= dt; if (C.gasT <= 0) C.v = Math.min(60, C.v + 7.5 * dt);
+      C.gasT -= dt; if (C.gasT > 0 && (disparando || G.pedido > 0 || Math.abs(my) > 0.3)) C.gasT = 0;
+      if (C.gasT <= 0) { if (!C.rodando) { C.rodando = true; aviso('¡Motor a fondo! El avión despega solo al coger velocidad', 4); } C.v = Math.min(60, C.v + 8 * dt); }
       C.pos.z -= C.v * dt; C.pos.y = py;
-      if (C.v > 40 && (my > 0.25 || dPit > 0.004 || C.pos.z < pista.z1 + 30)) { C.suelo = false; C.pitch = 0.17; aviso('¡En el aire! Joystick: alabeo y cabeceo. CAÑÓN y COHETE para atacar', 5); setTimeout(() => { if (G && G.caza === C && !C.aterrizando) C.m.userData.tren.visible = false; }, 2200); }
+      if (C.v > 46 || (C.v > 40 && (sube > 0.25 || dPit > 0.004)) || C.pos.z < pista.z1 + 30) { C.suelo = false; C.pitch = 0.2; C.subeT = 4.5; $('bFuego').textContent = 'CAÑÓN'; aviso('¡En el aire! Joystick ' + (AJ.invVuelo ? 'abajo' : 'arriba') + ' = subir, a los lados = girar', 6); setTimeout(() => { if (G && G.caza === C && !C.aterrizando) C.m.userData.tren.visible = false; }, 2200); }
     } else {
       C.roll += (clamp(mx, -1, 1) * 1.1 - C.roll) * Math.min(1, dt * 3.2);
       C.yaw += dYaw - Math.tan(C.roll) * 9.8 / Math.max(42, C.v) * dt * 1.7;
-      C.pitch = clamp(C.pitch + my * 0.85 * dt + dPit, -0.85, 0.75);
+      C.pitch = clamp(C.pitch + sube * 0.85 * dt + dPit, -0.85, 0.75);
+      // ayudas: tras despegar sube solo unos segundos, y cerca del suelo el avión tiende a levantar el morro
+      if (C.subeT > 0) { C.subeT -= dt; C.pitch = Math.max(C.pitch, 0.14); }
+      { const a0 = C.pos.y - sueloCaza(C.pos.x, C.pos.z); if (a0 < 22 && C.pitch < 0.06 && !(G.fase && G.fase.tipo === 'aterriza')) C.pitch += (0.1 - C.pitch) * Math.min(1, dt * (a0 < 10 ? 4 : 1.6)); }
       C.v += (62 - Math.sin(C.pitch) * 26 - C.v) * Math.min(1, dt * 0.8);
       const alt = C.pos.y - sueloCaza(C.pos.x, C.pos.z);
       if (alt > 220) C.pitch += (-0.08 - C.pitch) * Math.min(1, dt * 1.5); // techo de la misión
@@ -1635,11 +1640,12 @@
   function abrirAjustes(desde) {
     ajDesde = desde; $(desde).hidden = true; $('ajustes').hidden = false;
     $('aDiag').textContent = Nativo.anuncios ? 'Anuncios de Google: ' + (Nativo.ultimoError ? 'último aviso → ' + Nativo.ultimoError : 'sin errores') + (Nativo.CONFIG.pruebas ? ' · modo de prueba' : '') : 'Anuncios y compras simulados (versión web)';
-    $('aSens').value = AJ.sens; $('aVol').value = AJ.vol; $('aAuto').checked = AJ.auto; $('aZurdo').checked = AJ.zurdo; $('aDif').value = String(AJ.dif); $('aCal').value = AJ.calidad;
+    $('aSens').value = AJ.sens; $('aVol').value = AJ.vol; $('aAuto').checked = AJ.auto; $('aInv').checked = AJ.invVuelo; $('aZurdo').checked = AJ.zurdo; $('aDif').value = String(AJ.dif); $('aCal').value = AJ.calidad;
   }
   $('aSens').oninput = e => AJ.sens = +e.target.value;
   $('aVol').oninput = e => { AJ.vol = +e.target.value; Snd.setVol(AJ.vol); };
   $('aAuto').onchange = e => AJ.auto = e.target.checked;
+  $('aInv').onchange = e => AJ.invVuelo = e.target.checked;
   $('aZurdo').onchange = e => { AJ.zurdo = e.target.checked; app.classList.toggle('zurdo', AJ.zurdo); };
   $('aDif').onchange = e => AJ.dif = +e.target.value;
   $('aCal').onchange = e => { AJ.calidad = e.target.value; AJ.calAuto = false; aplicaCalidad(); redim(); };

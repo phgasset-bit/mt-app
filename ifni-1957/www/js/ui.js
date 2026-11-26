@@ -58,7 +58,7 @@ const UI = (() => {
     try { if (navigator.share) { await navigator.share({ title: titulo, text: texto }); return; } } catch (e) { return; }
     try { await navigator.clipboard.writeText(texto); toast('Copiado: pégalo en WhatsApp'); } catch (e) { toast('Mantén pulsado el código para copiarlo'); }
   }
-  let miembrosB = null, errB = '';
+  let miembrosB = null, errB = '', msgC = '';
   function bandera() {
     const P = Progreso.P, l = $('tab-bandera'), R = Progreso.RANGOS, amigos = P.amigos || (P.amigos = []);
     let h = '<h3>Compañero de escuadra</h3><p class="nota">Lleva al combate al legionario de un amigo: sale con su aspecto y su nombre, manejado por la máquina, y aguanta más que el resto.</p>';
@@ -79,6 +79,16 @@ const UI = (() => {
       }
       h += '<div class="fila-b"><button type="button" class="mini" data-b="invitar">Invitar a un amigo</button><button type="button" class="mini" data-b="recargar">Actualizar</button><button type="button" class="mini" data-b="salir">Salir de la bandera</button></div>';
     }
+    // copia del progreso y recuperación en otro móvil
+    h += '<h3>Copia de tu progreso</h3>';
+    if (!Nube.activa) h += '<p class="nota">La copia en la nube no está disponible en esta versión.</p>';
+    else {
+      if (!P.clave) { P.clave = Nube.nuevaClave(); Progreso.guardar(); }
+      h += '<p class="nota">Tu progreso se guarda solo en la nube al terminar cada misión, bajo esta clave. <b>Apúntala o envíatela</b>: es lo único que hace falta para recuperarlo en otro móvil. Quien tenga la clave puede cargar tu progreso, así que no la publiques.</p>' +
+        '<div class="codigo" id="bClave">' + esc(Nube.verClave(P.clave)) + '</div>' +
+        '<div class="fila-b"><button type="button" class="mini" data-b="enviarClave">Enviarme la clave</button><button type="button" class="mini" data-b="guardarYa">Guardar copia ahora</button></div>' +
+        '<p class="nota">¿Móvil nuevo? Escribe aquí la clave del anterior:</p><div class="fila-b"><input id="bRec2" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocapitalize="characters" autocomplete="off"><button type="button" class="mini" data-b="recuperar">Recuperar progreso</button></div>' + (msgC ? '<p class="nota"><b>' + esc(msgC) + '</b></p>' : '');
+    }
     l.innerHTML = h;
     if (Nube.activa && P.bandera && !miembrosB && !errB) Nube.miembros(P).then(m => { miembrosB = m; if (!$('tab-bandera').hidden) bandera(); }).catch(e => { errB = 'No se pudo conectar: ' + e.message; if (!$('tab-bandera').hidden) bandera(); });
     l.onclick = async e => {
@@ -94,6 +104,19 @@ const UI = (() => {
         else if (d.b === 'unir') { b.disabled = true; await Nube.unirse($('bUnir').value, P); miembrosB = null; toast('Ya estás en la bandera'); }
         else if (d.b === 'salir') { if (!(await confirmar('Salir de la bandera', 'Dejarás de sumar puntos con ' + P.bandera.nombre + '.', 'Salir'))) return; await Nube.salir(P); miembrosB = null; }
         else if (d.b === 'recargar') miembrosB = null;
+        else if (d.b === 'enviarClave') { await compartir('Mi clave de recuperación de Ifni 1957 (no la compartas): ' + Nube.verClave(P.clave), 'Clave de Ifni 1957'); return; }
+        else if (d.b === 'guardarYa') { b.disabled = true; msgC = ''; try { await Nube.guardarProgreso(P); msgC = 'Copia guardada ahora mismo.'; } catch (er) { msgC = 'No se pudo guardar la copia: ' + (er.message || 'sin conexión'); } }
+        else if (d.b === 'recuperar') {
+          b.disabled = true; msgC = ''; let c = null;
+          try { c = await Nube.leerProgreso($('bRec2').value); } catch (er) { msgC = er.message || 'No se pudo conectar'; }
+          if (!c && !msgC) msgC = 'No hay ninguna copia con esa clave.';
+          if (c) {
+            const R = Progreso.RANGOS, r = R.filter(x => c.perfil.xp >= x.xp).length - 1, f = c.t ? new Date(c.t).toLocaleDateString('es-ES') : '';
+            if (await confirmar('Recuperar progreso', 'Copia de «' + (c.perfil.avatar.nombre || 'Legionario') + '», ' + R[Math.max(0, r)].nom + (f ? ', guardada el ' + f : '') + '. Sustituirá al progreso que hay ahora en este móvil.', 'Recuperar')) {
+              if (Progreso.restaurar(c.perfil)) { location.reload(); return; } msgC = 'La copia no se pudo leer.';
+            }
+          }
+        }
         else if (d.b === 'invitar') { await compartir('Únete a mi bandera «' + P.bandera.nombre + '» en Ifni 1957. Código: ' + P.bandera.codigo, 'Bandera de Ifni 1957'); return; }
       } catch (er) { errB = er.message || 'No se pudo completar'; }
       Progreso.guardar(); bandera();

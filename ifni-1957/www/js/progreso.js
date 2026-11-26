@@ -226,7 +226,9 @@ const Progreso = (() => {
   }
   function gastar(pts, oro) { if (P.pts < pts || P.oro < oro) return false; P.pts -= pts; P.oro -= oro; guardar(); return true; }
   function reiniciar() { P = JSON.parse(JSON.stringify(BASE)); guardar(); }
+  // sustituye el progreso de este móvil por una copia recuperada de la nube
+  function restaurar(o) { if (!o || typeof o !== 'object' || typeof o.xp !== 'number' || !o.avatar) return false; P = Object.assign(JSON.parse(JSON.stringify(BASE)), o); guardar(); return true; }
 
   Nativo.iniciarPagos(PRODUCTOS, entregar);
-  return { euros, bolsaPara, RANGOS, ARMAS, EXTRAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, get P() { return P; } };
+  return { euros, bolsaPara, RANGOS, ARMAS, EXTRAS, TATUAJES, MEDALLAS, PRODUCTOS, insignia, medallaSVG, dibujaTatuaje, rango, ventajas, puedeComprarArma, terminar, Ranking, Anuncios, comprar, gastar, guardar, reiniciar, restaurar, get P() { return P; } };
 })();

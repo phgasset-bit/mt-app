@@ -69,8 +69,18 @@ const Nube = (() => {
     return (await lista('banderas/' + P.bandera.codigo + '/miembros')).map(m => ({ uid: m._id, nombre: limpio(m.nombre) || 'Legionario', xp: m.xp | 0, puntos: m.semana === s ? m.puntos | 0 : 0, av: (() => { try { return JSON.parse(m.av); } catch (e) { return null; } })(), arma: m.arma, yo: m._id === ses.uid }))
       .sort((a, b) => b.puntos - a.puntos || b.xp - a.xp);
   }
-  // copia del progreso: una por jugador
-  async function guardarProgreso(P) { if (!activa) return; await token(); await pon('usuarios/' + ses.uid, { perfil: JSON.stringify(P), t: Date.now() }); }
-  async function leerProgreso() { await token(); const d = await lee('usuarios/' + ses.uid); if (!d || !d.perfil) return null; try { return JSON.parse(d.perfil); } catch (e) { return null; } }
-  return { activa, semana, crearBandera, unirse, salir, sumar, miembros, guardarProgreso, leerProgreso, get uid() { return ses && ses.uid; } };
+  // copia del progreso: se guarda bajo una clave de recuperación que solo conoce el jugador; con ella se recupera en otro móvil
+  const limpiaClave = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  function nuevaClave() { return Array.from({ length: 12 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join(''); }
+  const verClave = c => limpiaClave(c).replace(/(.{4})(?=.)/g, '$1-');
+  async function guardarProgreso(P) {
+    if (!activa) return false; if (!P.clave || limpiaClave(P.clave).length !== 12) P.clave = nuevaClave();
+    await token(); await pon('copias/' + limpiaClave(P.clave), { perfil: JSON.stringify(P), t: Date.now() }); return true;
+  }
+  async function leerProgreso(clave) {
+    clave = limpiaClave(clave); if (clave.length !== 12) throw new Error('La clave tiene 12 letras y números');
+    await token(); const d = await lee('copias/' + clave); if (!d || !d.perfil) return null;
+    try { const o = JSON.parse(d.perfil); o.clave = clave; return { perfil: o, t: d.t }; } catch (e) { return null; }
+  }
+  return { activa, semana, crearBandera, unirse, salir, sumar, miembros, guardarProgreso, leerProgreso, nuevaClave, verClave, get uid() { return ses && ses.uid; } };
 })();

@@ -17,9 +17,13 @@ En Firestore → pestaña **Reglas**, pega esto y pulsa Publicar:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // copia del progreso: cada jugador solo ve y escribe la suya
-    match /usuarios/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    // copia del progreso de cada jugador, bajo su clave de recuperación
+    match /copias/{clave} {
+      // quien conoce la clave de recuperación (12 caracteres al azar) puede leer y guardar esa copia; no se pueden listar
+      allow get: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.perfil is string && request.resource.data.perfil.size() < 200000;
+      allow list, delete: if false;
     }
     match /banderas/{codigo} {
       allow read: if request.auth != null;

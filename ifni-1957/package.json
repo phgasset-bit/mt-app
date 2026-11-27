@@ -1,0 +1,21 @@
+{
+  "name": "ifni-1957",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Juego de combate en primera persona ambientado en la guerra de Ifni (1957-1958)",
+  "scripts": {
+    "serve": "python3 -m http.server 8080 -d www",
+    "voces": "HF_HUB_DISABLE_XET=1 python3 tools/gen_voces.py",
+    "android": "npx cap add android && node tools/android_ajustes.js && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "8.4.2",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "cordova-plugin-purchase": "13.20.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "three": "0.128.0"
+  }
+}

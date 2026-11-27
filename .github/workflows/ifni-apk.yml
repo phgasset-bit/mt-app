@@ -1,0 +1,75 @@
+name: Ifni 1957 · compilar APK
+on:
+  push:
+    paths:
+      - 'ifni-1957/**'
+      - '.github/workflows/ifni-apk.yml'
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: ifni-1957
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+      FIRMA_B64: ${{ secrets.FIRMA_B64 }}
+      FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
+      FIRMA_ALIAS: ${{ secrets.FIRMA_ALIAS }}
+      PLAY_JSON: ${{ secrets.PLAY_JSON }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: SDK de Android preinstalado en el runner
+        run: echo "sdk.dir=$ANDROID_HOME" && ls "$ANDROID_HOME"
+      - name: Clave de pruebas fija (para que cada APK se instale encima del anterior)
+        run: mkdir -p ~/.android && cp tools/debug.keystore ~/.android/debug.keystore
+      - name: Clave de subida a Google Play (solo si está guardada en los secretos del repositorio)
+        if: env.FIRMA_B64 != ''
+        run: echo "$FIRMA_B64" | base64 -d > "$RUNNER_TEMP/subida.jks" && echo "FIRMA_ALMACEN=$RUNNER_TEMP/subida.jks" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ifni-1957-apk
+          path: ifni-1957/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Copiar APK con nombre fijo
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ifni-1957.apk
+      - name: Publicar descarga directa (se sustituye en cada compilación)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ifni-1957
+          name: Ifni 1957 · versión de prueba
+          body: APK de prueba de Ifni 1957. Se actualiza solo con cada cambio del juego. Anuncios de prueba de Google y compras en modo simulado.
+          prerelease: true
+          make_latest: false
+          files: ifni-1957/ifni-1957.apk
+      - name: Paquete para Google Play (AAB firmado)
+        if: env.FIRMA_B64 != ''
+        run: |
+          echo 'window.IFNI_PRODUCCION = true;' >> android/app/src/main/assets/public/js/entorno.js
+          cd android && ./gradlew bundleRelease
+      - uses: actions/upload-artifact@v4
+        if: env.FIRMA_B64 != ''
+        with:
+          name: ifni-1957-google-play-aab
+          path: ifni-1957/android/app/build/outputs/bundle/release/app-release.aab
+      - name: Subir a la prueba interna de Google Play (solo si está guardada la cuenta de servicio)
+        if: env.FIRMA_B64 != '' && env.PLAY_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
+          packageName: com.mnmsolar.ifni1957
+          releaseFiles: ifni-1957/android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft

@@ -369,7 +369,7 @@
         G.bajas++; if (porJugador) { G.bajasJ++; if (cabeza) G.cabezas++;
           G.rachaN = G.t - (G.rachaT || -99) < 5 ? (G.rachaN || 0) + 1 : 1; G.rachaT = G.t;
           if (G.rachaN === 3) { cartel('¡RACHA!'); G.viva = Math.max(G.viva, 7); aviso('Tres seguidos: la escuadra se crece', 2.5); } }
-        if (!s.elev && Math.random() < 0.65) soltarBotin(s.pos);
+        if (!s.elev && (pocaMunicion() || Math.random() < 0.65)) soltarBotin(s.pos);
         if (Math.random() < 0.25 && gritoT <= 0) { gritoAliado(); gritoT = 4; }
       } else if (s.civil) { G.civiles = (G.civiles || 0) + 1; aviso(porJugador ? '¡Has matado a un civil! Mira antes de disparar' : 'Ha muerto un civil', 3.5); }
       else { voz(Math.random() < 0.5 ? 'herido' : 'sanitario', null, 0.8, panDe(s.pos)); aviso('Ha caído el legionario ' + s.nombre, 2.5); }
@@ -397,7 +397,13 @@
   function dispararJugador() {
     const a = ARMAS[P.arma];
     if (G.recT > 0 || G.cool > 0 || P.muerto) return;
-    if (a.mun <= 0) { Snd.clic(); G.cool = 0.3; if (a.res > 0) recargar(); return; }
+    if (a.mun <= 0) {
+      G.cool = 0.3; if (a.res > 0) { Snd.clic(); recargar(); return; }
+      const otra = ARMAS.findIndex(x => x.mun + x.res > 0);
+      if (otra >= 0) { P.arma = otra; G.cool = 0.6; P.mira = false; G.cambioT = 0.4; construyeBrazos(modelos[P.arma].izq, Progreso.P.equipo.tat); aviso('Sin munición: sacas ' + ARMAS[otra].nom, 2.5); return; }
+      if (disparando || G.pedido > 0 || enemigoAMano(9)) acuchillar(); else Snd.clic();
+      return;
+    }
     a.mun--; G.cool = a.cad; G.tiros++;
     Snd.disparo(a.tipo); if (a.id === 'mauser') Snd.cerrojo();
     fogonazo.visible = true; fogonazo.material.rotation = Math.random() * 6; luzDisparo.intensity = 2.2; G.flashT = 0.05;
@@ -462,15 +468,29 @@
     const c = new THREE.Mesh(geoBotin, matBotin); c.castShadow = true; g.add(c); for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.1, 5), matBotin2); b.position.set(-0.12 + i * 0.08, 0.1, 0); g.add(b); }
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.fogon, color: lin(0xffd060), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); sp.scale.setScalar(0.9); sp.position.y = 0.25; g.add(sp);
     g.position.set(x, H(x, z) + 0.1, z); g.rotation.y = Math.random() * 6; scene.add(g);
-    (G.botin = G.botin || []).push({ g, sp, t: 75 }); if (G.botin.length > 14) scene.remove(G.botin.shift().g);
+    (G.botin = G.botin || []).push({ g, sp, t: 180 }); if (G.botin.length > 14) scene.remove(G.botin.shift().g);
   }
+  const resIni = a => (Progreso.ARMAS[a.id] || a).res || a.carg * 4;
+  const sinMunicion = () => ARMAS.every(a => a.mun + a.res <= 0);
+  const pocaMunicion = () => !G.caza && !G.carro && !G.nido && ARMAS.every(a => a.res <= a.carg);
+  function darMunicion(k) { ARMAS.forEach(a => { a.res += Math.max(a.carg, Math.round(resIni(a) * k)); }); if (ARMAS[P.arma].mun <= 0 && !G.recT) recargar(); G.avisoMun = 0; }
   function actualizaBotin(dt) {
-    if (!G.botin) return; const aPie = !G.carro && !G.nido && !G.vuelo && !P.muerto && !(G.salto && G.salto.fase !== 'suelo');
+    const aPie = !G.carro && !G.nido && !G.vuelo && !G.caza && !P.muerto && !(G.salto && G.salto.fase !== 'suelo');
+    if (aPie) { // avisos y reparto de munición de la escuadra
+      const a = ARMAS[P.arma]; if (G.sumT > 0) G.sumT -= dt;
+      if (a.res <= 0 && a.mun <= a.carg * 0.4) {
+        let c = null, md = 45; for (const s of G.sold) if (s.team === 'L' && !s.muerto && !s.civil && !(s.herido > 0)) { const d = dist2D(s.pos, P.pos); if (d < md) { md = d; c = s; } }
+        if (c && !(G.sumT > 0)) { G.sumT = 45; darMunicion(0.4); Snd.recarga(); aviso('«¡Toma, legionario!» ' + (c.nombre || 'Un compañero') + ' te pasa munición', 3); }
+        else if (sinMunicion() && G.avisoMun !== 2) { G.avisoMun = 2; aviso('Sin munición: FUEGO carga a la bayoneta · recoge las cananas marcadas en amarillo', 5); }
+        else if (!G.avisoMun) { G.avisoMun = 1; aviso(c ? 'Munición baja: aguanta, un compañero te pasará más' : 'Munición baja: acércate a tu escuadra o recoge las cananas de los caídos', 4); }
+      } else if (a.res > 0) G.avisoMun = 0;
+    }
+    if (!G.botin) return;
     for (let i = G.botin.length - 1; i >= 0; i--) {
       const b = G.botin[i]; b.t -= dt; b.sp.material.opacity = 0.4 + Math.sin(G.t * 5 + i) * 0.2;
-      const coge = aPie && Math.hypot(b.g.position.x - P.pos.x, b.g.position.z - P.pos.z) < 1.8;
+      const coge = aPie && Math.hypot(b.g.position.x - P.pos.x, b.g.position.z - P.pos.z) < 2.4;
       if (coge) {
-        let txt = '+ munición'; ARMAS.forEach(a => { a.res += a.carg; });
+        let txt = '+ munición'; darMunicion(pocaMunicion() ? 0.5 : 0.25);
         const r = Math.random(); if (r < 0.14) { P.granadas++; txt += ' y una granada'; } else if (r < 0.24) { P.curas++; txt += ' y una venda'; }
         aviso(txt, 1.8); Snd.clic();
       }
@@ -478,19 +498,28 @@
     }
   }
   // arma blanca: golpe al enemigo que esté a un paso y delante
-  function enemigoAMano() {
-    const alc = (Progreso.P.extras || {}).cuchillo ? 3.2 : 2.6; let mejor = null, md = alc;
+  function enemigoAMano(alcance) {
+    const alc = alcance || ((Progreso.P.extras || {}).cuchillo ? 3.4 : 3); let mejor = null, md = alc;
     for (const s of G.sold) {
       if (s.team !== 'E' || s.muerto) continue; const d = dist2D(s.pos, P.pos); if (d > md || Math.abs(s.pos.y - P.pos.y) > 1.6) continue;
       let a = Math.atan2(-(s.pos.x - P.pos.x), -(s.pos.z - P.pos.z)) - P.yaw; while (a > Math.PI) a -= 6.283; while (a < -Math.PI) a += 6.283;
-      if (Math.abs(a) < 1.0) { md = d; mejor = s; }
+      if (Math.abs(a) < (alcance ? 0.7 : 1.0)) { md = d; mejor = s; }
     }
     return mejor;
   }
   function acuchillar() {
     if (P.muerto || G.carro || G.nido || G.vuelo || (G.salto && G.salto.fase !== 'suelo') || G.cuchT > 0) return;
     G.cuchT = (Progreso.P.extras || {}).cuchillo ? 0.55 : 0.9; G.estocada = 0.28; Snd.silbido(0);
-    const s = enemigoAMano(); if (!s) return;
+    const s = enemigoAMano();
+    if (!s) { // sin munición: carga a la bayoneta contra el que esté a pocos pasos
+      const o = sinMunicion() && enemigoAMano(9); if (!o) return;
+      _o.set(P.pos.x, P.pos.y + 1.2, P.pos.z); _d.set(o.pos.x - P.pos.x, o.pos.y - P.pos.y, o.pos.z - P.pos.z); const d = _d.length(); _d.normalize();
+      if (World.obstaculo(_o, _d, d) < d - 0.5) return;
+      G.embiste = { s: o, t: 1.1 }; G.cuchT = 1.2; aviso('¡A la bayoneta!', 1.2); if (Math.random() < 0.6) voz('a_mi', null, 1); return;
+    }
+    golpeBlanca(s);
+  }
+  function golpeBlanca(s) {
     const p = new V3(s.pos.x, s.pos.y + (s.agach ? 0.9 : 1.3), s.pos.z);
     sangre(p, _d.set(-Math.sin(P.yaw), 0.2, -Math.cos(P.yaw)), true); Snd.impacto(); G.temblor = Math.max(G.temblor, 0.25);
     herir(s, 999, P.pos, true); G.aciertos++; G.tiros++;
@@ -907,6 +936,7 @@
     G.faseI++;
     const f = G.fase = G.m.fases[G.faseI];
     if (!f) return victoria();
+    if (G.faseI > 0 && !G.caza && !G.carro && !G.rescate) { let dado = false; ARMAS.forEach(a => { const m = Math.round(resIni(a) * 0.6); if (a.res < m) { a.res = m; dado = true; } }); if (dado) { G.avisoMun = 0; setTimeout(() => G && aviso('Reparto de munición', 2.5), 2500); } }
     G.faseT = 0; G.disparada = false; G.asalto = false; G.avisoEnemigo = false; G.desborde = 0; G.morteroT = rnd(16, 24); G.contraHecho = false;
     if (f.tipo === 'take') {
       const spots = f._spots.slice().sort(() => Math.random() - 0.5);
@@ -1493,6 +1523,12 @@
   function actualizaArma(dt) {
     if (G.caza) return;
     if (G.cuchT > 0) G.cuchT -= dt;
+    if (G.embiste) { // carrera corta hasta el enemigo y estocada
+      const E = G.embiste, s = E.s, dx = s.pos.x - P.pos.x, dz = s.pos.z - P.pos.z, d = Math.hypot(dx, dz); E.t -= dt;
+      if (s.muerto || E.t <= 0 || P.muerto || G.carro || G.nido) G.embiste = null;
+      else if (d > 1.7) { const k = Math.min(d - 1.5, 12 * dt) / d; P.pos.x += dx * k; P.pos.z += dz * k; }
+      else { G.embiste = null; G.estocada = 0.28; Snd.silbido(0); golpeBlanca(s); }
+    }
     if (G.carro) return armaCarro(dt);
     if (G.nido) return armaNido(dt);
     if (G.salto && G.salto.fase !== 'suelo' && G.salto.fase !== 'campana') { if (disparando || G.pedido > 0) { G.pedido = 0; saltar(); } return; }
@@ -1615,14 +1651,15 @@
     const lista = G.sold.filter(s => s.team === 'E' && !s.muerto && s.estado !== 'huye' && (s.alerta || (s.ultimoTiro && G.t - s.ultimoTiro < 4)))
       .map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => o.d < (G.caza ? 520 : 170)).sort((a, b) => a.d - b.d).slice(0, 10)
       .concat(G.caza && G.fase && G.fase.tipo === 'take' ? World.blancosDe(G.fase).map(e => ({ s: { pos: { x: e.x, y: H(e.x, e.z) + 3.5, z: e.z }, blanco: true, agach: true }, d: Math.hypot(e.x - P.pos.x, e.z - P.pos.z) })) : [])
-      .concat(G.sold.filter(s => s.herido > 0 || (s.civil && !s.muerto)).map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => !o.s.civil || o.d < 70));
+      .concat(G.sold.filter(s => s.herido > 0 || (s.civil && !s.muerto)).map(s => ({ s, d: dist2D(s.pos, P.pos) })).filter(o => !o.s.civil || o.d < 70))
+      .concat(G.botin && pocaMunicion() ? G.botin.map(b => ({ s: { pos: { x: b.g.position.x, y: b.g.position.y - 1, z: b.g.position.z }, botin: true, agach: true }, d: Math.hypot(b.g.position.x - P.pos.x, b.g.position.z - P.pos.z) })).sort((a, b) => a.d - b.d).slice(0, 3) : []);
     let i = 0;
     for (const { s, d } of lista) {
       _m.set(s.pos.x, s.pos.y + (s.herido > 0 ? 1.2 : s.agach ? 1.5 : 2.05), s.pos.z).project(cam);
       const detras = _m.z > 1; let x = _m.x, y = _m.y; if (detras) { x = -x; y = -y; }
       const dentro = !detras && Math.abs(x) < 0.94 && Math.abs(y) < 0.9;
-      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4)); e.classList.toggle('jefe', !!s.jefe); e.classList.toggle('herido', s.herido > 0); e.classList.toggle('civil', !!s.civil); e.classList.toggle('blanco', !!s.blanco);
-      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = s.blanco ? 'BLANCO · ' + Math.round(d) + ' m' : s.civil ? 'CIVIL' : s.herido > 0 ? '✚ ' + Math.ceil(s.herido) + ' s' : s.jefe ? 'JEFE · ' + Math.round(d) + ' m' : Math.round(d) + ' m'; }
+      const e = marcaN(i++); e.hidden = false; e.classList.toggle('borde', !dentro); e.classList.toggle('tira', !!(s.ultimoTiro && G.t - s.ultimoTiro < 0.4)); e.classList.toggle('jefe', !!s.jefe); e.classList.toggle('herido', s.herido > 0); e.classList.toggle('civil', !!s.civil); e.classList.toggle('blanco', !!s.blanco); e.classList.toggle('botin', !!s.botin);
+      if (dentro) { e.style.left = ((x + 1) / 2 * w) + 'px'; e.style.top = ((1 - y) / 2 * h) + 'px'; e.style.transform = ''; e.lastChild.textContent = s.botin ? 'MUNICIÓN · ' + Math.round(d) + ' m' : s.blanco ? 'BLANCO · ' + Math.round(d) + ' m' : s.civil ? 'CIVIL' : s.herido > 0 ? '✚ ' + Math.ceil(s.herido) + ' s' : s.jefe ? 'JEFE · ' + Math.round(d) + ' m' : Math.round(d) + ' m'; }
       else {
         const a = Math.atan2(y, x), k = Math.min(0.9 / Math.abs(Math.cos(a) || 1e-6), 0.82 / Math.abs(Math.sin(a) || 1e-6));
         e.style.left = ((Math.cos(a) * k + 1) / 2 * w) + 'px'; e.style.top = ((1 - Math.sin(a) * k) / 2 * h) + 'px';
@@ -1643,10 +1680,11 @@
     else if (G.carro) { const C = G.carro; $('tMun').textContent = C.rec > 0 ? '··' : 'LISTO'; $('tRes').textContent = C.obuses + ' proyectiles'; $('tArma').textContent = 'M-24 Chaffee · cañón de 75 mm'; $('tArma').style.color = ''; }
     else if (G.nido) { const N = G.nido; $('tMun').textContent = N.rec > 0 ? '··' : N.mun; $('tRes').textContent = N.cintas + ' cintas'; $('tArma').textContent = 'ALFA mod. 44 · calor ' + Math.round(N.calor) + ' %'; $('tArma').style.color = N.bloqueo ? '#ff5a4a' : N.calor > 70 ? '#ffb347' : ''; }
     else { $('tMun').textContent = G.recT > 0 ? '··' : a.mun; $('tRes').textContent = a.res; $('tArma').textContent = a.nom; $('tArma').style.color = ''; }
+    $('municion').classList.toggle('seca', !G.caza && !G.vuelo && !G.carro && !G.nido && a.res <= 0 && a.mun <= a.carg * 0.4);
     $('tGran').textContent = P.granadas;
     $('bGran').classList.toggle('agotado', P.granadas <= 0); $('bCura').classList.toggle('agotado', P.curas <= 0); if (G.hudG !== P.granadas) { G.hudG = P.granadas; $('bGran').innerHTML = 'GRANADA<br>' + P.granadas; } if (G.hudC !== P.curas) { G.hudC = P.curas; $('bCura').innerHTML = 'CURA<br>' + P.curas; } $('bAvion').disabled = P.avion <= 0; $('bAvion').hidden = !(G.m.avion > 0);
     $('bViva').disabled = G.vivaCD > 0; $('bViva').textContent = G.vivaCD > 0 ? Math.ceil(G.vivaCD) + 's' : '¡VIVA!';
-    { const cerca = !G.carro && !G.nido && !G.vuelo && !P.muerto && !(G.salto && G.salto.fase !== 'suelo') && !!enemigoAMano(); if ($('bCuch').hidden === cerca) $('bCuch').hidden = !cerca; }
+    { const cerca = !G.carro && !G.nido && !G.vuelo && !P.muerto && !(G.salto && G.salto.fase !== 'suelo') && (!!enemigoAMano() || sinMunicion()); if ($('bCuch').hidden === cerca) $('bCuch').hidden = !cerca; }
     $('bAgach').classList.toggle('on', P.agach); $('bMira').classList.toggle('on', P.mira);
     const f = G.fase;
     if (f) {
